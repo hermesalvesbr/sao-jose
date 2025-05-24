@@ -15,6 +15,7 @@
     "@fontsource/poppins": "^5.2.6",
     "@mdi/font": "^7.4.47",
     "@nuxt/image": "^1.10.0",
+    "luxon": "^3.6.1",
     "maska": "^3.1.1",
     "nuxt": "^3.17.4",
     "saas": "^1.0.0",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^4.13.2",
     "@directus/types": "^13.1.1",
+    "@types/luxon": "^3.6.2",
     "directus-typeforge": "^0.14.2",
     "eslint": "^9.27.0",
     "eslint-plugin-format": "^1.0.1",

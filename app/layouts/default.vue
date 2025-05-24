@@ -121,7 +121,7 @@ watch(() => route.fullPath, () => {
       </v-list>
     </v-navigation-drawer>
 
-    <v-main class="main-content">
+    <v-main>
       <NuxtPage />
     </v-main>
 
@@ -189,15 +189,6 @@ watch(() => route.fullPath, () => {
   background: #6d4c41;
   cursor: pointer;
 }
-.main-content {
-  padding: 16px 8px 64px 8px;
-  min-height: calc(100vh - 112px);
-  background: #f5f5f5;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-}
 .footer {
   color: #ffc107;
   font-family: 'Poppins', sans-serif;
@@ -219,9 +210,6 @@ watch(() => route.fullPath, () => {
   }
   .drawer-title {
     font-size: 1rem;
-  }
-  .main-content {
-    padding: 8px 2px 64px 2px;
   }
 }
 </style>
