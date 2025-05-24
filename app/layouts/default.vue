@@ -17,7 +17,7 @@ interface DrawerItem {
 
 const drawerItems: DrawerItem[] = [
   { title: 'Início', icon: 'mdi-home', to: '/', tooltip: 'Página inicial' },
-  { title: 'Cadastrar Católico', icon: 'mdi-account-plus', to: '/cadastrar', tooltip: 'Cadastrar novo católico' },
+  { title: 'Fazer parte', icon: 'mdi-account-plus', to: '/cadastrar', tooltip: 'Cadastrar novo católico' },
   { title: 'Aniversariantes', icon: 'mdi-cake-variant', to: '/aniversariantes', tooltip: 'Ver aniversariantes' },
   { title: 'Missas', icon: 'mdi-church', to: '/missas', disabled: true, tooltip: 'Em breve: Missas' },
   { title: 'Dízimos', icon: 'mdi-cash-multiple', to: '/dizimos', disabled: true, tooltip: 'Em breve: Dízimos' },
@@ -59,7 +59,7 @@ watch(() => route.fullPath, () => {
           mdi-menu
         </v-icon>
       </v-btn>
-      <span class="app-title" aria-label="Capela São José">Capela São José</span>
+      <span class="app-title pl-2" aria-label="Capela São José">Capela São José</span>
     </v-app-bar>
 
     <v-navigation-drawer

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useSeoMeta } from '#imports'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MaskedTextField from '~/components/MaskedTextField.vue'
 
@@ -12,6 +13,12 @@ const birthDate = ref('')
 const submitting = ref(false)
 const formRef = ref()
 const router = useRouter()
+const snackbar = ref(false)
+const snackbarText = ref('')
+
+// Sucesso do cadastro
+const successDialog = ref(false)
+const successName = ref('')
 
 const genderOptions = [
   { title: 'Masculino', value: 'M' },
@@ -33,6 +40,10 @@ const birthRules = [
   (v: string) => !!v || 'Data obrigatória',
 ]
 
+// Fakedata: telefone e nome já cadastrados
+const FAKE_PHONE = '87992005656'
+const FAKE_NAME = 'Hermes Alves'
+
 /**
  * Simula busca de telefone já cadastrado
  */
@@ -40,21 +51,119 @@ async function checkPhone() {
   if (!phone.value || phone.value.replace(/\D/g, '').length < 10)
     return
   checkingPhone.value = true
-  // Simulação: telefone "999999999" já existe
   await new Promise(r => setTimeout(r, 600))
-  phoneExists.value = phone.value.replace(/\D/g, '') === '999999999'
+  const cleanPhone = phone.value.replace(/\D/g, '')
+  if (cleanPhone === FAKE_PHONE) {
+    phoneExists.value = true
+    snackbarText.value = `Telefone já cadastrado para ${FAKE_NAME}`
+    snackbar.value = true
+  }
+  else {
+    phoneExists.value = false
+  }
   checkingPhone.value = false
 }
 
+/**
+ * Normaliza o nome do fiel para padronização de dados
+ */
+function normalizeNomeFiel(nome: string): string {
+  const palavrasMinusculas = [
+    'da',
+    'de',
+    'do',
+    'das',
+    'dos',
+    'e',
+    'em',
+    'na',
+    'no',
+    'nas',
+    'nos',
+    'por',
+    'para',
+    'com',
+    'sem',
+    'sob',
+    'sobre',
+    'entre',
+    'até',
+    'após',
+    'ante',
+    'após',
+    'até',
+    'com',
+    'contra',
+    'desde',
+    'em',
+    'entre',
+    'para',
+    'perante',
+    'por',
+    'sem',
+    'sob',
+    'sobre',
+    'trás',
+  ]
+  let normalized = nome.replace(/[^a-zA-Z\u00C0-\u00FF\s-]/g, '')
+  normalized = normalized.toLowerCase()
+  normalized = normalized.replace(/\s+/g, ' ').trim()
+  normalized = normalized.split(' ').map((word, index) => {
+    if (index === 0) {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    }
+    if (palavrasMinusculas.includes(word.toLowerCase())) {
+      return word.toLowerCase()
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  }).join(' ')
+  return normalized
+}
+
 async function onSubmit() {
-  if (!formRef.value?.isValid)
+  if (!formRef.value)
+    return
+  const { valid } = await formRef.value.validate()
+  if (!valid)
     return
   submitting.value = true
+  // Normaliza o nome antes de salvar
+  fullName.value = normalizeNomeFiel(fullName.value)
   // Simulação de cadastro
   await new Promise(r => setTimeout(r, 1000))
   submitting.value = false
-  router.push('/')
+  successName.value = fullName.value
+  successDialog.value = true
 }
+
+function resetForm() {
+  phone.value = ''
+  phoneExists.value = null
+  fullName.value = ''
+  gender.value = ''
+  birthDate.value = ''
+  if (formRef.value?.resetValidation)
+    formRef.value.resetValidation()
+  successDialog.value = false
+}
+
+const isFormValid = computed(() => {
+  return (
+    phoneExists.value === false
+    && !!fullName.value
+    && !!gender.value
+    && !!birthDate.value
+    && !submitting.value
+  )
+})
+
+useSeoMeta({
+  title: 'Cadastro de Católico',
+  description: 'Cadastre-se para participar da comunidade católica e receber novidades pelo WhatsApp.',
+  ogTitle: 'Cadastro de Católico',
+  ogDescription: 'Cadastre-se para participar da comunidade católica e receber novidades pelo WhatsApp.',
+  ogType: 'website',
+})
 </script>
 
 <template>
@@ -82,30 +191,21 @@ async function onSubmit() {
               color="success"
               custom-class="arrojado-phone"
               @blur="checkPhone"
+              @keydown.enter.prevent="phoneExists !== false && checkPhone"
             />
           </v-col>
-          <v-col cols="3" class="d-flex align-center justify-center">
+          <v-col cols="3" class="d-flex align-center justify-center mb-5">
             <v-btn
               icon
-              color="success"
               :loading="checkingPhone"
               :disabled="checkingPhone || !phone || phone.replace(/\D/g, '').length < 10"
               aria-label="Verificar telefone"
-              style="height: 56px; min-width: 56px; padding: 0; align-self: center;"
               @click="checkPhone"
             >
               <v-icon>mdi-arrow-right</v-icon>
             </v-btn>
           </v-col>
         </v-row>
-        <v-alert
-          v-if="phoneExists === true"
-          type="warning"
-          class="mb-2"
-          density="compact"
-        >
-          Este telefone já está cadastrado.
-        </v-alert>
         <template v-if="phoneExists === false">
           <v-text-field
             v-model="fullName"
@@ -114,6 +214,7 @@ async function onSubmit() {
             prepend-inner-icon="mdi-account"
             required
             autocomplete="name"
+            @input="fullName = normalizeNomeFiel(fullName)"
           />
           <v-select
             v-model="gender"
@@ -137,12 +238,38 @@ async function onSubmit() {
             type="submit"
             block
             :loading="submitting"
+            :disabled="!isFormValid"
           >
             Cadastrar
           </v-btn>
         </template>
       </v-form>
     </v-card>
+    <v-snackbar
+      v-model="snackbar"
+      :timeout="7000"
+      color="error"
+      location="top"
+    >
+      {{ snackbarText }}
+    </v-snackbar>
+    <v-dialog v-model="successDialog" max-width="400">
+      <v-card class="pa-5 text-center" prepend-icon="mdi-party-popper">
+        <template #title>
+          <span class="font-weight-black"> Cadastro realizado com sucesso!</span>
+        </template>
+        <div class="mb-4">
+          Parabéns, <span class="text-primary">{{ successName }}</span> foi cadastrado(a) com sucesso!<br>
+          Que alegria tê-lo(a) em nossa comunidade. 🙏
+        </div>
+        <v-btn color="primary" class="mb-2" block @click="resetForm">
+          Cadastrar novo fiel
+        </v-btn>
+        <v-btn variant="outlined" color="secondary" block @click="router.push('/')">
+          Voltar para início
+        </v-btn>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
