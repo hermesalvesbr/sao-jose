@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import type { createDirectus, DirectusClient, RestClient } from '@directus/sdk'
+import type { Catolico } from '~/types/schema'
 import { useSeoMeta } from '#imports'
+import { readItems, rest, staticToken } from '@directus/sdk'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MaskedTextField from '~/components/MaskedTextField.vue'
@@ -156,6 +159,38 @@ const isFormValid = computed(() => {
     && !submitting.value
   )
 })
+
+/**
+ * Exemplo de interface para a collection 'catolico'.
+ * Idealmente, mova para types/Catolico.ts e importe aqui.
+ */
+// interface Catolico {
+//   id: string
+//   // Adicione outros campos conforme o schema do Directus
+// }
+
+interface Schema {
+  catolico: Catolico[]
+}
+
+/**
+ * Testa integração com Directus usando o client tipado e await correto.
+ * Segue a documentação oficial do SDK.
+ * https://directus.io/docs/guides/connect/sdk
+ */
+async function testeDirectus() {
+  // Aguarde o client e faça o cast correto para incluir RestClient
+  const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
+  try {
+    // readItems precisa ser tipado para a collection
+    const allCatolicos = await d.request(readItems('catolico'))
+    console.warn('Católicos do Directus:', allCatolicos)
+  }
+  catch (err) {
+    console.error('Erro ao buscar catolicos:', err)
+  }
+}
+testeDirectus()
 
 useSeoMeta({
   title: 'Cadastro de Católico',

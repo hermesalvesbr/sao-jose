@@ -45,4 +45,14 @@ export default defineNuxtConfig({
       ],
     },
   },
+  runtimeConfig: {
+    directus: {
+      token: import.meta.env.DIRECTUS_TOKEN,
+    },
+    public: {
+      directus: {
+        url: import.meta.env.NUXT_PUBLIC_DIRECTUS_URL,
+      },
+    },
+  },
 })
