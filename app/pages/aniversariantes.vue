@@ -24,6 +24,11 @@ const meses = [
 const currentMonth = ref(new Date().getMonth())
 const loading = ref(false)
 const aniversariantes = ref<Catolico[]>([])
+const searchTerm = ref('')
+
+function handleSearchTerm(val: string | null) {
+  searchTerm.value = val ?? ''
+}
 
 /**
  * Busca todos os católicos com data de nascimento válida
@@ -35,12 +40,19 @@ async function fetchAniversariantes() {
     const result = await d.request(
       readItems('catolico', {
         fields: ['id', 'nome', 'sexo', 'nascimento'],
-        filter: { nascimento: { _nnull: true } },
+        filter: { nascimento: { _nnull: true }, status: 'published' },
         limit: -1,
         sort: ['nascimento'],
       }),
     )
-    aniversariantes.value = Array.isArray(result) ? result as Catolico[] : []
+    let arr: any[] = []
+    if (Array.isArray(result)) {
+      arr = result
+    }
+    else if (typeof result === 'object' && result !== null) {
+      arr = Object.values(result).filter(v => v && typeof v === 'object' && 'id' in v && 'nome' in v)
+    }
+    aniversariantes.value = arr as Catolico[]
   }
   finally {
     loading.value = false
@@ -53,11 +65,27 @@ onMounted(fetchAniversariantes)
  * Retorna aniversariantes do mês selecionado
  */
 const aniversariantesDoMes = computed(() => {
+  const term = (searchTerm.value || '').trim().toLowerCase()
+  if (term !== '') {
+    // Busca global: todos os meses
+    return aniversariantes.value.filter((a) => {
+      return a.nome && a.nome.toLowerCase().includes(term)
+    }).sort((a, b) => {
+      const da = DateTime.fromISO(a.nascimento as string)
+      const db = DateTime.fromISO(b.nascimento as string)
+      // Ordena por mês e dia
+      if (da.month !== db.month)
+        return da.month - db.month
+      return da.day - db.day
+    })
+  }
+  // Filtro padrão: só do mês selecionado
   return aniversariantes.value.filter((a) => {
     if (!a.nascimento)
       return false
     const d = DateTime.fromISO(a.nascimento as string)
-    return d.month - 1 === currentMonth.value
+    const matchesMonth = d.month - 1 === currentMonth.value
+    return matchesMonth
   }).sort((a, b) => {
     const da = DateTime.fromISO(a.nascimento as string).day
     const db = DateTime.fromISO(b.nascimento as string).day
@@ -106,29 +134,59 @@ useSeoMeta({
     <v-row justify="center" class="mb-4">
       <v-col cols="12" md="8" class="text-center">
         <h1 class="text-h4 font-weight-bold mb-2 text-success">
-          Aniversariantes
+          <template v-if="(searchTerm || '').trim() === ''">
+            Aniversariantes
+          </template>
+          <template v-else>
+            Resultados da busca
+          </template>
         </h1>
         <div class="subtitle-1 mb-4">
-          Celebre a vida de quem faz parte da nossa comunidade!
+          <template v-if="(searchTerm || '').trim() === ''">
+            Celebre a vida de quem faz parte da nossa comunidade!
+          </template>
+          <template v-else>
+            Veja quem corresponde à sua busca em toda a comunidade.
+          </template>
         </div>
-        <v-btn icon variant="text" aria-label="Mês anterior" @click="prevMonth">
-          <v-icon size="32">
-            mdi-chevron-left
-          </v-icon>
-        </v-btn>
-        <span class="month-title mx-3 text-success text-h5 font-weight-bold">{{ meses[currentMonth] }}</span>
-        <v-btn icon variant="text" aria-label="Próximo mês" @click="nextMonth">
-          <v-icon size="32">
-            mdi-chevron-right
-          </v-icon>
-        </v-btn>
+        <v-text-field
+          v-model="searchTerm"
+          label="Buscar aniversariante pelo nome"
+          prepend-inner-icon="mdi-magnify"
+          class="mb-4"
+          hide-details
+          clearable
+          color="success"
+          variant="outlined"
+          density="comfortable"
+          autocomplete="off"
+          @update:model-value="handleSearchTerm"
+        />
+        <div v-if="(searchTerm || '').trim() === ''">
+          <v-btn icon variant="text" aria-label="Mês anterior" @click="prevMonth">
+            <v-icon size="32">
+              mdi-chevron-left
+            </v-icon>
+          </v-btn>
+          <span class="month-title mx-3 text-success text-h5 font-weight-bold">{{ meses[currentMonth] }}</span>
+          <v-btn icon variant="text" aria-label="Próximo mês" @click="nextMonth">
+            <v-icon size="32">
+              mdi-chevron-right
+            </v-icon>
+          </v-btn>
+        </div>
       </v-col>
     </v-row>
     <v-row justify="center">
       <v-col cols="12" md="8">
         <v-skeleton-loader v-if="loading" type="list-item-avatar, list-item-avatar, list-item-avatar" />
         <v-alert v-else-if="!aniversariantesDoMes.length" type="info" class="mt-6" border="start" color="primary">
-          Nenhum aniversariante neste mês.
+          <template v-if="(searchTerm || '').trim() === ''">
+            Nenhum aniversariante neste mês.
+          </template>
+          <template v-else>
+            Nenhum aniversariante encontrado para sua busca.
+          </template>
         </v-alert>
         <v-slide-group v-else show-arrows>
           <v-slide-group-item v-for="a in aniversariantesDoMes" :key="a.id">
