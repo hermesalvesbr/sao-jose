@@ -1,0 +1,55 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Clean Architecture no Projeto
+
+## Camadas da Arquitetura
+
+### 1. Presentation Layer (UI)
+- Componentes Vue em `app/components/`
+- Pages em `app/pages/`
+- Layouts em `app/layouts/`
+- Apenas lógica de apresentação
+- Comunicação via stores e composables
+
+### 2. Application Layer
+- Composables em `app/composables/`
+- Stores em `app/stores/`
+- Gerenciamento de estado
+- Regras de negócio da aplicação
+- Orquestração de serviços
+
+### 3. Domain Layer
+- Types e interfaces em `types/`
+- Regras de negócio core
+- Entidades do domínio
+- Casos de uso
+
+### 4. Infrastructure Layer
+- Plugins em `app/plugins/`
+- APIs em `server/api/`
+- Serviços externos
+- Configurações do Vuetify
+- Adaptadores e implementações
+
+## Princípios
+
+### Dependências
+- Camadas externas dependem das internas
+- Domain não depende de nenhuma outra camada
+- Usar injeção de dependência
+- Interfaces para acoplamento fraco
+
+### Tipagem
+- Interfaces para contratos entre camadas
+- Types para modelos de domínio
+- Enums para valores constantes
+- Generics quando apropriado
+
+### Testes
+- Testes unitários por camada
+- Mocks para dependências externas
+- Testes de integração entre camadas
+- E2E para fluxos críticos

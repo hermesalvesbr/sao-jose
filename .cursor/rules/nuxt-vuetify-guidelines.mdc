@@ -1,0 +1,52 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Diretrizes do Projeto Nuxt 3 + Vuetify
+
+## Estrutura de Arquivos
+O projeto segue uma estrutura modular dentro do diretório `app/`:
+
+- Components em `app/components/`
+  - Nomenclatura: Pasta+Arquivo (ex: `form/Input.vue` -> `<FormInput />`)
+- Layouts em `app/layouts/`
+- Pages em `app/pages/`
+- Plugins em `app/plugins/`
+- Stores em `app/stores/`
+- Utils em `app/utils/`
+
+## Regras de Código
+
+### TypeScript e Vue
+- Todo componente Vue DEVE usar `<script setup lang="ts">`
+- Options API é PROIBIDA, use apenas Composition API
+- Composables DEVEM ter prefixo `use` (ex: `useAuth.ts`)
+- Comentários em inglês usando formato JSDoc
+
+### Imports e Plugins
+- Evite imports manuais para:
+  - Componentes auto-importados
+  - Composables
+  - Plugins
+  - Utils
+  - Stores
+- Plugins devem ser registrados usando `defineNuxtPlugin`
+
+### Vuetify
+O Vuetify é configurado em [app/plugins/vuetify.ts](mdc:app/plugins/vuetify.ts):
+- Inicialização via `createVuetify()`
+- Componentes são registrados globalmente
+- Temas e configurações centralizados no plugin
+
+### Clean Architecture
+- Separação clara de responsabilidades
+- Código fortemente tipado
+- Estrutura modular e escalável
+- Preparado para atualização Nuxt 4
+
+## Validações
+- Verificar tipagem estrita
+- Seguir regras de lint do projeto
+- Manter padrão de nomenclatura de componentes
+- Documentação em JSDoc para funções e componentes importantes

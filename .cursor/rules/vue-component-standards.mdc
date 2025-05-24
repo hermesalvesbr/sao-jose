@@ -1,0 +1,48 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Padrões de Componentes Vue
+
+## Estrutura Básica
+Todo componente Vue deve seguir este template básico:
+
+```vue
+<template>
+  <!-- Template com classes Vuetify -->
+</template>
+
+<script setup lang="ts">
+// Imports (quando necessário)
+// Props e Emits tipados
+// Composables com prefixo 'use'
+// Lógica do componente
+</script>
+```
+
+## Regras Obrigatórias
+
+### TypeScript
+- Use `defineProps<{...}>()` para props tipadas
+- Use `defineEmits<{...}>()` para eventos tipados
+- Defina interfaces/types para dados complexos
+- Evite `any` e `unknown`
+
+### Nomenclatura
+- Arquivos e componentes em PascalCase
+- Props em camelCase
+- Eventos em kebab-case
+- Composables com prefixo `use`
+
+### Vuetify
+- Use classes e componentes Vuetify
+- Mantenha consistência com o tema definido
+- Evite estilização inline
+- Prefira sistema de grid do Vuetify
+
+### Boas Práticas
+- Componentes pequenos e focados
+- Reutilização através de props
+- Documentação JSDoc para componentes públicos
+- Evite side-effects no setup

@@ -1,0 +1,29 @@
+{
+  "name": "sao-jose",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fontsource/poppins": "^5.2.6",
+    "@mdi/font": "^7.4.47",
+    "@nuxt/image": "^1.10.0",
+    "nuxt": "^3.17.4",
+    "saas": "^1.0.0",
+    "vue": "^3.5.14",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.13.2",
+    "eslint": "^9.27.0",
+    "eslint-plugin-format": "^1.0.1",
+    "sharp": "^0.34.2",
+    "vite-plugin-vuetify": "^2.1.1",
+    "vuetify": "^3.8.6"
+  }
+}
