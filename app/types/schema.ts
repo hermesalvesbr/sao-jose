@@ -1,4 +1,4 @@
-/** * Generated TypeScript types for Directus Schema * Generated on: 2025-05-24T17:32:23.407Z */
+/** * Generated TypeScript types for Directus Schema * Generated on: 2025-05-24T21:05:02.764Z */
 export interface Catolico {
   id: string;
   status: string;
@@ -11,10 +11,24 @@ export interface Catolico {
   telefone: string;
   sexo: string;
   nascimento: 'datetime';
+  instituicao: number | Instituicao;
+}
+
+export interface Instituicao {
+  id: number;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  nome: string;
+  catolico: string[] | Catolico[];
 }
 
 export interface DirectusUser {
   id: string;
+  instituicao: number | Instituicao;
   first_name: string;
   last_name: string;
   email: string;
@@ -93,6 +107,7 @@ export interface DirectusRole {
 
 export interface ApiCollections {
   catolico: Catolico[];
+  instituicao: Instituicao[];
   directus_users: DirectusUser[];
   directus_files: DirectusFile[];
   directus_folders: DirectusFolder[];

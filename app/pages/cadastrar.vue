@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { createDirectus, DirectusClient, RestClient } from '@directus/sdk'
+import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { Catolico } from '~/types/schema'
 import { useSeoMeta } from '#imports'
-import { readItems, rest, staticToken } from '@directus/sdk'
+import { createItem, readItems } from '@directus/sdk'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import MaskedTextField from '~/components/MaskedTextField.vue'
@@ -43,9 +43,36 @@ const birthRules = [
   (v: string) => !!v || 'Data obrigatória',
 ]
 
-// Fakedata: telefone e nome já cadastrados
-const FAKE_PHONE = '87992005656'
-const FAKE_NAME = 'Hermes Alves'
+/**
+ * Consulta no Directus se o telefone já existe na collection catolico
+ * @returns objeto { nome, instituicaoNome } se encontrado, senão null
+ */
+async function checkPhoneDirectus(cleanPhone: string): Promise<{ nome: string, instituicaoNome: string | null } | null> {
+  try {
+    const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
+    const result = await d.request(readItems('catolico', {
+      filter: { telefone: { _eq: cleanPhone } },
+      fields: ['nome', { instituicao: ['nome'] }] as any,
+      limit: 1,
+    }))
+    if (Array.isArray(result) && result.length > 0) {
+      const item = result[0]
+      let instituicaoNome: string | null = null
+      if (item?.instituicao && typeof item.instituicao === 'object' && 'nome' in item.instituicao) {
+        instituicaoNome = (item.instituicao as { nome?: string }).nome ?? null
+      }
+      return {
+        nome: item?.nome ?? '',
+        instituicaoNome,
+      }
+    }
+    return null
+  }
+  catch (err) {
+    console.error('Erro ao consultar telefone no Directus:', err)
+    return null
+  }
+}
 
 /**
  * Simula busca de telefone já cadastrado
@@ -56,9 +83,11 @@ async function checkPhone() {
   checkingPhone.value = true
   await new Promise(r => setTimeout(r, 600))
   const cleanPhone = phone.value.replace(/\D/g, '')
-  if (cleanPhone === FAKE_PHONE) {
+  // Consulta real no Directus
+  const found = await checkPhoneDirectus(cleanPhone)
+  if (found) {
     phoneExists.value = true
-    snackbarText.value = `Telefone já cadastrado para ${FAKE_NAME}`
+    snackbarText.value = `Telefone já cadastrado para ${found.nome}${found.instituicaoNome ? ` da instituição ${found.instituicaoNome}` : ''}`
     snackbar.value = true
   }
   else {
@@ -123,20 +152,63 @@ function normalizeNomeFiel(nome: string): string {
   return normalized
 }
 
-async function onSubmit() {
+const confirmDialog = ref(false)
+
+// Guarda snapshot dos dados para confirmação
+const confirmData = ref({
+  nome: '',
+  telefone: '',
+  sexo: '',
+  nascimento: '',
+})
+
+function openConfirmDialog() {
+  // Normaliza o nome antes de mostrar
+  confirmData.value = {
+    nome: normalizeNomeFiel(fullName.value),
+    telefone: phone.value.replace(/\D/g, ''),
+    sexo: genderOptions.find(g => g.value === gender.value)?.title || '',
+    nascimento: birthDate.value,
+  }
+  confirmDialog.value = true
+}
+
+async function onConfirmSubmit() {
+  submitting.value = true
+  try {
+    // Cria o client tipado
+    const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
+    // Monta o payload conforme o schema
+    const payload = {
+      nome: confirmData.value.nome,
+      telefone: confirmData.value.telefone,
+      sexo: gender.value,
+      nascimento: confirmData.value.nascimento ? (new Date(confirmData.value.nascimento).toISOString().slice(0, 10) as any) : undefined,
+    }
+    await d.request(createItem('catolico', payload))
+    successName.value = confirmData.value.nome
+    successDialog.value = true
+    confirmDialog.value = false
+  }
+  catch (err: any) {
+    snackbarText.value = `Erro ao cadastrar: ${err?.message || 'Erro desconhecido'}`
+    snackbar.value = true
+  }
+  finally {
+    submitting.value = false
+  }
+}
+
+// Substituir o submit do form para abrir o modal de confirmação
+async function onFormSubmit() {
   if (!formRef.value)
     return
   const { valid } = await formRef.value.validate()
   if (!valid)
     return
-  submitting.value = true
-  // Normaliza o nome antes de salvar
+  // Normaliza o nome antes de mostrar
   fullName.value = normalizeNomeFiel(fullName.value)
-  // Simulação de cadastro
-  await new Promise(r => setTimeout(r, 1000))
-  submitting.value = false
-  successName.value = fullName.value
-  successDialog.value = true
+  openConfirmDialog()
 }
 
 function resetForm() {
@@ -160,37 +232,9 @@ const isFormValid = computed(() => {
   )
 })
 
-/**
- * Exemplo de interface para a collection 'catolico'.
- * Idealmente, mova para types/Catolico.ts e importe aqui.
- */
-// interface Catolico {
-//   id: string
-//   // Adicione outros campos conforme o schema do Directus
-// }
-
 interface Schema {
   catolico: Catolico[]
 }
-
-/**
- * Testa integração com Directus usando o client tipado e await correto.
- * Segue a documentação oficial do SDK.
- * https://directus.io/docs/guides/connect/sdk
- */
-async function testeDirectus() {
-  // Aguarde o client e faça o cast correto para incluir RestClient
-  const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
-  try {
-    // readItems precisa ser tipado para a collection
-    const allCatolicos = await d.request(readItems('catolico'))
-    console.warn('Católicos do Directus:', allCatolicos)
-  }
-  catch (err) {
-    console.error('Erro ao buscar catolicos:', err)
-  }
-}
-testeDirectus()
 
 useSeoMeta({
   title: 'Cadastro de Católico',
@@ -199,6 +243,31 @@ useSeoMeta({
   ogDescription: 'Cadastre-se para participar da comunidade católica e receber novidades pelo WhatsApp.',
   ogType: 'website',
 })
+
+function formatDateBR(dateStr: string): string {
+  if (!dateStr)
+    return ''
+  const d = new Date(dateStr)
+  if (Number.isNaN(d.getTime()))
+    return dateStr
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = String(d.getFullYear()).slice(-2)
+  return `${day}/${month}/${year}`
+}
+
+function formatPhoneBR(phone: string): string {
+  if (!phone)
+    return ''
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
+  else if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  }
+  return phone
+}
 </script>
 
 <template>
@@ -207,7 +276,7 @@ useSeoMeta({
       <v-card-title class="text-h6 text-center mb-2">
         Cadastro de Católico
       </v-card-title>
-      <v-form ref="formRef" validate-on="input" @submit.prevent="onSubmit">
+      <v-form ref="formRef" validate-on="input" @submit.prevent="onFormSubmit">
         <v-row no-gutters align="center">
           <v-col cols="9">
             <MaskedTextField
@@ -280,6 +349,49 @@ useSeoMeta({
         </template>
       </v-form>
     </v-card>
+    <!-- Modal de confirmação -->
+    <v-dialog v-model="confirmDialog" max-width="420">
+      <v-card class="pa-5 text-center confirm-modal">
+        <template #title>
+          <v-icon color="primary" size="40">
+            mdi-account-check
+          </v-icon>
+          <span class="font-weight-bold text-h6 d-block mt-2">Conferir dados do cadastro</span>
+        </template>
+        <v-divider class="my-3" />
+        <div class="mb-2 text-left">
+          <div class="mb-1">
+            <v-icon color="success" size="20">
+              mdi-account
+            </v-icon> <b>Nome:</b> {{ confirmData.nome }}
+          </div>
+          <div class="mb-1">
+            <v-icon color="success" size="20">
+              mdi-whatsapp
+            </v-icon> <b>Telefone:</b> {{ formatPhoneBR(confirmData.telefone) }}
+          </div>
+          <div class="mb-1">
+            <v-icon color="success" size="20">
+              mdi-gender-male-female
+            </v-icon> <b>Sexo:</b> {{ confirmData.sexo }}
+          </div>
+          <div class="mb-1">
+            <v-icon color="success" size="20">
+              mdi-cake-variant
+            </v-icon> <b>Nascimento:</b> {{ formatDateBR(confirmData.nascimento) }}
+          </div>
+        </div>
+        <v-divider class="my-3" />
+        <div class="d-flex flex-column gap-2">
+          <v-btn color="primary" class="mb-2" block :loading="submitting" @click="onConfirmSubmit">
+            Confirmar e cadastrar
+          </v-btn>
+          <v-btn variant="outlined" color="secondary" block :disabled="submitting" @click="confirmDialog = false">
+            Editar dados
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
     <v-snackbar
       v-model="snackbar"
       :timeout="7000"
@@ -330,5 +442,19 @@ useSeoMeta({
   .arrojado-phone input {
     font-size: 1rem;
   }
+}
+.confirm-modal {
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f9fbe7 80%, #e8f5e9 100%);
+  box-shadow: 0 4px 24px #388e3c22;
+}
+.confirm-modal .v-icon {
+  vertical-align: middle;
+}
+.confirm-modal .text-h6 {
+  color: #388e3c;
+}
+.confirm-modal b {
+  color: #5d4037;
 }
 </style>
