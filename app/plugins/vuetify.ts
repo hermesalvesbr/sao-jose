@@ -8,19 +8,19 @@ import 'vuetify/styles'
 const cidadeTema: ThemeDefinition = {
   dark: false,
   colors: {
-    'primary': '#0D47A1', // Azul escuro principal
-    'primary-darken-1': '#002171',
-    'primary-lighten-1': '#5472D3',
-    'secondary': '#1976D2', // Azul mais claro para elementos secundários
-    'secondary-darken-1': '#004BA0',
-    'secondary-lighten-1': '#63A4FF',
-    'accent': '#2196F3', // Azul vibrante para destaques
+    'primary': '#FFC107', // Amarelo ouro principal
+    'primary-darken-1': '#FFA000',
+    'primary-lighten-1': '#FFD54F',
+    'secondary': '#5D4037', // Marrom para elementos secundários
+    'secondary-darken-1': '#3E2723',
+    'secondary-lighten-1': '#8D6E63',
+    'accent': '#FF7043', // Laranja vibrante para destaques
     'background': '#FFFFFF',
     'surface': '#FFFFFF',
     'error': '#B00020',
-    'info': '#2196F3',
-    'success': '#4CAF50',
-    'warning': '#FB8C00',
+    'info': '#1976D2',
+    'success': '#388E3C',
+    'warning': '#FFA000',
   },
   variables: {
     'font-family': '\'Poppins\', \'Roboto\', \'Helvetica\', \'Arial\', sans-serif',

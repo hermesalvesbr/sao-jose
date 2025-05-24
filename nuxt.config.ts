@@ -3,7 +3,7 @@ import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   future: { compatibilityVersion: 4 },
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   build: {
     transpile: ['vuetify'],
   },
@@ -29,4 +29,20 @@ export default defineNuxtConfig({
     '~/assets/fonts.css',
     // ...outros estilos
   ],
+  app: {
+    head: {
+      title: 'Capela São José',
+      htmlAttrs: {
+        lang: 'pt-BR',
+      },
+      meta: [
+        { name: 'description', content: 'Sistema de Gestão da Capela São José: acompanhe fiéis, aniversariantes e ações da comunidade.' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { charset: 'utf-8' },
+      ],
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/icones/favicon.png' },
+      ],
+    },
+  },
 })

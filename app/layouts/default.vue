@@ -17,7 +17,7 @@ interface DrawerItem {
 
 const drawerItems: DrawerItem[] = [
   { title: 'Início', icon: 'mdi-home', to: '/', tooltip: 'Página inicial' },
-  { title: 'Cadastrar Católico', icon: 'mdi-account-plus', to: '/cadastrar', tooltip: 'Cadastrar novo membro' },
+  { title: 'Cadastrar Católico', icon: 'mdi-account-plus', to: '/cadastrar', tooltip: 'Cadastrar novo católico' },
   { title: 'Aniversariantes', icon: 'mdi-cake-variant', to: '/aniversariantes', tooltip: 'Ver aniversariantes' },
   { title: 'Missas', icon: 'mdi-church', to: '/missas', disabled: true, tooltip: 'Em breve: Missas' },
   { title: 'Dízimos', icon: 'mdi-cash-multiple', to: '/dizimos', disabled: true, tooltip: 'Em breve: Dízimos' },
@@ -91,20 +91,22 @@ watch(() => route.fullPath, () => {
           @keyup.enter="navigate(item)"
         >
           <template #prepend>
-            <v-tooltip
-              v-if="!item.disabled"
-              :text="item.tooltip"
-              location="right"
-              open-delay="300"
-            >
-              <template #activator="{ props }">
-                <v-icon v-bind="props" size="32" color="#FFC107">
-                  {{ item.icon }}
-                </v-icon>
-              </template>
-            </v-tooltip>
+            <ClientOnly>
+              <v-tooltip
+                v-if="!item.disabled"
+                :text="item.tooltip"
+                location="right"
+                open-delay="300"
+              >
+                <template #activator="{ props }">
+                  <v-icon v-bind="props" size="32" color="#FFC107">
+                    {{ item.icon }}
+                  </v-icon>
+                </template>
+              </v-tooltip>
+            </ClientOnly>
             <v-icon
-              v-else
+              v-if="item.disabled"
               size="32"
               color="#FFC107"
               class="opacity-50"
