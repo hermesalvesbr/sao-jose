@@ -337,7 +337,7 @@ function formatPhoneBR(phone: string): string {
             prepend-inner-icon="mdi-account"
             required
             autocomplete="name"
-            @input="fullName = normalizeNomeFiel(fullName)"
+            @blur="fullName = normalizeNomeFiel(fullName)"
           />
           <v-select
             v-model="gender"
