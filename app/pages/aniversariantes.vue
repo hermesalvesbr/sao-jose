@@ -133,7 +133,7 @@ useSeoMeta({
   <v-container class="pa-6" fluid>
     <v-row justify="center" class="mb-4">
       <v-col cols="12" md="8" class="text-center">
-        <h1 class="text-h4 font-weight-bold mb-2 text-success">
+        <h1 class="text-h4 font-weight-bold mb-2 text-primary-darken-1">
           <template v-if="(searchTerm || '').trim() === ''">
             Aniversariantes
           </template>
@@ -141,7 +141,7 @@ useSeoMeta({
             Resultados da busca
           </template>
         </h1>
-        <div class="subtitle-1 mb-4">
+        <div class="subtitle-1 mb-4 text-secondary">
           <template v-if="(searchTerm || '').trim() === ''">
             Celebre a vida de quem faz parte da nossa comunidade!
           </template>
@@ -156,20 +156,20 @@ useSeoMeta({
           class="mb-4"
           hide-details
           clearable
-          color="success"
+          color="primary"
           variant="outlined"
           density="comfortable"
           autocomplete="off"
           @update:model-value="handleSearchTerm"
         />
         <div v-if="(searchTerm || '').trim() === ''">
-          <v-btn icon variant="text" aria-label="Mês anterior" @click="prevMonth">
+          <v-btn icon variant="text" aria-label="Mês anterior" color="primary" @click="prevMonth">
             <v-icon size="32">
               mdi-chevron-left
             </v-icon>
           </v-btn>
-          <span class="month-title mx-3 text-success text-h5 font-weight-bold">{{ meses[currentMonth] }}</span>
-          <v-btn icon variant="text" aria-label="Próximo mês" @click="nextMonth">
+          <span class="month-title mx-3 text-primary-darken-1 text-h5 font-weight-bold">{{ meses[currentMonth] }}</span>
+          <v-btn icon variant="text" aria-label="Próximo mês" color="primary" @click="nextMonth">
             <v-icon size="32">
               mdi-chevron-right
             </v-icon>
@@ -180,7 +180,7 @@ useSeoMeta({
     <v-row justify="center">
       <v-col cols="12" md="8">
         <v-skeleton-loader v-if="loading" type="list-item-avatar, list-item-avatar, list-item-avatar" />
-        <v-alert v-else-if="!aniversariantesDoMes.length" type="info" class="mt-6" border="start" color="primary">
+        <v-alert v-else-if="!aniversariantesDoMes.length" type="info" class="mt-6" border="start" color="info">
           <template v-if="(searchTerm || '').trim() === ''">
             Nenhum aniversariante neste mês.
           </template>
@@ -190,16 +190,16 @@ useSeoMeta({
         </v-alert>
         <v-slide-group v-else show-arrows>
           <v-slide-group-item v-for="a in aniversariantesDoMes" :key="a.id">
-            <v-card class="mx-2 my-4" elevation="8" color="yellow-lighten-5">
+            <v-card class="mx-2 my-4" elevation="8" color="primary-lighten-1">
               <v-card-text class="d-flex flex-column align-center justify-center py-6">
-                <v-avatar size="64" class="mb-2" color="yellow-accent-3">
+                <v-avatar size="64" class="mb-2" color="primary">
                   <v-icon size="40" :icon="getSexoIcon(a.sexo)" color="black" />
                 </v-avatar>
-                <div class="text-h6 font-weight-bold text-success mb-1">
+                <div class="text-h6 font-weight-bold text-primary-darken-1 mb-1">
                   {{ getPrimeiroNome(a.nome) }}
                 </div>
-                <div class="text-subtitle-2 text-grey-darken-1 mb-1 d-flex align-center justify-center">
-                  <v-icon size="18" class="mr-1">
+                <div class="text-subtitle-2 text-secondary mb-1 d-flex align-center justify-center">
+                  <v-icon size="18" class="mr-1" color="accent">
                     mdi-cake-variant
                   </v-icon>
                   {{ getDiaNascimento(a.nascimento as string) }} de {{ meses[getMesNascimento(a.nascimento as string)] }}

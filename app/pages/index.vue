@@ -144,7 +144,14 @@ function formatTime(time: any) {
 
 <template>
   <div class="pa-4">
-    <v-card class="mb-6 pa-4" color="#FFF8E1" elevation="2">
+    <!-- Convite para cadastro -->
+    <v-alert type="success" class="mb-4 text-center" border="start" color="yellow-lighten-4" elevation="1">
+      <span class="font-weight-bold">Seja da família São José 💛</span>
+      <NuxtLink to="/cadastrar" class="ms-2 text-primary text-decoration-underline font-weight-bold">
+        Cadastre-se!
+      </NuxtLink>
+    </v-alert>
+    <v-card id="agenda-card" class="mb-6 pa-4" color="#FFF8E1" elevation="2">
       <div class="d-flex align-center justify-space-between">
         <div class="text-h5 font-weight-bold" style="color: #FFD600">
           Agenda
