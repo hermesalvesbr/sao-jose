@@ -28,7 +28,7 @@ async function fetchAgenda() {
   try {
     const client = await useDirectusClient()
     const result = await client.request(readItems('agenda', {
-      limit: 100,
+      limit: -1,
       sort: ['-data_evento'],
     }))
     events.value = Array.isArray(result) ? result as Agenda[] : []
@@ -58,8 +58,8 @@ const filteredEvents = computed(() => {
   if (period.value === 'hoje') {
     return events.value.filter((ev) => {
       if (ev.recorrente) {
-        const luxonWeekday = now.weekday % 7
-        return ev.dia === luxonWeekday
+        // Luxon: 1=segunda, ..., 7=domingo (igual ao banco)
+        return ev.dia === now.weekday
       }
       else if (ev.data_evento) {
         const eventDate = DateTime.fromISO(ev.data_evento as string)
