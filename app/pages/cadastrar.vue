@@ -3,8 +3,10 @@ import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { Catolico } from '~/types/schema'
 import { useSeoMeta } from '#imports'
 import { createItem, readItems } from '@directus/sdk'
+import { DateTime } from 'luxon'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import MaskedDateField from '~/components/MaskedDateField.vue'
 import MaskedTextField from '~/components/MaskedTextField.vue'
 
 const phone = ref('')
@@ -173,17 +175,34 @@ function openConfirmDialog() {
   confirmDialog.value = true
 }
 
+/**
+ * Converte data BR (DD/MM/AAAA) para ISO (YYYY-MM-DD) de forma robusta
+ * Usa Luxon para parsing seguro
+ * @param dateStr string no formato DD/MM/AAAA
+ * @returns string no formato YYYY-MM-DD ou undefined se inválido
+ */
+function parseDateBRtoISO(dateStr: string): string | undefined {
+  if (!dateStr)
+    return undefined
+  const dt = DateTime.fromFormat(dateStr, 'dd/MM/yyyy')
+  if (!dt.isValid)
+    return undefined
+  return dt.toISODate() // YYYY-MM-DD
+}
+
 async function onConfirmSubmit() {
   submitting.value = true
   try {
     // Cria o client tipado
     const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
     // Monta o payload conforme o schema
-    const payload = {
+    const payload: Partial<Catolico> = {
       nome: confirmData.value.nome,
       telefone: confirmData.value.telefone,
       sexo: gender.value,
-      nascimento: confirmData.value.nascimento ? (new Date(confirmData.value.nascimento).toISOString().slice(0, 10) as any) : undefined,
+      nascimento: confirmData.value.nascimento
+        ? parseDateBRtoISO(confirmData.value.nascimento) as any
+        : undefined,
     }
     await d.request(createItem('catolico', payload))
     successName.value = confirmData.value.nome
@@ -328,12 +347,11 @@ function formatPhoneBR(phone: string): string {
             prepend-inner-icon="mdi-gender-male-female"
             required
           />
-          <v-text-field
+          <MaskedDateField
             v-model="birthDate"
             label="Data de nascimento"
             :rules="birthRules"
             prepend-inner-icon="mdi-cake-variant"
-            type="date"
             required
           />
           <v-btn
