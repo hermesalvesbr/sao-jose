@@ -126,7 +126,7 @@ watch(() => route.fullPath, () => {
     </v-main>
 
     <v-footer app color="#5D4037" class="footer" height="56" role="contentinfo">
-      <span class="footer-text">"Tudo por Jesus, nada sem Maria."</span>
+      <span class="footer-text">"São José rogais por nós."</span>
     </v-footer>
   </v-app>
 </template>

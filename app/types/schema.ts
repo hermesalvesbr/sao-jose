@@ -1,4 +1,21 @@
-/** * Generated TypeScript types for Directus Schema * Generated on: 2025-05-24T21:05:02.764Z */
+/** * Generated TypeScript types for Directus Schema * Generated on: 2025-05-24T23:12:56.146Z */
+export interface Agenda {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  titulo: string;
+  descricao: string;
+  recorrente: boolean;
+  dia: number;
+  data_evento: 'datetime';
+  hora_inicio: 'datetime';
+  horario: 'datetime';
+}
+
 export interface Catolico {
   id: string;
   status: string;
@@ -106,6 +123,7 @@ export interface DirectusRole {
 }
 
 export interface ApiCollections {
+  agenda: Agenda[];
   catolico: Catolico[];
   instituicao: Instituicao[];
   directus_users: DirectusUser[];
