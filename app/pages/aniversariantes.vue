@@ -26,9 +26,16 @@ const loading = ref(false)
 const aniversariantes = ref<Catolico[]>([])
 const searchTerm = ref('')
 const showEmptyMessage = ref(false)
+const selectedCatolico = ref<Catolico | null>(null)
+const showDetailsModal = ref(false)
 
 function handleSearchTerm(val: string | null) {
   searchTerm.value = val ?? ''
+}
+
+function openDetailsModal(catolico: Catolico) {
+  selectedCatolico.value = catolico
+  showDetailsModal.value = true
 }
 
 /**
@@ -41,7 +48,7 @@ async function fetchAniversariantes() {
     const result = await executeWithRetry(async (d) => {
       return d.request(
         readItems('catolico', {
-          fields: ['id', 'nome', 'sexo', 'nascimento'],
+          fields: ['id', 'nome', 'sexo', 'nascimento', 'telefone', 'instituicao'],
           filter: {
             nascimento: { _nnull: true },
             status: { _eq: 'published' },
@@ -59,6 +66,9 @@ async function fetchAniversariantes() {
       arr = Object.values(result).filter(v => v && typeof v === 'object' && 'id' in v && 'nome' in v)
     }
     aniversariantes.value = arr as Catolico[]
+  }
+  catch (error) {
+    console.error('Erro ao buscar aniversariantes:', error)
   }
   finally {
     loading.value = false
@@ -202,7 +212,13 @@ useSeoMeta({
         <template v-else>
           <v-slide-group show-arrows>
             <v-slide-group-item v-for="a in aniversariantesDoMes" :key="a.id">
-              <v-card class="mx-2 my-4" elevation="8" color="primary-lighten-1">
+              <v-card
+                class="mx-2 my-4"
+                elevation="8"
+                color="primary-lighten-1"
+                style="cursor: pointer"
+                @click="openDetailsModal(a)"
+              >
                 <v-card-text class="d-flex flex-column align-center justify-center py-6">
                   <v-avatar size="64" class="mb-2" color="primary">
                     <v-icon size="40" :icon="getSexoIcon(a.sexo)" color="black" />
@@ -223,6 +239,11 @@ useSeoMeta({
         </template>
       </v-col>
     </v-row>
+
+    <BirthdayDetailsModal
+      v-model="showDetailsModal"
+      :catolico="selectedCatolico"
+    />
   </v-container>
 </template>
 
