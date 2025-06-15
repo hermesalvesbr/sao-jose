@@ -4,7 +4,7 @@ import { useSeoMeta } from '#imports'
 import { readItems } from '@directus/sdk'
 import { DateTime } from 'luxon'
 import { computed, onMounted, ref } from 'vue'
-import { useDirectusClient } from '~/composables/useDirectusClient'
+import { executeWithRetry, useDirectusClient } from '~/composables/useDirectusClient'
 
 const meses = [
   'Janeiro',
@@ -25,6 +25,7 @@ const currentMonth = ref(new Date().getMonth())
 const loading = ref(false)
 const aniversariantes = ref<Catolico[]>([])
 const searchTerm = ref('')
+const showEmptyMessage = ref(false)
 
 function handleSearchTerm(val: string | null) {
   searchTerm.value = val ?? ''
@@ -35,16 +36,21 @@ function handleSearchTerm(val: string | null) {
  */
 async function fetchAniversariantes() {
   loading.value = true
+  showEmptyMessage.value = false
   try {
-    const d = await useDirectusClient()
-    const result = await d.request(
-      readItems('catolico', {
-        fields: ['id', 'nome', 'sexo', 'nascimento'],
-        filter: { nascimento: { _nnull: true }, status: 'published' },
-        limit: -1,
-        sort: ['nascimento'],
-      }),
-    )
+    const result = await executeWithRetry(async (d) => {
+      return d.request(
+        readItems('catolico', {
+          fields: ['id', 'nome', 'sexo', 'nascimento'],
+          filter: {
+            nascimento: { _nnull: true },
+            status: { _eq: 'published' },
+          },
+          limit: -1,
+          sort: ['nascimento'],
+        }),
+      )
+    })
     let arr: any[] = []
     if (Array.isArray(result)) {
       arr = result
@@ -56,6 +62,7 @@ async function fetchAniversariantes() {
   }
   finally {
     loading.value = false
+    showEmptyMessage.value = !aniversariantes.value.length
   }
 }
 
@@ -179,35 +186,41 @@ useSeoMeta({
     </v-row>
     <v-row justify="center">
       <v-col cols="12" md="8">
-        <v-skeleton-loader v-if="loading" type="list-item-avatar, list-item-avatar, list-item-avatar" />
-        <v-alert v-else-if="!aniversariantesDoMes.length" type="info" class="mt-6" border="start" color="info">
-          <template v-if="(searchTerm || '').trim() === ''">
-            Nenhum aniversariante neste mês.
-          </template>
-          <template v-else>
-            Nenhum aniversariante encontrado para sua busca.
-          </template>
-        </v-alert>
-        <v-slide-group v-else show-arrows>
-          <v-slide-group-item v-for="a in aniversariantesDoMes" :key="a.id">
-            <v-card class="mx-2 my-4" elevation="8" color="primary-lighten-1">
-              <v-card-text class="d-flex flex-column align-center justify-center py-6">
-                <v-avatar size="64" class="mb-2" color="primary">
-                  <v-icon size="40" :icon="getSexoIcon(a.sexo)" color="black" />
-                </v-avatar>
-                <div class="text-h6 font-weight-bold text-primary-darken-1 mb-1">
-                  {{ getPrimeiroNome(a.nome) }}
-                </div>
-                <div class="text-subtitle-2 text-secondary mb-1 d-flex align-center justify-center">
-                  <v-icon size="18" class="mr-1" color="accent">
-                    mdi-cake-variant
-                  </v-icon>
-                  {{ getDiaNascimento(a.nascimento as string) }} de {{ meses[getMesNascimento(a.nascimento as string)] }}
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-slide-group-item>
-        </v-slide-group>
+        <template v-if="loading">
+          <v-skeleton-loader type="list-item-avatar, list-item-avatar, list-item-avatar" />
+        </template>
+        <template v-else-if="showEmptyMessage">
+          <v-alert type="info" class="mt-6" border="start" color="info">
+            <template v-if="(searchTerm || '').trim() === ''">
+              Nenhum aniversariante neste mês.
+            </template>
+            <template v-else>
+              Nenhum aniversariante encontrado para sua busca.
+            </template>
+          </v-alert>
+        </template>
+        <template v-else>
+          <v-slide-group show-arrows>
+            <v-slide-group-item v-for="a in aniversariantesDoMes" :key="a.id">
+              <v-card class="mx-2 my-4" elevation="8" color="primary-lighten-1">
+                <v-card-text class="d-flex flex-column align-center justify-center py-6">
+                  <v-avatar size="64" class="mb-2" color="primary">
+                    <v-icon size="40" :icon="getSexoIcon(a.sexo)" color="black" />
+                  </v-avatar>
+                  <div class="text-h6 font-weight-bold text-primary-darken-1 mb-1">
+                    {{ getPrimeiroNome(a.nome) }}
+                  </div>
+                  <div class="text-subtitle-2 text-secondary mb-1 d-flex align-center justify-center">
+                    <v-icon size="18" class="mr-1" color="accent">
+                      mdi-cake-variant
+                    </v-icon>
+                    {{ getDiaNascimento(a.nascimento as string) }} de {{ meses[getMesNascimento(a.nascimento as string)] }}
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-slide-group-item>
+          </v-slide-group>
+        </template>
       </v-col>
     </v-row>
   </v-container>

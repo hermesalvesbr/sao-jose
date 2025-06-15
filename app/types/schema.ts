@@ -1,4 +1,4 @@
-/** * Generated TypeScript types for Directus Schema * Generated on: 2025-05-24T23:12:56.146Z */
+/** * Generated TypeScript types for Directus Schema * Generated on: 2025-06-15T13:37:19.597Z */
 export interface Agenda {
   id: string;
   status: string;
@@ -14,6 +14,9 @@ export interface Agenda {
   data_evento: 'datetime';
   hora_inicio: 'datetime';
   horario: 'datetime';
+  instituicao: number | Instituicao;
+  tipo_especial: string;
+  data_limite: 'datetime';
 }
 
 export interface Catolico {

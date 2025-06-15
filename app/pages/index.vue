@@ -2,6 +2,7 @@
 import type { Agenda } from '@/types/schema'
 import { readItems } from '@directus/sdk'
 import { DateTime } from 'luxon'
+import { executeWithRetry } from '@/composables/useDirectusClient'
 
 const period = ref<'hoje' | 'semana' | 'mes'>('hoje')
 const events = ref<Agenda[]>([])
@@ -26,15 +27,16 @@ async function fetchAgenda() {
   loading.value = true
   error.value = null
   try {
-    const client = await useDirectusClient()
-    const result = await client.request(readItems('agenda', {
-      limit: -1,
-      sort: ['-data_evento'],
-    }))
+    const result = await executeWithRetry(async client =>
+      client.request(readItems('agenda', {
+        limit: -1,
+        sort: ['-data_evento'],
+      })),
+    )
     events.value = Array.isArray(result) ? result as Agenda[] : []
   }
   catch {
-    error.value = 'Erro ao buscar agenda.'
+    error.value = 'Erro ao buscar agenda. Por favor, tente novamente mais tarde.'
   }
   finally {
     loading.value = false
@@ -54,17 +56,33 @@ watch(period, (val) => {
 
 /** Filtra eventos conforme o período selecionado */
 const filteredEvents = computed(() => {
-  const now = DateTime.now()
   if (period.value === 'hoje') {
     return events.value.filter((ev) => {
-      if (ev.recorrente) {
-        // Luxon: 1=segunda, ..., 7=domingo (igual ao banco)
-        return ev.dia === now.weekday
+      const today = DateTime.now()
+      // Luxon: 1=segunda, 7=domingo (igual ao banco)
+      const weekday = today.weekday
+
+      // Verifica se o evento já passou da data final (se tiver)
+      if (ev.data_limite && DateTime.fromISO(ev.data_limite) < today) {
+        return false
       }
-      else if (ev.data_evento) {
-        const eventDate = DateTime.fromISO(ev.data_evento as string)
-        return eventDate.hasSame(now, 'day')
+
+      // Evento único
+      if (!ev.recorrente && ev.data_evento) {
+        return DateTime.fromISO(ev.data_evento).hasSame(today, 'day')
       }
+
+      // Evento semanal comum
+      if (ev.recorrente && ev.dia === weekday) {
+        return true
+      }
+
+      // Evento especial: primeiro domingo
+      if (ev.tipo_especial === 'primeiro_domingo' && weekday === 7) {
+        const firstSunday = today.startOf('month').plus({ days: (7 - today.startOf('month').weekday) % 7 })
+        return today.hasSame(firstSunday, 'day')
+      }
+
       return false
     })
   }
@@ -77,17 +95,29 @@ const weekEvents = computed(() => {
   // Array de 7 arrays, um para cada dia da semana
   const grouped: Agenda[][] = Array.from({ length: 7 }, () => [])
   const startOfWeek = DateTime.now().startOf('week') // domingo
+
   for (let i = 0; i < 7; i++) {
     const dayDate = startOfWeek.plus({ days: i })
+    // Converte índice do array (0-6) para dia da semana (1-7)
+    const weekday = i === 0 ? 7 : i
+
     grouped[i] = events.value.filter((ev) => {
+      // Verifica se o evento já passou da data final (se tiver)
+      if (ev.data_limite && DateTime.fromISO(ev.data_limite) < dayDate) {
+        return false
+      }
+
       if (ev.recorrente) {
-        // Corrige: domingo (i=0) corresponde a ev.dia=7, demais ev.dia=i
-        const weekdayForEvent = i === 0 ? 7 : i
-        return ev.dia === weekdayForEvent
+        return ev.dia === weekday
       }
       else if (ev.data_evento) {
         const eventDate = DateTime.fromISO(ev.data_evento as string)
         return eventDate.hasSame(dayDate, 'day')
+      }
+      else if (ev.tipo_especial === 'primeiro_domingo' && weekday === 7) {
+        // Verifica se é o primeiro domingo do mês
+        const firstSunday = dayDate.startOf('month').plus({ days: (7 - dayDate.startOf('month').weekday) % 7 })
+        return dayDate.hasSame(firstSunday, 'day')
       }
       return false
     })
@@ -246,11 +276,9 @@ function formatTime(time: any) {
       </v-expansion-panels>
     </template>
 
-    <!-- Visualização MÊS (placeholder) -->
+    <!-- Visualização MÊS -->
     <template v-else>
-      <v-alert type="info">
-        Em breve: visão mensal.
-      </v-alert>
+      <AgendaMensal :events="events" />
     </template>
   </div>
 </template>

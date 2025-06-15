@@ -66,7 +66,6 @@ app/
 - Cada diretório novo deve seguir a estrutura `app/`.
 - Pensar sempre na atualização para Nuxt 4.
 - Plugins registrados com `defineNuxtPlugin`.
-- Se futuramente adicionar Tailwind, purgar CSS em produção.
 
 ---
 
@@ -75,4 +74,3 @@ app/
 > Clean Code, autoimports, Vuetify pluginizado, componentes nomeados corretamente, sem Option API, e comentários no padrão JSDoc em inglês. Respeitar estrutura modular.
 
 Fim ✅
-
