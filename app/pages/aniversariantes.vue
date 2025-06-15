@@ -48,7 +48,7 @@ async function fetchAniversariantes() {
     const result = await executeWithRetry(async (d) => {
       return d.request(
         readItems('catolico', {
-          fields: ['id', 'nome', 'sexo', 'nascimento', 'telefone', 'instituicao'],
+          fields: ['id', 'nome', 'sexo', 'nascimento', 'telefone', { instituicao: ['nome'] }],
           filter: {
             nascimento: { _nnull: true },
             status: { _eq: 'published' },

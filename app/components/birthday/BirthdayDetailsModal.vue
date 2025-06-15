@@ -19,7 +19,22 @@ function close() {
 function formatDate(date: string | undefined) {
   if (!date)
     return 'Data não informada'
-  return DateTime.fromISO(date).toFormat('dd \'de\' MMMM \'de\' yyyy')
+  const meses = [
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
+  ]
+  const dt = DateTime.fromISO(date)
+  return `${dt.day} de ${meses[dt.month - 1]}`
 }
 
 function getSexoIcon(sexo: string | undefined) {
@@ -30,12 +45,38 @@ function getSexoIcon(sexo: string | undefined) {
   return 'mdi-account'
 }
 
-function getInstituicaoNome(instituicao: number | { nome: string } | undefined) {
-  if (!instituicao)
+function getDiasParaAniversario(nascimento: string | undefined) {
+  if (!nascimento)
+    return 'Data não informada'
+
+  const hoje = DateTime.now()
+  const dataNascimento = DateTime.fromISO(nascimento)
+  const proximoAniversario = DateTime.fromObject({
+    year: hoje.year,
+    month: dataNascimento.month,
+    day: dataNascimento.day,
+  })
+
+  const diasRestantes = Math.floor(proximoAniversario.diff(hoje, 'days').days)
+
+  // Se o aniversário já passou este ano, calcula para o próximo ano
+  if (diasRestantes < 0) {
+    return 'O aniversário já passou este ano.'
+  }
+
+  if (diasRestantes === 0)
+    return 'É hoje! 🎉'
+  if (diasRestantes === 1)
+    return 'Falta 1 dia para o aniversário'
+  return `Faltam ${diasRestantes} dias para o aniversário`
+}
+
+function maskPhoneNumber(phone: string | undefined) {
+  if (!phone)
     return 'Não informado'
-  if (typeof instituicao === 'number')
-    return `ID: ${instituicao}`
-  return instituicao.nome || 'Não informado'
+  if (phone.length <= 2)
+    return phone
+  return `${phone.slice(0, -2)}**`
 }
 </script>
 
@@ -83,7 +124,7 @@ function getInstituicaoNome(instituicao: number | { nome: string } | undefined) 
                 Telefone
               </v-list-item-title>
               <v-list-item-subtitle class="text-body-1">
-                {{ catolico.telefone || 'Não informado' }}
+                {{ maskPhoneNumber(catolico.telefone) }}
               </v-list-item-subtitle>
             </v-list-item>
           </v-col>
@@ -105,13 +146,13 @@ function getInstituicaoNome(instituicao: number | { nome: string } | undefined) 
           <v-col cols="12" md="6">
             <v-list-item class="px-0">
               <template #prepend>
-                <v-icon icon="mdi-church" color="#bfa046" class="mr-2" />
+                <v-icon icon="mdi-calendar-clock" color="#bfa046" class="mr-2" />
               </template>
               <v-list-item-title class="text-subtitle-2 text-medium-emphasis">
-                Instituição
+                Próximo aniversário
               </v-list-item-title>
               <v-list-item-subtitle class="text-body-1">
-                {{ getInstituicaoNome(catolico.instituicao) }}
+                {{ getDiasParaAniversario(catolico.nascimento) }}
               </v-list-item-subtitle>
             </v-list-item>
           </v-col>
