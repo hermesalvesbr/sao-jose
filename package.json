@@ -15,20 +15,20 @@
     "@fontsource/poppins": "^5.2.6",
     "@mdi/font": "^7.4.47",
     "@nuxt/image": "^1.10.0",
-    "@vueuse/core": "^13.3.0",
+    "@vueuse/core": "^13.4.0",
     "luxon": "^3.6.1",
     "maska": "^3.1.1",
     "nuxt": "^3.17.5",
     "saas": "^1.0.0",
-    "vue": "^3.5.16",
+    "vue": "^3.5.17",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^4.14.1",
-    "@directus/types": "^13.1.2",
+    "@antfu/eslint-config": "^4.16.1",
+    "@directus/types": "^13.2.0",
     "@types/luxon": "^3.6.2",
-    "@typescript-eslint/eslint-plugin": "^8.34.0",
-    "@typescript-eslint/parser": "^8.34.0",
+    "@typescript-eslint/eslint-plugin": "^8.35.0",
+    "@typescript-eslint/parser": "^8.35.0",
     "directus-typeforge": "^0.15.0",
     "eslint": "^9.29.0",
     "eslint-import-resolver-node": "^0.3.9",
@@ -36,6 +36,6 @@
     "eslint-plugin-vue": "^10.2.0",
     "sharp": "^0.34.2",
     "vite-plugin-vuetify": "^2.1.1",
-    "vuetify": "^3.8.9"
+    "vuetify": "^3.8.11"
   }
 }

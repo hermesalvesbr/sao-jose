@@ -1,4 +1,4 @@
-/** * Generated TypeScript types for Directus Schema * Generated on: 2025-06-15T13:37:19.597Z */
+/** * Generated TypeScript types for Directus Schema * Generated on: 2025-06-27T14:16:01.365Z */
 export interface Agenda {
   id: string;
   status: string;
@@ -12,7 +12,6 @@ export interface Agenda {
   recorrente: boolean;
   dia: number;
   data_evento: 'datetime';
-  hora_inicio: 'datetime';
   horario: 'datetime';
   instituicao: number | Instituicao;
   tipo_especial: string;
@@ -34,6 +33,20 @@ export interface Catolico {
   instituicao: number | Instituicao;
 }
 
+export interface Dizimista {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  catolico: string | Catolico;
+  /** Use ponto em separação decimal */
+  valor_mensal: number;
+  instituicao: number | Instituicao;
+}
+
 export interface Instituicao {
   id: number;
   status: string;
@@ -44,6 +57,20 @@ export interface Instituicao {
   date_updated: 'datetime';
   nome: string;
   catolico: string[] | Catolico[];
+}
+
+export interface PagamentoDizimo {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  valor_pago: number;
+  dizimista: string | Dizimista;
+  meio: string;
+  data_pagamento: 'datetime';
 }
 
 export interface DirectusUser {
@@ -128,7 +155,9 @@ export interface DirectusRole {
 export interface ApiCollections {
   agenda: Agenda[];
   catolico: Catolico[];
+  dizimista: Dizimista[];
   instituicao: Instituicao[];
+  pagamento_dizimo: PagamentoDizimo[];
   directus_users: DirectusUser[];
   directus_files: DirectusFile[];
   directus_folders: DirectusFolder[];
