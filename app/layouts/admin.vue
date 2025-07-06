@@ -13,7 +13,7 @@
         <span>Resumo</span>
       </v-btn>
 
-      <v-btn value="ofertorio">
+      <v-btn value="ofertorio" to="/admin/ofertorio">
         <v-icon>mdi-cash-multiple</v-icon>
         <span>Ofertório</span>
       </v-btn>

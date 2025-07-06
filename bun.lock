@@ -4,7 +4,7 @@
     "": {
       "name": "sao-jose",
       "dependencies": {
-        "@directus/sdk": "^20.00",
+        "@directus/sdk": "^20.0.0",
         "@fontsource/poppins": "^5.2.6",
         "@mdi/font": "^7.4.47",
         "@nuxt/image": "^1.10.0",
