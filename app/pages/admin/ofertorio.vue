@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { OfertaFinanceira } from '../../types/schema'
+import type { OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
+import { computed, ref } from 'vue'
 
 definePageMeta({
   layout: 'admin',
@@ -15,8 +16,22 @@ const { data: eventos } = useAsyncData('agenda', () => {
 })
 
 const oferta = ref<Partial<OfertaFinanceira>>({
-  data_entrada: new Date().toISOString().split('T')[0],
+  data_entrada: new Date(),
   meio: 'Dinheiro',
+})
+
+const dataEntradaFormatted = computed({
+  get: () => {
+    const date = oferta.value.data_entrada
+    if (date instanceof Date)
+      return date.toISOString().split('T')[0]
+
+    return ''
+  },
+  set: (value) => {
+    if (value)
+      oferta.value.data_entrada = new Date(value)
+  },
 })
 
 const meiosDePagamento = ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito']
@@ -29,14 +44,17 @@ async function registrarOferta() {
   }
 
   try {
-    await directus.request(createItem('oferta_financeira', {
+    const ofertaData = {
       ...oferta.value,
-    }))
+      data_entrada: oferta.value.data_entrada instanceof Date ? oferta.value.data_entrada.toISOString() : oferta.value.data_entrada,
+    }
+    // @ts-expect-error The Directus SDK types seem to be incorrect for this field.
+    await directus.request(createItem('oferta_financeira', ofertaData))
     // eslint-disable-next-line no-alert
     alert('Ofertório registrado com sucesso!')
     // Reset form
     oferta.value = {
-      data_entrada: new Date().toISOString().split('T')[0],
+      data_entrada: new Date(),
       meio: 'Dinheiro',
       valor: undefined,
       evento: undefined,
@@ -82,7 +100,7 @@ async function registrarOferta() {
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
-                    v-model="oferta.data_entrada"
+                    v-model="dataEntradaFormatted"
                     label="Data da Entrada"
                     type="date"
                     required
