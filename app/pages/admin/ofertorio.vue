@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { OfertaFinanceira } from '#build/types/schema'
+import type { OfertaFinanceira } from '../../types/schema'
+import { createItem, readItems } from '@directus/sdk'
 
 definePageMeta({
   layout: 'admin',
@@ -7,14 +8,14 @@ definePageMeta({
 
 const directus = await useDirectusClient()
 const { data: eventos } = useAsyncData('agenda', () => {
-  return directus.items('agenda').readByQuery({
+  return directus.request(readItems('agenda', {
     fields: ['id', 'titulo'],
     limit: -1,
-  })
+  }))
 })
 
 const oferta = ref<Partial<OfertaFinanceira>>({
-  data_entrada: new Date().toISOString().split('T')[0],
+  data_entrada: new Date().toISOString(),
   meio: 'Dinheiro',
 })
 
@@ -28,14 +29,14 @@ async function registrarOferta() {
   }
 
   try {
-    await directus.items('oferta_financeira').createOne({
+    await directus.request(createItem('oferta_financeira', {
       ...oferta.value,
-    })
+    }))
     // eslint-disable-next-line no-alert
     alert('Ofertório registrado com sucesso!')
     // Reset form
     oferta.value = {
-      data_entrada: new Date().toISOString().split('T')[0],
+      data_entrada: new Date().toISOString(),
       meio: 'Dinheiro',
       valor: undefined,
       evento: undefined,
@@ -90,7 +91,7 @@ async function registrarOferta() {
                 <v-col cols="12">
                   <v-select
                     v-model="oferta.evento"
-                    :items="eventos?.data ?? []"
+                    :items="eventos ?? []"
                     item-title="titulo"
                     item-value="id"
                     label="Evento (Opcional)"

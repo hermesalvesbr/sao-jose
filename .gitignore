@@ -24,3 +24,6 @@ logs
 !.env.example
 
 package-lock.json
+bun.lock
+pnpm-lock.yaml
+yarn.lock
