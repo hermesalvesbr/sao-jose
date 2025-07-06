@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 definePageMeta({
   layout: 'admin',
@@ -16,28 +16,16 @@ const { data: eventos } = useAsyncData('agenda', () => {
 })
 
 const oferta = ref<Partial<OfertaFinanceira>>({
-  data_entrada: new Date(),
   meio: 'Dinheiro',
 })
 
-const dataEntradaFormatted = computed({
-  get: () => {
-    const date = oferta.value.data_entrada
-    if (date instanceof Date)
-      return date.toISOString().split('T')[0]
-
-    return ''
-  },
-  set: (value) => {
-    if (value)
-      oferta.value.data_entrada = new Date(value)
-  },
-})
+// separate ref for date input as string to avoid type mismatch
+const dataEntradaString = ref(new Date().toISOString().split('T')[0])
 
 const meiosDePagamento = ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito']
 
 async function registrarOferta() {
-  if (!oferta.value.valor || !oferta.value.data_entrada) {
+  if (!oferta.value.valor || !dataEntradaString.value) {
     // eslint-disable-next-line no-alert
     alert('Por favor, preencha o valor e a data da entrada.')
     return
@@ -46,20 +34,20 @@ async function registrarOferta() {
   try {
     const ofertaData = {
       ...oferta.value,
-      data_entrada: oferta.value.data_entrada instanceof Date ? oferta.value.data_entrada.toISOString() : oferta.value.data_entrada,
+      data_entrada: new Date(dataEntradaString.value).toISOString(),
     }
-    // @ts-expect-error The Directus SDK types seem to be incorrect for this field.
-    await directus.request(createItem('oferta_financeira', ofertaData))
+    // bypass generated type mismatch
+    await directus.request(createItem('oferta_financeira', ofertaData as any))
     // eslint-disable-next-line no-alert
     alert('Ofertório registrado com sucesso!')
     // Reset form
     oferta.value = {
-      data_entrada: new Date(),
       meio: 'Dinheiro',
       valor: undefined,
       evento: undefined,
       observacao: undefined,
     }
+    dataEntradaString.value = new Date().toISOString().split('T')[0]
   }
   catch (error) {
     console.error('Erro ao registrar ofertório:', error)
@@ -100,7 +88,7 @@ async function registrarOferta() {
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
-                    v-model="dataEntradaFormatted"
+                    v-model="dataEntradaString"
                     label="Data da Entrada"
                     type="date"
                     required
