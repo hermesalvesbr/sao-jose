@@ -1,4 +1,4 @@
-/** * Generated TypeScript types for Directus Schema * Generated on: 2025-06-27T14:16:01.365Z */
+/** * Generated TypeScript types for Directus Schema * Generated on: 2025-07-06T13:29:40.391Z */
 export interface Agenda {
   id: string;
   status: string;
@@ -57,6 +57,21 @@ export interface Instituicao {
   date_updated: 'datetime';
   nome: string;
   catolico: string[] | Catolico[];
+}
+
+export interface OfertaFinanceira {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  evento: string | Agenda;
+  valor: number;
+  data_entrada: 'datetime';
+  meio: string;
+  observacao: string;
 }
 
 export interface PagamentoDizimo {
@@ -157,10 +172,8 @@ export interface ApiCollections {
   catolico: Catolico[];
   dizimista: Dizimista[];
   instituicao: Instituicao[];
+  oferta_financeira: OfertaFinanceira[];
   pagamento_dizimo: PagamentoDizimo[];
   directus_users: DirectusUser[];
-  directus_files: DirectusFile[];
-  directus_folders: DirectusFolder[];
-  directus_roles: DirectusRole[];
 }
 
