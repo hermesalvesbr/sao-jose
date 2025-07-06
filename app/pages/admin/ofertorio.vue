@@ -15,7 +15,7 @@ const { data: eventos } = useAsyncData('agenda', () => {
 })
 
 const oferta = ref<Partial<OfertaFinanceira>>({
-  data_entrada: new Date().toISOString(),
+  data_entrada: new Date().toISOString().split('T')[0],
   meio: 'Dinheiro',
 })
 
@@ -36,7 +36,7 @@ async function registrarOferta() {
     alert('Ofertório registrado com sucesso!')
     // Reset form
     oferta.value = {
-      data_entrada: new Date().toISOString(),
+      data_entrada: new Date().toISOString().split('T')[0],
       meio: 'Dinheiro',
       valor: undefined,
       evento: undefined,
@@ -62,7 +62,15 @@ async function registrarOferta() {
           <v-card-text>
             <v-form @submit.prevent="registrarOferta">
               <v-row>
-                <v-col cols="12">
+                <v-col cols="12" md="6">
+                  <v-select
+                    v-model="oferta.meio"
+                    :items="meiosDePagamento"
+                    label="Meio de Pagamento"
+                    required
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="oferta.valor"
                     label="Valor"
@@ -77,14 +85,6 @@ async function registrarOferta() {
                     v-model="oferta.data_entrada"
                     label="Data da Entrada"
                     type="date"
-                    required
-                  />
-                </v-col>
-                <v-col cols="12">
-                  <v-select
-                    v-model="oferta.meio"
-                    :items="meiosDePagamento"
-                    label="Meio de Pagamento"
                     required
                   />
                 </v-col>
