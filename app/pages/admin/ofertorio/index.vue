@@ -7,7 +7,6 @@ definePageMeta({
 })
 
 const { ofertas, loading, fetchOfertas } = useOfertas()
-
 // Estado para controlar a ordenação da tabela
 const sortBy = ref<VDataTable['sortBy']>([{ key: 'data_entrada', order: 'desc' }])
 
