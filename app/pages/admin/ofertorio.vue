@@ -61,6 +61,7 @@ async function registrarOferta() {
     const ofertaData = {
       ...oferta.value,
       data_entrada: new Date(dataEntradaString.value).toISOString(),
+      valor: Number(oferta.value.valor), // Converte para número
     }
     // bypass generated type mismatch
     await directus.request(createItem('oferta_financeira', ofertaData as any))
@@ -101,11 +102,10 @@ async function registrarOferta() {
                   />
                 </v-col>
                 <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model.number="oferta.valor"
+                  <MaskedCurrencyField
+                    v-model="oferta.valor"
                     label="Valor"
-                    type="number"
-                    prefix="R$"
+                    prepend-inner-icon="mdi-currency-brl"
                     required
                     autofocus
                   />
