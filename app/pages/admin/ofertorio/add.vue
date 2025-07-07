@@ -7,6 +7,7 @@ definePageMeta({
   layout: 'admin',
 })
 
+const { fetchOfertas } = useOfertas()
 const directus = await useDirectusClient()
 const { data: eventos } = useAsyncData('agenda', () => {
   return directus.request(readItems('agenda', {
@@ -17,6 +18,8 @@ const { data: eventos } = useAsyncData('agenda', () => {
 
 // Controlar exibição do modal da calculadora
 const modalCalculadora = ref(false)
+// Referência ao componente calculadora
+const calculadoraRef = ref<{ limparDadosArmazenados: () => void } | null>(null)
 
 // Computed para encontrar evento de hoje
 const eventoHoje = computed(() => {
@@ -80,6 +83,14 @@ async function registrarOferta() {
     // bypass generated type mismatch
     await directus.request(createItem('oferta_financeira', ofertaData as any))
 
+    // Limpa os dados armazenados no localStorage após o salvamento bem-sucedido
+    if (calculadoraRef.value) {
+      calculadoraRef.value.limparDadosArmazenados()
+    }
+
+    // Atualiza a lista de ofertas antes de navegar
+    await fetchOfertas()
+
     // Redireciona para a página de listagem após sucesso
     await navigateTo('/admin/ofertorio')
   }
@@ -117,11 +128,10 @@ async function registrarOferta() {
                   />
                 </v-col>
                 <v-col cols="12" md="6">
-                  <div class="d-flex align-center">
+                  <div class="d-flex">
                     <MaskedCurrencyField
                       v-model="oferta.valor"
                       label="Valor"
-                      prepend-inner-icon="mdi-currency-brl"
                       required
                       autofocus
                       class="flex-grow-1 me-2"
@@ -130,9 +140,7 @@ async function registrarOferta() {
                       icon="mdi-calculator"
                       color="primary"
                       variant="outlined"
-                      size="small"
-                      class="mt-1"
-                      title="Abrir calculadora de cédulas e moedas"
+                      title="Abrir conta cédulas e moedas"
                       @click="abrirCalculadora"
                     />
                   </div>
@@ -192,11 +200,20 @@ async function registrarOferta() {
       v-model="modalCalculadora"
       max-width="800px"
       scrollable
+      content-class="overflow-visible"
+      :scrim="true"
+      fullscreen-mobile
+      class="overflow-visible"
+      origin="center center"
     >
       <CalculadoraOfertorio
-        titulo="Calculadora de Dinheiro"
+        ref="calculadoraRef"
+        titulo="Conta Dinheiro"
+        :model-value="modalCalculadora"
         @update:valor="atualizarValorOferta"
         @reset="modalCalculadora = false"
+        @close="modalCalculadora = false"
+        @update:model-value="modalCalculadora = $event"
       />
     </v-dialog>
   </v-container>

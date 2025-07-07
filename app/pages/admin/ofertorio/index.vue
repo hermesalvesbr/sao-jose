@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import type { DirectusClient, RestClient } from '@directus/sdk'
-import type { ApiCollections, OfertaFinanceira } from '~/types/schema'
-import { readItems } from '@directus/sdk'
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 
 // Define o layout admin para esta página
 definePageMeta({
   layout: 'admin',
 })
+
+const { ofertas, loading, fetchOfertas } = useOfertas()
 
 const headers = [
   {
@@ -33,26 +32,8 @@ const headers = [
   },
 ]
 
-const ofertas = ref<OfertaFinanceira[]>([])
-const loading = ref(false)
-
 onMounted(async () => {
-  loading.value = true
-  try {
-    const d = await useDirectusClient() as DirectusClient<ApiCollections> & RestClient<ApiCollections>
-    const result = await d.request(readItems('oferta_financeira', {
-      fields: ['id', 'valor', 'data_entrada', { evento: ['titulo'] }] as any,
-      sort: ['-data_entrada'],
-      limit: 100,
-    }))
-    ofertas.value = Array.isArray(result) ? result as unknown as OfertaFinanceira[] : []
-  }
-  catch (err) {
-    console.error('Erro ao carregar ofertas:', err)
-  }
-  finally {
-    loading.value = false
-  }
+  await fetchOfertas()
 })
 
 function getEventoNome(evento: any) {
@@ -182,6 +163,7 @@ function getValorColor(valor: number): string {
 
           <v-data-table
             :headers="headers"
+            :header-props="{ sortByText: 'Ordenar por' }"
             :items="ofertas"
             :items-per-page="15"
             :loading="loading"

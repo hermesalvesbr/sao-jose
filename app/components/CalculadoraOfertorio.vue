@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
+import { computed } from 'vue'
 
 interface DenominacaoItem {
   valor: number
@@ -16,11 +17,15 @@ interface DenominacaoItem {
 defineProps({
   titulo: {
     type: String,
-    default: 'Calculadora de Dinheiro',
+    default: 'Conta Dinheiro',
   },
   mostrarBotaoSalvar: {
     type: Boolean,
     default: true,
+  },
+  modelValue: {
+    type: Boolean,
+    default: undefined,
   },
 })
 
@@ -30,10 +35,12 @@ defineProps({
 const emit = defineEmits<{
   (e: 'update:valor', valor: number): void
   (e: 'reset'): void
+  (e: 'close'): void
+  (e: 'update:modelValue', value: boolean): void
 }>()
 
-// Denominações brasileiras (moedas e cédulas)
-const denominacoes = ref<DenominacaoItem[]>([
+// Valores iniciais para denominações brasileiras
+const denominacoesIniciais: DenominacaoItem[] = [
   // Moedas
   { valor: 0.05, tipo: 'moeda', label: '5 centavos', quantidade: 0, corPrimaria: 'amber', corSecundaria: 'brown-lighten-1' },
   { valor: 0.10, tipo: 'moeda', label: '10 centavos', quantidade: 0, corPrimaria: 'amber', corSecundaria: 'brown-lighten-1' },
@@ -49,7 +56,14 @@ const denominacoes = ref<DenominacaoItem[]>([
   { valor: 50, tipo: 'cedula', label: '50 reais', quantidade: 0, corPrimaria: 'brown' },
   { valor: 100, tipo: 'cedula', label: '100 reais', quantidade: 0, corPrimaria: 'blue-lighten-1' },
   { valor: 200, tipo: 'cedula', label: '200 reais', quantidade: 0, corPrimaria: 'orange' },
-])
+]
+
+// Utilizando localStorage para persistir os dados
+const denominacoes = useLocalStorage<DenominacaoItem[]>(
+  'calculadora-ofertorio-valores',
+  denominacoesIniciais,
+  { deep: true }, // Garantir que mudanças em objetos aninhados sejam detectadas
+)
 
 // Valor total calculado
 const valorTotal = computed(() => {
@@ -119,14 +133,52 @@ function resetar() {
   })
 }
 
+/**
+ * Limpa os dados do localStorage para a calculadora
+ * Esta função pode ser chamada externamente após salvamento bem-sucedido
+ */
+function limparDadosArmazenados() {
+  resetar() // Zera todas as quantidades
+  // O localStorage ainda mantém a estrutura, mas com quantidades zeradas
+}
+
+// Expõe a função para ser usada externamente
+defineExpose({
+  limparDadosArmazenados,
+})
+
 function salvarValor() {
   emit('update:valor', valorTotal.value)
+}
+
+/**
+ * Fecha o modal emitindo os eventos necessários
+ */
+function fecharModal() {
+  // Emitimos todos os eventos possíveis para garantir compatibilidade com diferentes abordagens
+  emit('close')
+  emit('reset')
+
+  // Este evento é o padrão para controlar v-model no Vuetify 3
+  emit('update:modelValue', false)
 }
 </script>
 
 <template>
-  <v-card elevation="2" rounded="lg" class="calculadora-ofertorio">
-    <v-card-title class="d-flex align-center justify-space-between pa-4">
+  <v-card elevation="2" rounded="lg" class="calculadora-ofertorio position-relative">
+    <!-- Botão X para fechar (posicionado fora do card) -->
+    <v-btn
+      icon
+      variant="elevated"
+      color="error"
+      size="x-small"
+      class="close-button"
+      @click="fecharModal"
+    >
+      <v-icon>mdi-close</v-icon>
+    </v-btn>
+
+    <v-card-title class="d-flex align-center justify-space-between pa-4 pr-12">
       <h2 class="text-h6">
         {{ titulo }}
       </h2>
@@ -165,107 +217,124 @@ function salvarValor() {
         </v-card-text>
       </v-card>
 
-      <!-- Seção de Moedas -->
-      <h3 class="text-subtitle-1 font-weight-medium mb-3">
-        Moedas
-      </h3>
-      <v-row>
-        <v-col
-          v-for="moeda in denominacoes.filter(d => d.tipo === 'moeda')"
-          :key="`moeda-${moeda.valor}`"
-          cols="12"
-          sm="6"
-          md="4"
-        >
-          <v-card variant="outlined" class="pa-2">
-            <div class="d-flex align-center justify-space-between">
-              <div class="d-flex align-center gap-2">
-                <v-avatar
-                  :color="moeda.corPrimaria || 'grey'"
-                  size="32"
-                  class="border"
-                >
-                  <span class="text-caption font-weight-bold">{{ moeda.valor < 1 ? (moeda.valor * 100) : moeda.valor }}</span>
-                </v-avatar>
-                <span>{{ moeda.label }}</span>
-              </div>
-              <div class="d-flex align-center">
-                <v-btn
-                  icon="mdi-minus"
-                  size="small"
-                  variant="text"
-                  density="comfortable"
-                  :disabled="moeda.quantidade <= 0"
-                  @click="decrementar(moeda)"
-                />
-                <span class="mx-2 font-weight-bold">{{ moeda.quantidade }}</span>
-                <v-btn
-                  icon="mdi-plus"
-                  size="small"
-                  color="primary"
-                  variant="text"
-                  density="comfortable"
-                  @click="incrementar(moeda)"
-                />
-              </div>
+      <!-- Painéis de Expansão para Moedas e Cédulas -->
+      <v-expansion-panels class="my-4" variant="popout">
+        <!-- Painel de Moedas -->
+        <v-expansion-panel>
+          <v-expansion-panel-title>
+            <div class="d-flex align-center justify-space-between w-100">
+              <span class="text-subtitle-1 font-weight-medium">Moedas</span>
+              <span class="text-caption">{{ totalMoedas }} unidades ({{ formatCurrency(valorTotalMoedas) }})</span>
             </div>
-            <div class="text-right text-caption mt-1">
-              Total: {{ formatCurrency(moeda.valor * moeda.quantidade) }}
-            </div>
-          </v-card>
-        </v-col>
-      </v-row>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-row>
+              <v-col
+                v-for="moeda in denominacoes.filter(d => d.tipo === 'moeda')"
+                :key="`moeda-${moeda.valor}`"
+                cols="12"
+                sm="6"
+                md="4"
+              >
+                <v-card variant="outlined" class="pa-2">
+                  <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center gap-2">
+                      <v-avatar
+                        :color="moeda.corPrimaria || 'grey'"
+                        size="32"
+                        class="border"
+                      >
+                        <span class="text-caption font-weight-bold">{{ moeda.valor < 1 ? (moeda.valor * 100) : moeda.valor }}</span>
+                      </v-avatar>
+                      <span>{{ moeda.label }}</span>
+                    </div>
+                    <div class="d-flex align-center">
+                      <v-btn
+                        icon="mdi-minus"
+                        size="small"
+                        variant="text"
+                        density="comfortable"
+                        :disabled="moeda.quantidade <= 0"
+                        @click="decrementar(moeda)"
+                      />
+                      <span class="mx-2 font-weight-bold">{{ moeda.quantidade }}</span>
+                      <v-btn
+                        icon="mdi-plus"
+                        size="small"
+                        color="primary"
+                        variant="text"
+                        density="comfortable"
+                        @click="incrementar(moeda)"
+                      />
+                    </div>
+                  </div>
+                  <div class="text-right text-caption mt-1">
+                    Total: {{ formatCurrency(moeda.valor * moeda.quantidade) }}
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
 
-      <!-- Seção de Cédulas -->
-      <h3 class="text-subtitle-1 font-weight-medium mb-3 mt-4">
-        Cédulas
-      </h3>
-      <v-row>
-        <v-col
-          v-for="cedula in denominacoes.filter(d => d.tipo === 'cedula')"
-          :key="`cedula-${cedula.valor}`"
-          cols="12"
-          sm="6"
-          md="4"
-        >
-          <v-card variant="outlined" class="pa-2">
-            <div class="d-flex align-center justify-space-between">
-              <div class="d-flex align-center gap-2">
-                <v-chip
-                  :color="cedula.corPrimaria || 'grey'"
-                  size="small"
-                  class="font-weight-bold"
-                >
-                  {{ formatCurrency(cedula.valor) }}
-                </v-chip>
-                <span>{{ cedula.label }}</span>
-              </div>
-              <div class="d-flex align-center">
-                <v-btn
-                  icon="mdi-minus"
-                  size="small"
-                  variant="text"
-                  density="comfortable"
-                  :disabled="cedula.quantidade <= 0"
-                  @click="decrementar(cedula)"
-                />
-                <span class="mx-2 font-weight-bold">{{ cedula.quantidade }}</span>
-                <v-btn
-                  icon="mdi-plus"
-                  size="small"
-                  color="primary"
-                  variant="text"
-                  density="comfortable"
-                  @click="incrementar(cedula)"
-                />
-              </div>
+        <!-- Painel de Cédulas -->
+        <v-expansion-panel>
+          <v-expansion-panel-title>
+            <div class="d-flex align-center justify-space-between w-100">
+              <span class="text-subtitle-1 font-weight-medium">Cédulas</span>
+              <span class="text-caption">{{ totalCedulas }} unidades ({{ formatCurrency(valorTotalCedulas) }})</span>
             </div>
-            <div class="text-right text-caption mt-1">
-              Total: {{ formatCurrency(cedula.valor * cedula.quantidade) }}
-            </div>
-          </v-card>
-        </v-col>
-      </v-row>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-row>
+              <v-col
+                v-for="cedula in denominacoes.filter(d => d.tipo === 'cedula')"
+                :key="`cedula-${cedula.valor}`"
+                cols="12"
+                sm="6"
+                md="4"
+              >
+                <v-card variant="outlined" class="pa-2">
+                  <div class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center gap-2">
+                      <v-chip
+                        :color="cedula.corPrimaria || 'grey'"
+                        size="small"
+                        class="font-weight-bold"
+                      >
+                        {{ formatCurrency(cedula.valor) }}
+                      </v-chip>
+                      <span>{{ cedula.label }}</span>
+                    </div>
+                    <div class="d-flex align-center">
+                      <v-btn
+                        icon="mdi-minus"
+                        size="small"
+                        variant="text"
+                        density="comfortable"
+                        :disabled="cedula.quantidade <= 0"
+                        @click="decrementar(cedula)"
+                      />
+                      <span class="mx-2 font-weight-bold">{{ cedula.quantidade }}</span>
+                      <v-btn
+                        icon="mdi-plus"
+                        size="small"
+                        color="primary"
+                        variant="text"
+                        density="comfortable"
+                        @click="incrementar(cedula)"
+                      />
+                    </div>
+                  </div>
+                  <div class="text-right text-caption mt-1">
+                    Total: {{ formatCurrency(cedula.valor * cedula.quantidade) }}
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
     </v-card-text>
 
     <v-divider />
@@ -285,7 +354,19 @@ function salvarValor() {
 </template>
 
 <style scoped>
-.calculadora-ofertorio .border {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+/* Estilo para o botão de fechar */
+.calculadora-ofertorio {
+  position: relative;
+  overflow: visible !important;
+  max-height: 90vh;
+}
+
+.close-button {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  z-index: 999; /* Valor alto para garantir que esteja acima de qualquer outro elemento */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.12); /* Adiciona uma borda sutil */
 }
 </style>
