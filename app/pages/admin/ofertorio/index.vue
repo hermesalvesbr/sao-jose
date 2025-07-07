@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { VDataTable } from 'vuetify/components'
-import { onMounted, ref } from 'vue'
 
 // Define o layout admin para esta página
 definePageMeta({
@@ -12,7 +11,7 @@ const { ofertas, loading, fetchOfertas } = useOfertas()
 // Estado para controlar a ordenação da tabela
 const sortBy = ref<VDataTable['sortBy']>([{ key: 'data_entrada', order: 'desc' }])
 
-const headers: VDataTable['headers'] = [
+const headers: any[] = [
   {
     title: 'Evento',
     key: 'evento',
