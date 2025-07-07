@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { Catolico } from '~/types/schema'
-import { useSeoMeta } from '#imports'
 import { readItems } from '@directus/sdk'
 import { DateTime } from 'luxon'
 import { computed, onMounted, ref } from 'vue'
-import { executeWithRetry, useDirectusClient } from '~/composables/useDirectusClient'
+import { executeWithRetry } from '~/composables/useDirectusClient'
 
 const meses = [
   'Janeiro',

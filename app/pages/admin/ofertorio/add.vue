@@ -65,17 +65,9 @@ async function registrarOferta() {
     }
     // bypass generated type mismatch
     await directus.request(createItem('oferta_financeira', ofertaData as any))
-    // eslint-disable-next-line no-alert
-    alert('Ofertório registrado com sucesso!')
-    // Reset form
-    oferta.value = {
-      meio: 'Dinheiro',
-      valor: undefined,
-      evento: eventoHoje.value || undefined,
-      observacao: undefined,
-    }
-    mostrarObservacao.value = false
-    dataEntradaString.value = new Date().toISOString().split('T')[0]
+
+    // Redireciona para a página de listagem após sucesso
+    await navigateTo('/admin/ofertorio')
   }
   catch (error) {
     console.error('Erro ao registrar ofertório:', error)
@@ -89,8 +81,17 @@ async function registrarOferta() {
   <v-container>
     <v-row justify="center">
       <v-col cols="12" sm="10" md="8">
-        <v-card>
-          <v-card-text>
+        <v-card elevation="2" rounded="lg">
+          <v-card-title class="d-flex align-center pa-4">
+            <v-icon color="primary" class="me-2">
+              mdi-cash-plus
+            </v-icon>
+            <span class="text-h6">Dados da Oferta</span>
+          </v-card-title>
+
+          <v-divider />
+
+          <v-card-text class="pa-4">
             <v-form @submit.prevent="registrarOferta">
               <v-row>
                 <v-col cols="12" md="6">
@@ -147,10 +148,12 @@ async function registrarOferta() {
               <v-btn
                 type="submit"
                 color="primary"
+                size="large"
                 block
                 class="mt-4"
+                prepend-icon="mdi-content-save"
               >
-                Registrar
+                Registrar Oferta
               </v-btn>
             </v-form>
           </v-card-text>

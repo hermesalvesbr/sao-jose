@@ -34,6 +34,7 @@ const pageTitle = computed(() => {
     '/admin/resumo': 'Resumo',
     '/admin': 'Resumo',
     '/admin/ofertorio': 'Registro de Ofertório',
+    '/admin/ofertorio/add': 'Nova Oferta Financeira',
     '/admin/dizimos': 'Gerenciar Dízimos',
   }
 
@@ -79,13 +80,13 @@ async function goBack() {
       <slot />
     </v-main>
 
-    <v-bottom-navigation grow>
+    <v-bottom-navigation grow app fixed>
       <v-btn value="resumo" to="/admin/resumo">
         <v-icon>mdi-home</v-icon>
         <span>Resumo</span>
       </v-btn>
 
-      <v-btn value="ofertorio" to="/admin/ofertorio">
+      <v-btn value="ofertorio" to="/admin/ofertorio/">
         <v-icon>mdi-cash-multiple</v-icon>
         <span>Ofertório</span>
       </v-btn>
