@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import type { VDataTable } from 'vuetify/components'
+import { onMounted, ref } from 'vue'
 
 // Define o layout admin para esta página
 definePageMeta({
@@ -8,13 +9,23 @@ definePageMeta({
 
 const { ofertas, loading, fetchOfertas } = useOfertas()
 
-const headers = [
+// Estado para controlar a ordenação da tabela
+const sortBy = ref<VDataTable['sortBy']>([{ key: 'data_entrada', order: 'desc' }])
+
+const headers: VDataTable['headers'] = [
   {
     title: 'Evento',
     key: 'evento',
     sortable: true,
     align: 'start' as const,
     width: '45%',
+    // Adiciona uma função de ordenação customizada para lidar com a lógica complexa
+    sort: (a: any, b: any) => {
+      // A função de ordenação recebe os itens completos, então acessamos a propriedade `evento`
+      const nameA = getEventoNome(a)
+      const nameB = getEventoNome(b)
+      return nameA.localeCompare(nameB)
+    },
   },
   {
     title: 'Valor',
@@ -162,8 +173,8 @@ function getValorColor(valor: number): string {
           <v-divider />
 
           <v-data-table
+            v-model:sort-by="sortBy"
             :headers="headers"
-            :header-props="{ sortByText: 'Ordenar por' }"
             :items="ofertas"
             :items-per-page="15"
             :loading="loading"

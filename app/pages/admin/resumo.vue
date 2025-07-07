@@ -63,35 +63,6 @@ definePageMeta({
                 </v-card>
               </v-col>
             </v-row>
-
-            <!-- Ações rápidas -->
-            <v-row class="mt-4">
-              <v-col cols="12">
-                <v-card variant="outlined">
-                  <v-card-title>Ações Rápidas</v-card-title>
-                  <v-card-text>
-                    <v-row>
-                      <v-col cols="6" md="3">
-                        <v-btn to="/admin/ofertorio" color="primary" block>
-                          <v-icon left>
-                            mdi-cash-multiple
-                          </v-icon>
-                          Registrar Oferta
-                        </v-btn>
-                      </v-col>
-                      <v-col cols="6" md="3">
-                        <v-btn to="/admin/dizimos" color="secondary" block>
-                          <v-icon left>
-                            mdi-account-cash
-                          </v-icon>
-                          Gerenciar Dízimos
-                        </v-btn>
-                      </v-col>
-                    </v-row>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-            </v-row>
           </v-card-text>
         </v-card>
       </v-col>
