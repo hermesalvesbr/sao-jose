@@ -57,7 +57,7 @@ async function goBack() {
 </script>
 
 <template>
-  <v-app>
+  <v-layout>
     <!-- Header com título e botão voltar -->
     <v-app-bar color="primary" :elevation="2">
       <!-- Botão voltar (apenas se showBackButton for true) -->
@@ -80,7 +80,7 @@ async function goBack() {
       <slot />
     </v-main>
 
-    <v-bottom-navigation grow app fixed>
+    <v-bottom-navigation grow location="bottom" mode="shift">
       <v-btn value="resumo" to="/admin/resumo">
         <v-icon>mdi-home</v-icon>
         <span>Resumo</span>
@@ -96,5 +96,5 @@ async function goBack() {
         <span>Dízimos</span>
       </v-btn>
     </v-bottom-navigation>
-  </v-app>
+  </v-layout>
 </template>
