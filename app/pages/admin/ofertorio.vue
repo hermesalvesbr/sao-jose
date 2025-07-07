@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 definePageMeta({
   layout: 'admin',
@@ -10,14 +10,40 @@ definePageMeta({
 const directus = await useDirectusClient()
 const { data: eventos } = useAsyncData('agenda', () => {
   return directus.request(readItems('agenda', {
-    fields: ['id', 'titulo'],
+    fields: ['id', 'titulo', 'recorrente', 'dia', 'data_evento'],
     limit: -1,
   }))
+})
+
+// Computed para encontrar evento de hoje
+const eventoHoje = computed(() => {
+  if (!eventos.value || eventos.value.length === 0)
+    return null
+
+  const hoje = new Date()
+  const diaSemana = hoje.getDay() // 0=domingo, 1=segunda, ..., 6=sábado
+
+  // Procura evento recorrente do dia
+  const evento = eventos.value.find(
+    (ev: any) => ev.recorrente && ev.dia === diaSemana,
+  )
+
+  return evento ? evento.id : null
 })
 
 const oferta = ref<Partial<OfertaFinanceira>>({
   meio: 'Dinheiro',
 })
+
+// Controla se o campo de observação deve ser exibido
+const mostrarObservacao = ref(false)
+
+// Atualiza o evento quando os dados são carregados
+watch(eventoHoje, (novoEventoId) => {
+  if (novoEventoId && !oferta.value.evento) {
+    oferta.value.evento = novoEventoId
+  }
+}, { immediate: true })
 
 // separate ref for date input as string to avoid type mismatch
 const dataEntradaString = ref(new Date().toISOString().split('T')[0])
@@ -44,9 +70,10 @@ async function registrarOferta() {
     oferta.value = {
       meio: 'Dinheiro',
       valor: undefined,
-      evento: undefined,
+      evento: eventoHoje.value || undefined,
       observacao: undefined,
     }
+    mostrarObservacao.value = false
     dataEntradaString.value = new Date().toISOString().split('T')[0]
   }
   catch (error) {
@@ -62,9 +89,6 @@ async function registrarOferta() {
     <v-row justify="center">
       <v-col cols="12" sm="10" md="8">
         <v-card>
-          <v-card-title class="text-h5">
-            Registro de Ofertório
-          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="registrarOferta">
               <v-row>
@@ -100,11 +124,19 @@ async function registrarOferta() {
                     :items="eventos ?? []"
                     item-title="titulo"
                     item-value="id"
-                    label="Evento (Opcional)"
+                    label="Encontro / Missa"
                     clearable
                   />
                 </v-col>
                 <v-col cols="12">
+                  <v-checkbox
+                    v-model="mostrarObservacao"
+                    label="Escrever observação"
+                    hide-details
+                    class="mt-n7"
+                  />
+                </v-col>
+                <v-col v-if="mostrarObservacao" cols="12">
                   <v-textarea
                     v-model="oferta.observacao"
                     label="Observação (Opcional)"
