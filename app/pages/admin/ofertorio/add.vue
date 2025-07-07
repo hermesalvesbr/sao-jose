@@ -15,6 +15,9 @@ const { data: eventos } = useAsyncData('agenda', () => {
   }))
 })
 
+// Controlar exibição do modal da calculadora
+const modalCalculadora = ref(false)
+
 // Computed para encontrar evento de hoje
 const eventoHoje = computed(() => {
   if (!eventos.value || eventos.value.length === 0)
@@ -49,6 +52,17 @@ watch(eventoHoje, (novoEventoId) => {
 const dataEntradaString = ref(new Date().toISOString().split('T')[0])
 
 const meiosDePagamento = ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito']
+
+// Função para abrir a calculadora
+function abrirCalculadora() {
+  modalCalculadora.value = true
+}
+
+// Função para atualizar o valor da oferta quando a calculadora emitir o valor
+function atualizarValorOferta(valor: number) {
+  oferta.value.valor = valor
+  modalCalculadora.value = false
+}
 
 async function registrarOferta() {
   if (!oferta.value.valor || !dataEntradaString.value) {
@@ -103,13 +117,25 @@ async function registrarOferta() {
                   />
                 </v-col>
                 <v-col cols="12" md="6">
-                  <MaskedCurrencyField
-                    v-model="oferta.valor"
-                    label="Valor"
-                    prepend-inner-icon="mdi-currency-brl"
-                    required
-                    autofocus
-                  />
+                  <div class="d-flex align-center">
+                    <MaskedCurrencyField
+                      v-model="oferta.valor"
+                      label="Valor"
+                      prepend-inner-icon="mdi-currency-brl"
+                      required
+                      autofocus
+                      class="flex-grow-1 me-2"
+                    />
+                    <v-btn
+                      icon="mdi-calculator"
+                      color="primary"
+                      variant="outlined"
+                      size="small"
+                      class="mt-1"
+                      title="Abrir calculadora de cédulas e moedas"
+                      @click="abrirCalculadora"
+                    />
+                  </div>
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
@@ -160,5 +186,18 @@ async function registrarOferta() {
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Modal da Calculadora de Ofertório -->
+    <v-dialog
+      v-model="modalCalculadora"
+      max-width="800px"
+      scrollable
+    >
+      <CalculadoraOfertorio
+        titulo="Calculadora de Dinheiro"
+        @update:valor="atualizarValorOferta"
+        @reset="modalCalculadora = false"
+      />
+    </v-dialog>
   </v-container>
 </template>
