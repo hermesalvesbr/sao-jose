@@ -6,6 +6,7 @@
  * - Header com título da página
  * - Botão voltar opcional (para páginas internas)
  * - Bottom navigation com acesso rápido às principais seções
+ * - Avatar do usuário no header (com imagem do Directus quando disponível)
  *
  * Como usar:
  *
@@ -22,6 +23,8 @@
 
 const route = useRoute()
 const router = useRouter()
+const { getUserAvatarUrl, fetchCurrentUser, user, logout } = useAuth()
+const avatarUrl = computed(() => getUserAvatarUrl() ?? '')
 
 // Detecta se deve mostrar botão voltar baseado na rota
 const showBackButton = computed(() => {
@@ -54,6 +57,10 @@ async function goBack() {
     await navigateTo('/admin/resumo')
   }
 }
+
+onMounted(() => {
+  fetchCurrentUser()
+})
 </script>
 
 <template>
@@ -72,7 +79,41 @@ async function goBack() {
       <v-app-bar-title>{{ pageTitle }}</v-app-bar-title>
 
       <template #append>
-        <v-btn icon="mdi-dots-vertical" color="secondary" />
+        <v-menu offset-y>
+          <template #activator="{ props }">
+            <v-avatar size="36" v-bind="props">
+              <v-img :src="avatarUrl" alt="Foto do usuário" />
+            </v-avatar>
+          </template>
+          <v-card min-width="220" class="pa-2">
+            <v-row align="center" no-gutters>
+              <v-col cols="auto">
+                <v-avatar size="48">
+                  <v-img :src="avatarUrl" alt="Foto do usuário" />
+                </v-avatar>
+              </v-col>
+              <v-col>
+                <div class="font-weight-medium text-body-1">
+                  {{ user?.first_name || 'Usuário' }}
+                </div>
+                <div class="text-caption text-grey">
+                  {{ user?.email || '' }}
+                </div>
+              </v-col>
+            </v-row>
+            <v-divider class="my-2" />
+            <v-list density="compact">
+              <v-list-item class="text-error" @click="logout">
+                <template #prepend>
+                  <v-icon color="error">
+                    mdi-logout
+                  </v-icon>
+                </template>
+                <v-list-item-title>Sair</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </v-menu>
       </template>
     </v-app-bar>
 

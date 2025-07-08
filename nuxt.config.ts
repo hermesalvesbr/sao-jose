@@ -37,7 +37,7 @@ export default defineNuxtConfig({
       },
       meta: [
         { name: 'description', content: 'Sistema de Gestão da Capela São José: acompanhe fiéis, aniversariantes e ações da comunidade.' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1.0, maximum-scale=1.0' },
         { charset: 'utf-8' },
       ],
       link: [

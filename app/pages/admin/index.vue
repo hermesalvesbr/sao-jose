@@ -4,7 +4,7 @@ import { ref } from 'vue'
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
-const { entrar, loading, error } = useAuth()
+const { entrar, loading } = useAuth()
 const router = useRouter()
 
 const snackbar = ref(false)
@@ -12,20 +12,27 @@ const snackbarText = ref('')
 const snackbarColor = ref('success')
 
 async function handleLogin() {
-  await entrar({ email: email.value, password: password.value })
-
-  if (error.value) {
-    snackbarText.value = 'Login falhou. Verifique suas credenciais.'
-    snackbarColor.value = 'error'
-    snackbar.value = true
-  }
-  else {
+  try {
+    await entrar({ email: email.value, password: password.value })
     snackbarText.value = 'Login realizado com sucesso!'
     snackbarColor.value = 'success'
     snackbar.value = true
     setTimeout(() => {
       router.push('/admin/resumo')
     }, 2000)
+  }
+  catch (e: any) {
+    // Tenta extrair mensagem amigável do erro do Directus
+    let msg = 'Login falhou. Verifique suas credenciais.'
+    if (e && e.errors && Array.isArray(e.errors) && e.errors[0]?.message) {
+      msg = e.errors[0].message
+    }
+    else if (e?.message) {
+      msg = e.message
+    }
+    snackbarText.value = msg
+    snackbarColor.value = 'error'
+    snackbar.value = true
   }
 }
 </script>

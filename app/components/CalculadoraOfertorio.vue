@@ -110,21 +110,6 @@ function formatCurrency(valor: number) {
 }
 
 /**
- * Incrementa a quantidade de uma denominação
- */
-function incrementar(item: DenominacaoItem) {
-  item.quantidade++
-}
-
-/**
- * Decrementa a quantidade de uma denominação
- */
-function decrementar(item: DenominacaoItem) {
-  if (item.quantidade > 0)
-    item.quantidade--
-}
-
-/**
  * Zera todas as quantidades
  */
 function resetar() {
@@ -248,23 +233,12 @@ function fecharModal() {
                       </v-avatar>
                       <span>{{ moeda.label }}</span>
                     </div>
-                    <div class="d-flex align-center">
-                      <v-btn
-                        icon="mdi-minus"
-                        size="small"
-                        variant="text"
-                        density="comfortable"
-                        :disabled="moeda.quantidade <= 0"
-                        @click="decrementar(moeda)"
-                      />
-                      <span class="mx-2 font-weight-bold">{{ moeda.quantidade }}</span>
-                      <v-btn
-                        icon="mdi-plus"
-                        size="small"
-                        color="primary"
-                        variant="text"
-                        density="comfortable"
-                        @click="incrementar(moeda)"
+                    <div>
+                      <v-number-input
+                        v-model="moeda.quantidade"
+                        control-variant="split"
+                        :min="0"
+                        density="compact"
                       />
                     </div>
                   </div>
@@ -306,23 +280,12 @@ function fecharModal() {
                       </v-chip>
                       <span>{{ cedula.label }}</span>
                     </div>
-                    <div class="d-flex align-center">
-                      <v-btn
-                        icon="mdi-minus"
-                        size="small"
-                        variant="text"
-                        density="comfortable"
-                        :disabled="cedula.quantidade <= 0"
-                        @click="decrementar(cedula)"
-                      />
-                      <span class="mx-2 font-weight-bold">{{ cedula.quantidade }}</span>
-                      <v-btn
-                        icon="mdi-plus"
-                        size="small"
-                        color="primary"
-                        variant="text"
-                        density="comfortable"
-                        @click="incrementar(cedula)"
+                    <div class="d-flex align-center" style="width: 140px">
+                      <v-number-input
+                        v-model="cedula.quantidade"
+                        control-variant="split"
+                        :min="0"
+                        density="compact"
                       />
                     </div>
                   </div>

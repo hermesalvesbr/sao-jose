@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
-import { computed, ref, watch } from 'vue'
 
 definePageMeta({
   layout: 'admin',
 })
 
+const { user } = useAuth()
 const { fetchOfertas } = useOfertas()
 const directus = await useDirectusClient()
 const { data: eventos } = useAsyncData('agenda', () => {
@@ -79,6 +79,7 @@ async function registrarOferta() {
       ...oferta.value,
       data_entrada: new Date(dataEntradaString.value).toISOString(),
       valor: Number(oferta.value.valor), // Converte para número
+      user_created: user.value?.id,
     }
     // bypass generated type mismatch
     await directus.request(createItem('oferta_financeira', ofertaData as any))
