@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
+import { DateTime } from 'luxon'
 
 definePageMeta({
   layout: 'admin',
@@ -11,7 +12,7 @@ const { fetchOfertas } = useOfertas()
 const directus = await useDirectusClient()
 const { data: eventos } = useAsyncData('agenda', () => {
   return directus.request(readItems('agenda', {
-    fields: ['id', 'titulo', 'recorrente', 'dia', 'data_evento'],
+    fields: ['id', 'titulo', 'recorrente', 'dia', 'data_evento', 'tipo_especial', 'data_limite'],
     limit: -1,
   }))
 })
@@ -21,18 +22,40 @@ const modalCalculadora = ref(false)
 // Referência ao componente calculadora
 const calculadoraRef = ref<{ limparDadosArmazenados: () => void } | null>(null)
 
-// Computed para encontrar evento de hoje
+// Computed para encontrar evento de hoje (usando a mesma lógica da página principal)
 const eventoHoje = computed(() => {
   if (!eventos.value || eventos.value.length === 0)
     return null
 
-  const hoje = new Date()
-  const diaSemana = hoje.getDay() // 0=domingo, 1=segunda, ..., 6=sábado
+  const today = DateTime.now()
+  // Luxon: 1=segunda, 7=domingo (igual ao banco)
+  const weekday = today.weekday
 
-  // Procura evento recorrente do dia
-  const evento = eventos.value.find(
-    (ev: any) => ev.recorrente && ev.dia === diaSemana,
-  )
+  // Procura evento que acontece hoje
+  const evento = eventos.value.find((ev: any) => {
+    // Verifica se o evento já passou da data final (se tiver)
+    if (ev.data_limite && DateTime.fromISO(ev.data_limite) < today) {
+      return false
+    }
+
+    // Evento único
+    if (!ev.recorrente && ev.data_evento) {
+      return DateTime.fromISO(ev.data_evento).hasSame(today, 'day')
+    }
+
+    // Evento semanal comum
+    if (ev.recorrente && ev.dia === weekday) {
+      return true
+    }
+
+    // Evento especial: primeiro domingo
+    if (ev.tipo_especial === 'primeiro_domingo' && weekday === 7) {
+      const firstSunday = today.startOf('month').plus({ days: (7 - today.startOf('month').weekday) % 7 })
+      return today.hasSame(firstSunday, 'day')
+    }
+
+    return false
+  })
 
   return evento ? evento.id : null
 })

@@ -37,15 +37,15 @@ watch(() => route.fullPath, () => {
 </script>
 
 <template>
-  <v-app class="main-app">
+  <v-app>
     <v-app-bar
       app
       color="#FFC107"
-      class="app-bar"
       flat
       height="64"
       :elevation="2"
       role="banner"
+      class="d-flex align-center"
     >
       <v-btn
         icon
@@ -59,14 +59,19 @@ watch(() => route.fullPath, () => {
           mdi-menu
         </v-icon>
       </v-btn>
-      <span class="app-title pl-2" aria-label="Capela São José">Capela São José</span>
+      <span
+        class="pl-2 text-h6 font-weight-medium text-brown-darken-3"
+        aria-label="Capela São José"
+        style="letter-spacing: 0.5px; user-select: none;"
+      >
+        Capela São José
+      </span>
     </v-app-bar>
 
     <v-navigation-drawer
       v-model="drawer"
       app
       color="#5D4037"
-      class="drawer"
       width="260"
       temporary
       :elevation="8"
@@ -76,140 +81,102 @@ watch(() => route.fullPath, () => {
       :disable-resize-watcher="true"
       :close-on-content-click="true"
       :mobile-breakpoint="9999"
+      class="pt-4"
     >
-      <v-list density="comfortable" nav>
-        <v-list-item
-          v-for="item in drawerItems"
-          :key="item.title"
-          :to="item.to"
-          :disabled="item.disabled"
-          class="drawer-item"
-          :tabindex="item.disabled ? -1 : 0"
-          :aria-disabled="item.disabled ? 'true' : 'false'"
-          ripple
-          @click="navigate(item)"
-          @keyup.enter="navigate(item)"
-        >
-          <template #prepend>
-            <ClientOnly>
-              <v-tooltip
-                v-if="!item.disabled"
-                :text="item.tooltip"
-                location="right"
-                open-delay="300"
+      <div class="d-flex flex-column h-100">
+        <v-list density="comfortable" nav class="flex-grow-1">
+          <v-list-item
+            v-for="item in drawerItems"
+            :key="item.title"
+            :to="item.to"
+            :disabled="item.disabled"
+            class="mb-2 mx-2 rounded-lg"
+            :tabindex="item.disabled ? -1 : 0"
+            :aria-disabled="item.disabled ? 'true' : 'false'"
+            ripple
+            @click="navigate(item)"
+            @keyup.enter="navigate(item)"
+          >
+            <template #prepend>
+              <ClientOnly>
+                <v-tooltip
+                  v-if="!item.disabled"
+                  :text="item.tooltip"
+                  location="right"
+                  open-delay="300"
+                >
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" size="32" color="#FFC107">
+                      {{ item.icon }}
+                    </v-icon>
+                  </template>
+                </v-tooltip>
+              </ClientOnly>
+              <v-icon
+                v-if="item.disabled"
+                size="32"
+                color="#FFC107"
+                class="opacity-50"
               >
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" size="32" color="#FFC107">
-                    {{ item.icon }}
-                  </v-icon>
-                </template>
-              </v-tooltip>
-            </ClientOnly>
-            <v-icon
-              v-if="item.disabled"
-              size="32"
-              color="#FFC107"
-              class="opacity-50"
-            >
-              {{ item.icon }}
-            </v-icon>
-          </template>
-          <v-list-item-title class="drawer-title">
-            {{ item.title }}
-          </v-list-item-title>
-        </v-list-item>
-      </v-list>
+                {{ item.icon }}
+              </v-icon>
+            </template>
+            <v-list-item-title class="text-white text-subtitle-1 font-weight-medium ml-3">
+              {{ item.title }}
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+
+        <!-- Botão de Admin no rodapé absoluto -->
+        <div class="pa-4 mt-auto">
+          <v-divider class="mb-4" color="#FFC107" opacity="0.3" />
+          <v-btn
+            color="#FFC107"
+            variant="outlined"
+            size="large"
+            block
+            prepend-icon="mdi-shield-account"
+            to="/admin"
+            @click="drawer = false"
+          >
+            Administração
+          </v-btn>
+        </div>
+      </div>
     </v-navigation-drawer>
 
     <v-main>
       <NuxtPage />
     </v-main>
 
-    <v-footer app color="#5D4037" class="footer" height="56" role="contentinfo">
-      <span class="footer-text">"São José rogais por nós."</span>
+    <v-footer
+      app
+      color="#5D4037"
+      height="56"
+      role="contentinfo"
+      class="d-flex justify-center align-center text-center"
+      style="border-top: 1px solid #ffc10722;"
+    >
+      <span class="text-amber text-body-1 font-weight-medium" style="letter-spacing: 0.2px;">
+        "São José rogais por nós."
+      </span>
     </v-footer>
   </v-app>
 </template>
 
-<style scoped>
-.main-app {
-  font-family: 'Poppins', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-  background: #f5f5f5;
+<style>
+/* Apenas estilos específicos que não podem ser expressos por classes utilitárias */
+.v-list-item:not(.v-list-item--disabled):hover {
+  background-color: rgba(109, 76, 65, 0.8) !important;
 }
-.app-bar {
-  color: #5d4037;
-  font-family: 'Poppins', sans-serif;
-  display: flex;
-  align-items: center;
-  min-height: 64px;
+
+.v-list-item:focus-visible {
+  box-shadow: 0 0 0 2px #ffc107 !important;
+  background-color: rgba(109, 76, 65, 0.8) !important;
 }
-.app-logo {
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(93, 64, 55, 0.08);
-}
-.app-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: #5d4037;
-  font-family: 'Poppins', sans-serif;
-  user-select: none;
-}
-.drawer {
-  background: #5d4037 !important;
-  border: none;
-  padding-top: 16px;
-}
-.drawer-item {
-  margin-bottom: 8px;
-  border-radius: 12px;
-  transition: background 0.2s;
-  outline: none;
-}
-.drawer-item:focus-visible {
-  box-shadow: 0 0 0 2px #ffc107;
-  background: #6d4c41;
-}
-.drawer-title {
-  font-size: 1.1rem;
-  color: #fff;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 500;
-  margin-left: 12px;
-}
-.v-list-item--disabled .drawer-title {
-  opacity: 0.5;
-}
+
+.v-list-item--disabled .v-list-item-title,
 .v-list-item--disabled .v-icon {
-  opacity: 0.5;
-}
-.v-list-item:not(.v-list-item--disabled):hover,
-.drawer-item:not(.v-list-item--disabled):hover {
-  background: #6d4c41;
-  cursor: pointer;
-}
-.footer {
-  color: #ffc107;
-  font-family: 'Poppins', sans-serif;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 56px;
-  border-top: 1px solid #ffc10722;
-}
-.footer-text {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #ffc107;
-  letter-spacing: 0.2px;
-}
-@media (max-width: 600px) {
-  .app-title {
-    font-size: 1.1rem;
-  }
-  .drawer-title {
-    font-size: 1rem;
-  }
+  opacity: 0.5 !important;
 }
 </style>
