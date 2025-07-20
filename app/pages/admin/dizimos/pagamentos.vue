@@ -37,7 +37,12 @@ const pagamentosFiltrados = computed(() => {
   // Filtro por ano
   if (filtroAno.value) {
     filtered = filtered.filter((pagamento: any) => {
-      const ano = new Date(pagamento.data_pagamento).getFullYear().toString()
+      if (!pagamento.data_pagamento)
+        return false
+      const dataValida = new Date(pagamento.data_pagamento)
+      if (Number.isNaN(dataValida.getTime()))
+        return false
+      const ano = dataValida.getFullYear().toString()
       return ano === filtroAno.value
     })
   }
@@ -45,7 +50,12 @@ const pagamentosFiltrados = computed(() => {
   // Filtro por mês
   if (filtroMes.value) {
     filtered = filtered.filter((pagamento: any) => {
-      const mes = (new Date(pagamento.data_pagamento).getMonth() + 1).toString().padStart(2, '0')
+      if (!pagamento.data_pagamento)
+        return false
+      const dataValida = new Date(pagamento.data_pagamento)
+      if (Number.isNaN(dataValida.getTime()))
+        return false
+      const mes = (dataValida.getMonth() + 1).toString().padStart(2, '0')
       return mes === filtroMes.value
     })
   }
@@ -81,8 +91,12 @@ const meses = [
 const anos = computed(() => {
   const anosDisponiveis = new Set<string>()
   pagamentos.value.forEach((pagamento: any) => {
-    const ano = new Date(pagamento.data_pagamento).getFullYear().toString()
-    anosDisponiveis.add(ano)
+    if (pagamento.data_pagamento) {
+      const ano = new Date(pagamento.data_pagamento).getFullYear().toString()
+      if (!Number.isNaN(Number(ano))) {
+        anosDisponiveis.add(ano)
+      }
+    }
   })
   return Array.from(anosDisponiveis).sort().reverse().map(ano => ({
     value: ano,
@@ -94,7 +108,8 @@ const anos = computed(() => {
 const estatisticas = computed(() => {
   const totalPagamentos = pagamentosFiltrados.value.length
   const valorTotal = pagamentosFiltrados.value.reduce((sum: number, pagamento: any) => {
-    return sum + (pagamento.valor_pago || 0)
+    const valor = Number(pagamento.valor_pago) || 0
+    return sum + valor
   }, 0)
 
   return {
@@ -112,11 +127,12 @@ function formatarData(data: string) {
 }
 
 // Função para formatar valor
-function formatarValor(valor: number) {
+function formatarValor(valor: number | string | undefined) {
+  const numeroValor = Number(valor) || 0
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(valor)
+  }).format(numeroValor)
 }
 
 // Função para cor do chip do meio de pagamento
@@ -334,7 +350,7 @@ function voltar() {
             variant="tonal"
             size="small"
           >
-            {{ formatarValor(item.valor_pago || 0) }}
+            {{ formatarValor(item.valor_pago) }}
           </v-chip>
         </template>
 

@@ -44,8 +44,12 @@ const meses = [
 const anos = computed(() => {
   const anosDisponiveis = new Set<string>()
   pagamentos.value.forEach((pagamento: any) => {
-    const ano = new Date(pagamento.data_pagamento).getFullYear().toString()
-    anosDisponiveis.add(ano)
+    if (pagamento.data_pagamento) {
+      const ano = new Date(pagamento.data_pagamento).getFullYear().toString()
+      if (!Number.isNaN(Number(ano))) {
+        anosDisponiveis.add(ano)
+      }
+    }
   })
 
   // Adiciona o ano atual se não existir
@@ -64,7 +68,12 @@ const estatisticasPeriodo = computed(() => {
   // Filtro por ano
   if (anoSelecionado.value) {
     pagamentosFiltrados = pagamentosFiltrados.filter((pagamento: any) => {
-      const ano = new Date(pagamento.data_pagamento).getFullYear().toString()
+      if (!pagamento.data_pagamento)
+        return false
+      const dataValida = new Date(pagamento.data_pagamento)
+      if (Number.isNaN(dataValida.getTime()))
+        return false
+      const ano = dataValida.getFullYear().toString()
       return ano === anoSelecionado.value
     })
   }
@@ -72,14 +81,20 @@ const estatisticasPeriodo = computed(() => {
   // Filtro por mês
   if (mesSelecionado.value) {
     pagamentosFiltrados = pagamentosFiltrados.filter((pagamento: any) => {
-      const mes = (new Date(pagamento.data_pagamento).getMonth() + 1).toString().padStart(2, '0')
+      if (!pagamento.data_pagamento)
+        return false
+      const dataValida = new Date(pagamento.data_pagamento)
+      if (Number.isNaN(dataValida.getTime()))
+        return false
+      const mes = (dataValida.getMonth() + 1).toString().padStart(2, '0')
       return mes === mesSelecionado.value
     })
   }
 
   const totalPagamentos = pagamentosFiltrados.length
   const valorTotal = pagamentosFiltrados.reduce((sum: number, pagamento: any) => {
-    return sum + (pagamento.valor_pago || 0)
+    const valor = Number(pagamento.valor_pago) || 0
+    return sum + valor
   }, 0)
 
   // Estatísticas por meio de pagamento
@@ -89,7 +104,8 @@ const estatisticasPeriodo = computed(() => {
       acc[meio] = { quantidade: 0, valor: 0 }
     }
     acc[meio].quantidade++
-    acc[meio].valor += pagamento.valor_pago || 0
+    const valor = Number(pagamento.valor_pago) || 0
+    acc[meio].valor += valor
     return acc
   }, {})
 
@@ -108,7 +124,8 @@ const estatisticasPeriodo = computed(() => {
 const estatisticasDizimistas = computed(() => {
   const totalDizimistas = dizimistas.value.length
   const valorMensalTotal = dizimistas.value.reduce((sum: number, dizimista: any) => {
-    return sum + (dizimista.valor_mensal || 0)
+    const valor = Number(dizimista.valor_mensal) || 0
+    return sum + valor
   }, 0)
 
   const valorMensalTotalFormatado = new Intl.NumberFormat('pt-BR', {
@@ -124,11 +141,12 @@ const estatisticasDizimistas = computed(() => {
 })
 
 // Função para formatar valor
-function formatarValor(valor: number) {
+function formatarValor(valor: number | string | undefined) {
+  const numeroValor = Number(valor) || 0
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(valor)
+  }).format(numeroValor)
 }
 
 // Função para cor do chip do meio de pagamento
