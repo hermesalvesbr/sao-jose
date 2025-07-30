@@ -170,7 +170,7 @@ function openConfirmDialog() {
     nome: normalizeNomeFiel(fullName.value),
     telefone: phone.value.replace(/\D/g, ''),
     sexo: genderOptions.find(g => g.value === gender.value)?.title || '',
-    nascimento: birthDate.value,
+    nascimento: birthDate.value, // Já está no formato DD/MM/AAAA
   }
   confirmDialog.value = true
 }
@@ -263,7 +263,7 @@ useSeoMeta({
   ogType: 'website',
 })
 
-function formatDateBR(dateStr: string): string {
+function _formatDateBR(dateStr: string): string {
   if (!dateStr)
     return ''
   const d = new Date(dateStr)
@@ -396,7 +396,7 @@ function formatPhoneBR(phone: string): string {
           <div class="mb-1">
             <v-icon color="success" size="20">
               mdi-cake-variant
-            </v-icon> <b>Nascimento:</b> {{ formatDateBR(confirmData.nascimento) }}
+            </v-icon> <b>Nascimento:</b> {{ confirmData.nascimento }}
           </div>
         </div>
         <v-divider class="my-3" />
