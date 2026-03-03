@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Catolico } from '~/types/schema'
 import { readItems } from '@directus/sdk'
-import { DateTime } from 'luxon'
 import { computed, onMounted, ref } from 'vue'
 import { executeWithRetry } from '~/composables/useDirectusClient'
 
@@ -87,25 +86,25 @@ const aniversariantesDoMes = computed(() => {
     return aniversariantes.value.filter((a) => {
       return a.nome && a.nome.toLowerCase().includes(term)
     }).sort((a, b) => {
-      const da = DateTime.fromISO(a.nascimento as string)
-      const db = DateTime.fromISO(b.nascimento as string)
+      const [, ma, da] = (a.nascimento as string).split('-')
+      const [, mb, db] = (b.nascimento as string).split('-')
       // Ordena por mês e dia
-      if (da.month !== db.month)
-        return da.month - db.month
-      return da.day - db.day
+      if (ma !== mb)
+        return Number.parseInt(ma as string, 10) - Number.parseInt(mb as string, 10)
+      return Number.parseInt(da as string, 10) - Number.parseInt(db as string, 10)
     })
   }
   // Filtro padrão: só do mês selecionado
   return aniversariantes.value.filter((a) => {
     if (!a.nascimento)
       return false
-    const d = DateTime.fromISO(a.nascimento as string)
-    const matchesMonth = d.month - 1 === currentMonth.value
+    const [, m] = (a.nascimento as string).split('-')
+    const matchesMonth = Number.parseInt(m as string, 10) - 1 === currentMonth.value
     return matchesMonth
   }).sort((a, b) => {
-    const da = DateTime.fromISO(a.nascimento as string).day
-    const db = DateTime.fromISO(b.nascimento as string).day
-    return da - db
+    const [, , da] = (a.nascimento as string).split('-')
+    const [, , db] = (b.nascimento as string).split('-')
+    return Number.parseInt(da as string, 10) - Number.parseInt(db as string, 10)
   })
 })
 
@@ -114,11 +113,13 @@ function getPrimeiroNome(nome: string) {
 }
 
 function getDiaNascimento(nascimento: string) {
-  return DateTime.fromISO(nascimento).toFormat('dd')
+  const [, , d] = nascimento.split('-')
+  return d
 }
 
 function getMesNascimento(nascimento: string) {
-  return DateTime.fromISO(nascimento).month - 1
+  const [, m] = nascimento.split('-')
+  return Number.parseInt(m as string, 10) - 1
 }
 
 function getSexoIcon(sexo: string) {

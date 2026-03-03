@@ -27,3 +27,7 @@ package-lock.json
 bun.lock
 pnpm-lock.yaml
 yarn.lock
+
+# Schema dumps and local test scripts
+schema_dump.json
+scripts/

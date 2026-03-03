@@ -14,13 +14,11 @@ Ajudar na gestão dos católicos que participam da comunidade, promovendo açõe
 ## ✅ Funcionalidades Atuais
 
 - 📋 Cadastro de fiéis com:
-
   - Nome completo
   - Telefone (WhatsApp)
   - Data de nascimento
 
 - 🎉 Lista de aniversariantes:
-
   - Do dia
   - Da semana
   - Do mês

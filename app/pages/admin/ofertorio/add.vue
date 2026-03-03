@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
-import { DateTime } from 'luxon'
 
 definePageMeta({
   layout: 'admin',
@@ -22,36 +21,60 @@ const modalCalculadora = ref(false)
 // Referência ao componente calculadora
 const calculadoraRef = ref<{ limparDadosArmazenados: () => void } | null>(null)
 
-// Computed para encontrar evento de hoje (usando a mesma lógica da página principal)
+// Funções auxiliares para datas
+function isSameDay(d1: Date, d2: Date) {
+  return d1.getFullYear() === d2.getFullYear()
+    && d1.getMonth() === d2.getMonth()
+    && d1.getDate() === d2.getDate()
+}
+
+function parseISOPath(isoStr: string) {
+  if (!isoStr)
+    return new Date()
+  if (isoStr.length >= 10) {
+    const [y, m, d] = isoStr.substring(0, 10).split('-')
+    return new Date(Number.parseInt(y as string, 10), Number.parseInt(m as string, 10) - 1, Number.parseInt(d as string, 10))
+  }
+  return new Date(isoStr)
+}
+
+// Computed para encontrar evento de hoje
 const eventoHoje = computed(() => {
   if (!eventos.value || eventos.value.length === 0)
     return null
 
-  const today = DateTime.now()
-  // Luxon: 1=segunda, 7=domingo (igual ao banco)
-  const weekday = today.weekday
+  const today = new Date()
+  // No JS: 0=domingo, 1=segunda. No array antigo era 1=segunda, 7=domingo
+  const jsWeekday = today.getDay()
 
   // Procura evento que acontece hoje
   const evento = eventos.value.find((ev: any) => {
     // Verifica se o evento já passou da data final (se tiver)
-    if (ev.data_limite && DateTime.fromISO(ev.data_limite) < today) {
-      return false
+    if (ev.data_limite) {
+      const limite = parseISOPath(ev.data_limite as string)
+      if (limite < today && !isSameDay(limite, today)) {
+        return false
+      }
     }
 
     // Evento único
     if (!ev.recorrente && ev.data_evento) {
-      return DateTime.fromISO(ev.data_evento).hasSame(today, 'day')
+      return isSameDay(parseISOPath(ev.data_evento), today)
     }
 
-    // Evento semanal comum
-    if (ev.recorrente && ev.dia === weekday) {
+    // Evento semanal comum (db tem 7 para domingo, no JS 0 é domingo)
+    const evDia = Number(ev.dia)
+    const jsEvDia = evDia === 7 ? 0 : evDia
+    if (ev.recorrente && jsEvDia === jsWeekday) {
       return true
     }
 
     // Evento especial: primeiro domingo
-    if (ev.tipo_especial === 'primeiro_domingo' && weekday === 7) {
-      const firstSunday = today.startOf('month').plus({ days: (7 - today.startOf('month').weekday) % 7 })
-      return today.hasSame(firstSunday, 'day')
+    if (ev.tipo_especial === 'primeiro_domingo' && jsWeekday === 0) {
+      const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      const offset = (7 - firstOfMonth.getDay()) % 7
+      const firstSunday = new Date(today.getFullYear(), today.getMonth(), 1 + offset)
+      return isSameDay(today, firstSunday)
     }
 
     return false

@@ -1,141 +1,254 @@
 <script setup lang="ts">
 /**
- * Layout Admin - Layout para páginas administrativas da aplicação
- *
- * Features:
- * - Header com título da página
- * - Botão voltar opcional (para páginas internas)
- * - Bottom navigation com acesso rápido às principais seções
- * - Avatar do usuário no header (com imagem do Directus quando disponível)
- *
- * Como usar:
- *
- * 1. Para a página principal (Resumo) - sem botão voltar:
- * definePageMeta({
- *   layout: 'admin',
- * })
- *
- * 2. Para páginas internas - com botão voltar:
- * definePageMeta({
- *   layout: 'admin',
- * })
+ * Layout Admin — Sidebar navigation profissional
+ * Usa v-theme-provider do Vuetify 4 para sidebar escura com contraste adequado.
  */
+import { useDisplay } from 'vuetify'
 
 const route = useRoute()
-const router = useRouter()
 const { getUserAvatarUrl, fetchCurrentUser, user, logout } = useAuth()
 const avatarUrl = computed(() => getUserAvatarUrl() ?? '')
 
-// Detecta se deve mostrar botão voltar baseado na rota
-const showBackButton = computed(() => {
-  return route.path !== '/admin/resumo' && route.path !== '/admin'
-})
+const drawer = ref(true)
+const rail = ref(false)
+const { mobile } = useDisplay()
 
-// Pega o título da página
+// Navigation items grouped
+const generalItems = [
+  { title: 'Resumo', icon: 'mdi-view-dashboard-outline', to: '/admin/resumo' },
+  { title: 'Ofertório', icon: 'mdi-cash-multiple', to: '/admin/ofertorio/' },
+  { title: 'Dízimos', icon: 'mdi-account-cash-outline', to: '/admin/dizimos' },
+]
+
+const pdvItems = [
+  { title: 'Dashboard', icon: 'mdi-monitor-dashboard', to: '/admin/pdv' },
+  { title: 'Terminal PDV', icon: 'mdi-point-of-sale', to: '/admin/pdv/terminal' },
+  { title: 'Produtos', icon: 'mdi-package-variant-closed', to: '/admin/pdv/produtos' },
+  { title: 'Categorias', icon: 'mdi-tag-multiple-outline', to: '/admin/pdv/categorias' },
+  { title: 'Pontos', icon: 'mdi-store-outline', to: '/admin/pdv/pontos' },
+  { title: 'Vendas', icon: 'mdi-receipt-text-outline', to: '/admin/pdv/vendas' },
+]
+
+// Page title from route
 const pageTitle = computed(() => {
-  const routeTitles: Record<string, string> = {
+  const titles: Record<string, string> = {
     '/admin/resumo': 'Resumo',
     '/admin': 'Resumo',
-    '/admin/ofertorio': 'Registro de Ofertório',
-    '/admin/ofertorio/add': 'Nova Oferta Financeira',
-    '/admin/dizimos': 'Gerenciar Dízimos',
+    '/admin/ofertorio': 'Ofertório',
+    '/admin/ofertorio/add': 'Nova Oferta',
+    '/admin/dizimos': 'Dízimos',
+    '/admin/pdv': 'Dashboard PDV',
+    '/admin/pdv/terminal': 'Terminal PDV',
+    '/admin/pdv/categorias': 'Categorias',
+    '/admin/pdv/produtos': 'Produtos',
+    '/admin/pdv/pontos': 'Pontos de Produção',
+    '/admin/pdv/vendas': 'Vendas',
   }
-
-  return routeTitles[route.path] || 'Painel Administrativo'
+  return titles[route.path] || 'Painel'
 })
 
-/**
- * Navega de volta para a página anterior ou para o resumo se não houver histórico
- */
-async function goBack() {
-  // Se há histórico anterior, volta uma página
-  if (window.history.length > 1) {
-    router.back()
+// Breadcrumb
+const breadcrumbs = computed(() => {
+  const segments = route.path.split('/').filter(Boolean)
+  const crumbs: { title: string, to?: string, disabled?: boolean }[] = []
+  let path = ''
+  const labels: Record<string, string> = {
+    admin: 'Admin',
+    resumo: 'Resumo',
+    ofertorio: 'Ofertório',
+    add: 'Novo',
+    dizimos: 'Dízimos',
+    pdv: 'PDV',
+    categorias: 'Categorias',
+    produtos: 'Produtos',
+    vendas: 'Vendas',
   }
-  else {
-    // Caso contrário, vai para a página de resumo
-    await navigateTo('/admin/resumo')
-  }
+  segments.forEach((seg, i) => {
+    path += `/${seg}`
+    crumbs.push({
+      title: labels[seg] || seg,
+      to: i < segments.length - 1 ? path : undefined,
+      disabled: i === segments.length - 1,
+    })
+  })
+  return crumbs
+})
+
+function isActive(to: string) {
+  return route.path === to || (to !== '/admin/pdv' && route.path.startsWith(to))
 }
 
 onMounted(() => {
   fetchCurrentUser()
+  if (mobile.value) {
+    drawer.value = false
+  }
 })
 </script>
 
 <template>
   <v-layout>
-    <!-- Header com título e botão voltar -->
-    <v-app-bar color="primary" :elevation="2">
-      <!-- Botão voltar (apenas se showBackButton for true) -->
-      <template v-if="showBackButton" #prepend>
-        <v-app-bar-nav-icon
-          icon="mdi-arrow-left"
-          color="secondary"
-          @click="goBack"
-        />
-      </template>
-      <!-- Título da página -->
-      <v-app-bar-title>{{ pageTitle }}</v-app-bar-title>
+    <!-- Sidebar Navigation — uses dedicated dark theme for proper contrast -->
+    <v-navigation-drawer
+      v-model="drawer"
+      :rail="rail && !mobile"
+      :temporary="mobile"
+      theme="sidebarTheme"
+      class="pdv-sidebar"
+      width="260"
+    >
+      <!-- Logo / Brand -->
+      <div class="d-flex align-center pa-4" style="min-height: 64px;">
+        <v-avatar size="36" color="primary" class="me-3">
+          <v-icon icon="mdi-store" size="20" />
+        </v-avatar>
+        <div v-if="!rail">
+          <div class="text-subtitle-1 font-weight-bold">
+            São José
+          </div>
+          <div class="text-caption" style="opacity: 0.6;">
+            Painel Admin
+          </div>
+        </div>
+      </div>
+
+      <v-divider class="mx-3 mb-2" />
+
+      <!-- General Section -->
+      <div v-if="!rail" class="px-4 pt-3 pb-1">
+        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
+          Geral
+        </div>
+      </div>
+      <v-list density="compact" nav class="px-2">
+        <v-list-item
+          v-for="item in generalItems"
+          :key="item.to"
+          :to="item.to"
+          :active="isActive(item.to)"
+          active-color="primary"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" />
+          </template>
+          <v-list-item-title class="text-body-2">
+            {{ item.title }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+
+      <v-divider class="mx-3 my-2" />
+
+      <!-- PDV Section -->
+      <div v-if="!rail" class="px-4 pt-2 pb-1">
+        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
+          Ponto de Venda
+        </div>
+      </div>
+      <v-list density="compact" nav class="px-2">
+        <v-list-item
+          v-for="item in pdvItems"
+          :key="item.to"
+          :to="item.to"
+          :active="isActive(item.to)"
+          active-color="primary"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" />
+          </template>
+          <v-list-item-title class="text-body-2">
+            {{ item.title }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
 
       <template #append>
-        <v-menu offset-y>
-          <template #activator="{ props }">
-            <v-avatar size="36" v-bind="props">
-              <v-img :src="avatarUrl" alt="Foto do usuário" />
-            </v-avatar>
-          </template>
-          <v-card min-width="220" class="pa-2">
-            <v-row align="center" no-gutters>
-              <v-col cols="auto">
-                <v-avatar size="48">
-                  <v-img :src="avatarUrl" alt="Foto do usuário" />
-                </v-avatar>
-              </v-col>
-              <v-col>
-                <div class="font-weight-medium text-body-1">
-                  {{ user?.first_name || 'Usuário' }}
-                </div>
-                <div class="text-caption text-grey">
-                  {{ user?.email || '' }}
-                </div>
-              </v-col>
-            </v-row>
-            <v-divider class="my-2" />
-            <v-list density="compact">
-              <v-list-item class="text-error" @click="logout">
-                <template #prepend>
-                  <v-icon color="error">
-                    mdi-logout
-                  </v-icon>
-                </template>
-                <v-list-item-title>Sair</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-card>
-        </v-menu>
+        <v-divider class="mx-3" />
+        <v-list density="compact" nav class="px-2 py-2">
+          <v-list-item
+            rounded="lg"
+            color="error"
+            @click="logout"
+          >
+            <template #prepend>
+              <v-icon icon="mdi-logout" />
+            </template>
+            <v-list-item-title class="text-body-2">
+              Sair
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
       </template>
+    </v-navigation-drawer>
+
+    <!-- App Bar -->
+    <v-app-bar flat color="surface" class="border-b">
+      <v-app-bar-nav-icon
+        variant="text"
+        color="on-surface"
+        @click.stop="mobile ? (drawer = !drawer) : (rail = !rail)"
+      />
+
+      <div class="d-flex flex-column justify-center">
+        <v-breadcrumbs :items="breadcrumbs" density="compact" class="pa-0 text-caption" />
+      </div>
+
+      <v-spacer />
+
+      <span class="text-body-2 text-medium-emphasis me-3 d-none d-sm-block">
+        {{ user?.first_name || 'Usuário' }}
+      </span>
+
+      <v-menu>
+        <template #activator="{ props }">
+          <v-avatar size="36" v-bind="props" class="cursor-pointer" style="border: 2px solid rgba(0,0,0,0.08);">
+            <v-img :src="avatarUrl" alt="Avatar" />
+          </v-avatar>
+        </template>
+        <v-card min-width="220" class="pa-2" rounded="lg">
+          <div class="d-flex align-center pa-2">
+            <v-avatar size="44" class="me-3">
+              <v-img :src="avatarUrl" alt="Avatar" />
+            </v-avatar>
+            <div>
+              <div class="font-weight-medium text-body-2">
+                {{ user?.first_name || 'Usuário' }}
+              </div>
+              <div class="text-caption text-medium-emphasis">
+                {{ user?.email || '' }}
+              </div>
+            </div>
+          </div>
+          <v-divider class="my-1" />
+          <v-list density="compact">
+            <v-list-item color="error" @click="logout">
+              <template #prepend>
+                <v-icon icon="mdi-logout" />
+              </template>
+              <v-list-item-title>Sair</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-menu>
     </v-app-bar>
 
-    <v-main>
+    <!-- Main Content -->
+    <v-main style="min-height: 100vh;">
       <slot />
     </v-main>
-
-    <v-bottom-navigation grow location="bottom" mode="shift">
-      <v-btn value="resumo" to="/admin/resumo">
-        <v-icon>mdi-home</v-icon>
-        <span>Resumo</span>
-      </v-btn>
-
-      <v-btn value="ofertorio" to="/admin/ofertorio/">
-        <v-icon>mdi-cash-multiple</v-icon>
-        <span>Ofertório</span>
-      </v-btn>
-
-      <v-btn value="dizimos" to="/admin/dizimos">
-        <v-icon>mdi-account-cash</v-icon>
-        <span>Dízimos</span>
-      </v-btn>
-    </v-bottom-navigation>
   </v-layout>
 </template>
+
+<style scoped>
+.pdv-sidebar :deep(.v-list-item--active) {
+  font-weight: 600 !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+</style>

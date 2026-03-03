@@ -30,7 +30,7 @@ Projeto baseado em Nuxt 3.17+ compatível com Nuxt 4, utilizando Vuetify 3.8.2 c
 
 ## 🔧 Estrutura Padrão
 
-```
+```text
 app/
 ├─ components/
 │   ├─ form/

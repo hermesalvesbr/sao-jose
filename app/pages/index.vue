@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Agenda } from '@/types/schema'
 import { readItems } from '@directus/sdk'
-import { DateTime } from 'luxon'
 import { executeWithRetry } from '@/composables/useDirectusClient'
 
 const period = ref<'hoje' | 'semana' | 'mes'>('hoje')
@@ -48,8 +47,7 @@ onMounted(fetchAgenda)
 // Watcher para abrir painel do dia atual ao mudar para 'semana'
 watch(period, (val) => {
   if (val === 'semana') {
-    // Luxon: domingo=7, nosso array começa em 0 (domingo)
-    const today = DateTime.now().weekday % 7 // domingo=0, segunda=1, ..., sábado=6
+    const today = new Date().getDay() // domingo=0, segunda=1, ..., sábado=6
     openedWeekPanel.value = [today]
   }
 })
@@ -58,18 +56,21 @@ watch(period, (val) => {
 const filteredEvents = computed(() => {
   if (period.value === 'hoje') {
     return events.value.filter((ev) => {
-      const today = DateTime.now()
-      // Luxon: 1=segunda, 7=domingo (igual ao banco)
-      const weekday = today.weekday
+      const todayDate = new Date()
+      // native: 0=domingo, 1=segunda. DB espera: 1=segunda, 7=domingo
+      let weekday = todayDate.getDay()
+      if (weekday === 0)
+        weekday = 7
 
       // Verifica se o evento já passou da data final (se tiver)
-      if (ev.data_limite && DateTime.fromISO(ev.data_limite) < today) {
+      if (ev.data_limite && new Date(`${ev.data_limite}T00:00:00`) < todayDate) {
         return false
       }
 
       // Evento único
       if (!ev.recorrente && ev.data_evento) {
-        return DateTime.fromISO(ev.data_evento).hasSame(today, 'day')
+        const evDate = new Date(`${ev.data_evento}T00:00:00`)
+        return evDate.getFullYear() === todayDate.getFullYear() && evDate.getMonth() === todayDate.getMonth() && evDate.getDate() === todayDate.getDate()
       }
 
       // Evento semanal comum
@@ -79,8 +80,9 @@ const filteredEvents = computed(() => {
 
       // Evento especial: primeiro domingo
       if (ev.tipo_especial === 'primeiro_domingo' && weekday === 7) {
-        const firstSunday = today.startOf('month').plus({ days: (7 - today.startOf('month').weekday) % 7 })
-        return today.hasSame(firstSunday, 'day')
+        const d = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
+        const firstSunday = d.getDay() === 0 ? 1 : 1 + (7 - d.getDay())
+        return todayDate.getDate() === firstSunday
       }
 
       return false
@@ -94,16 +96,20 @@ const filteredEvents = computed(() => {
 const weekEvents = computed(() => {
   // Array de 7 arrays, um para cada dia da semana
   const grouped: Agenda[][] = Array.from({ length: 7 }, () => [])
-  const startOfWeek = DateTime.now().startOf('week') // domingo
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = today.getDate() - today.getDay()
+  const startOfWeek = new Date(today.setDate(diff)) // domingo
 
   for (let i = 0; i < 7; i++) {
-    const dayDate = startOfWeek.plus({ days: i })
-    // Converte índice do array (0-6) para dia da semana (1-7)
+    const dayDate = new Date(startOfWeek)
+    dayDate.setDate(startOfWeek.getDate() + i)
+    // Converte índice do array (0-6) para dia da semana (1-7) onde 7 é domingo
     const weekday = i === 0 ? 7 : i
 
     grouped[i] = events.value.filter((ev) => {
       // Verifica se o evento já passou da data final (se tiver)
-      if (ev.data_limite && DateTime.fromISO(ev.data_limite) < dayDate) {
+      if (ev.data_limite && new Date(`${ev.data_limite}T00:00:00`) < dayDate) {
         return false
       }
 
@@ -111,13 +117,14 @@ const weekEvents = computed(() => {
         return ev.dia === weekday
       }
       else if (ev.data_evento) {
-        const eventDate = DateTime.fromISO(ev.data_evento as string)
-        return eventDate.hasSame(dayDate, 'day')
+        const eventDate = new Date(`${ev.data_evento}T00:00:00`)
+        return eventDate.getFullYear() === dayDate.getFullYear() && eventDate.getMonth() === dayDate.getMonth() && eventDate.getDate() === dayDate.getDate()
       }
       else if (ev.tipo_especial === 'primeiro_domingo' && weekday === 7) {
         // Verifica se é o primeiro domingo do mês
-        const firstSunday = dayDate.startOf('month').plus({ days: (7 - dayDate.startOf('month').weekday) % 7 })
-        return dayDate.hasSame(firstSunday, 'day')
+        const d = new Date(dayDate.getFullYear(), dayDate.getMonth(), 1)
+        const firstSunday = d.getDay() === 0 ? 1 : 1 + (7 - d.getDay())
+        return dayDate.getDate() === firstSunday
       }
       return false
     })
@@ -162,13 +169,16 @@ function getSubtitle(ev: Agenda) {
 function formatDate(date: any) {
   if (!date)
     return ''
-  return DateTime.fromISO(typeof date === 'string' ? date : String(date)).toFormat('dd/MM/yyyy')
+  const d = new Date(typeof date === 'string' && date.length <= 10 ? `${date}T12:00:00` : date)
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function formatTime(time: any) {
   if (!time)
     return ''
-  return DateTime.fromISO(typeof time === 'string' ? time : String(time)).toFormat('HH:mm')
+  // Assume time might be '14:30:00'
+  const t = typeof time === 'string' ? time : String(time)
+  return t.slice(0, 5)
 }
 </script>
 

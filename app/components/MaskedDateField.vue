@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { VMaskInput } from 'vuetify/labs/VMaskInput'
+
 /**
  * Campo de data com máscara DD/MM/AAAA
  * Abre teclado numérico em mobile
@@ -9,7 +11,7 @@ const _props = defineProps({
   label: String,
   rules: Array as () => readonly any[],
   mask: {
-    type: [String, Array],
+    type: [String, Object] as any,
     default: '##/##/####',
   },
   prependInnerIcon: String,
@@ -33,9 +35,9 @@ defineEmits(['update:modelValue', 'blur'])
 </script>
 
 <template>
-  <v-text-field
-    v-maska="mask"
+  <VMaskInput
     v-bind="$attrs"
+    :mask="mask"
     :label="label"
     :rules="rules"
     :model-value="modelValue"

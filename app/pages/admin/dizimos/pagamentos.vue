@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DateTime } from 'luxon'
+// Luxon removido
 
 definePageMeta({
   layout: 'admin',
@@ -123,7 +123,12 @@ const estatisticas = computed(() => {
 
 // Função para formatar data
 function formatarData(data: string) {
-  return DateTime.fromISO(data).toFormat('dd/MM/yyyy')
+  if (!data)
+    return ''
+  // Assume que data é algo como "YYYY-MM-DD" ou Data ISO completa
+  const dataCorte = data.substring(0, 10)
+  const [y, m, d] = dataCorte.split('-')
+  return `${d}/${m}/${y}`
 }
 
 // Função para formatar valor

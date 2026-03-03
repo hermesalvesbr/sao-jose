@@ -3,11 +3,8 @@ import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { Catolico } from '~/types/schema'
 import { useSeoMeta } from '#imports'
 import { createItem, readItems } from '@directus/sdk'
-import { DateTime } from 'luxon'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import MaskedDateField from '~/components/MaskedDateField.vue'
-import MaskedTextField from '~/components/MaskedTextField.vue'
 
 const phone = ref('')
 const phoneExists = ref<null | boolean>(null)
@@ -175,19 +172,14 @@ function openConfirmDialog() {
   confirmDialog.value = true
 }
 
-/**
- * Converte data BR (DD/MM/AAAA) para ISO (YYYY-MM-DD) de forma robusta
- * Usa Luxon para parsing seguro
- * @param dateStr string no formato DD/MM/AAAA
- * @returns string no formato YYYY-MM-DD ou undefined se inválido
- */
 function parseDateBRtoISO(dateStr: string): string | undefined {
   if (!dateStr)
     return undefined
-  const dt = DateTime.fromFormat(dateStr, 'dd/MM/yyyy')
-  if (!dt.isValid)
+  const pattern = /^(\d{2})\/(\d{2})\/(\d{4})$/
+  const match = dateStr.match(pattern)
+  if (!match)
     return undefined
-  return dt.toISODate() // YYYY-MM-DD
+  return `${match[3]}-${match[2]}-${match[1]}`
 }
 
 async function onConfirmSubmit() {
@@ -298,7 +290,7 @@ function formatPhoneBR(phone: string): string {
       <v-form ref="formRef" validate-on="input" @submit.prevent="onFormSubmit">
         <v-row no-gutters align="center">
           <v-col cols="9">
-            <MaskedTextField
+            <v-text-field
               v-model="phone"
               label="Telefone (WhatsApp)"
               :rules="phoneRules"
@@ -309,11 +301,11 @@ function formatPhoneBR(phone: string): string {
               :disabled="checkingPhone"
               :loading="checkingPhone"
               autocomplete="tel"
-              mask="(##) #####-####"
               placeholder="(87) 99200-5656"
               color="success"
-              custom-class="arrojado-phone"
+              class="arrojado-phone"
               @blur="checkPhone"
+              @input="phone = formatPhoneBR($event.target.value)"
               @keydown.enter.prevent="phoneExists !== false && checkPhone"
             />
           </v-col>
@@ -347,12 +339,19 @@ function formatPhoneBR(phone: string): string {
             prepend-inner-icon="mdi-gender-male-female"
             required
           />
-          <MaskedDateField
+          <v-text-field
             v-model="birthDate"
             label="Data de nascimento"
             :rules="birthRules"
             prepend-inner-icon="mdi-cake-variant"
+            type="date"
             required
+            @input="($event: any) => {
+              if ($event.target.value) {
+                const parts = $event.target.value.split('-')
+                if (parts.length === 3) birthDate = `${parts[2]}/${parts[1]}/${parts[0]}`
+              }
+            }"
           />
           <v-btn
             class="mt-4"

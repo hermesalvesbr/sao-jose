@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { Agenda } from '@/types/schema'
-import { DateTime } from 'luxon'
+import { computed, ref } from 'vue'
 
 const props = defineProps<{
   events: Agenda[]
 }>()
 
-// Estado para controlar o mês atual
-const currentMonth = ref(DateTime.now())
+// Estado para controlar o mês atual (usa o dia 1 do mês atual)
+const now = new Date()
+const currentMonth = ref(new Date(now.getFullYear(), now.getMonth(), 1))
 
 // Nomes dos meses em português
 const monthNames = [
@@ -28,66 +29,74 @@ const monthNames = [
 // Nomes dos dias da semana
 const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
+// Funções auxiliares para datas
+function isSameDay(d1: Date, d2: Date) {
+  return d1.getFullYear() === d2.getFullYear()
+    && d1.getMonth() === d2.getMonth()
+    && d1.getDate() === d2.getDate()
+}
+
+function parseISOPath(isoStr: string) {
+  if (!isoStr)
+    return new Date()
+  if (isoStr.length === 10) {
+    const [y, m, d] = isoStr.split('-')
+    return new Date(Number.parseInt(y as string, 10), Number.parseInt(m as string, 10) - 1, Number.parseInt(d as string, 10))
+  }
+  return new Date(isoStr)
+}
+
 // Gera o calendário do mês
 const calendar = computed(() => {
-  const firstDay = currentMonth.value.startOf('month')
-  const lastDay = currentMonth.value.endOf('month')
-  const daysInMonth = lastDay.daysInMonth
-  const firstWeekday = firstDay.weekday % 7 // 0 = domingo
+  const year = currentMonth.value.getFullYear()
+  const month = currentMonth.value.getMonth()
+
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const daysInMonth = lastDay.getDate()
+  const firstWeekday = firstDay.getDay() // 0 = domingo
+
+  const today = new Date()
 
   // Array para armazenar os dias do mês
   const days: Array<{
-    date: DateTime
+    date: Date
     events: Agenda[]
     isToday: boolean
     isCurrentMonth: boolean
   }> = []
 
   // Adiciona dias do mês anterior para completar a primeira semana
-  const prevMonth = currentMonth.value.minus({ months: 1 })
-  const daysInPrevMonth = prevMonth.daysInMonth
+  const prevMonthLastDay = new Date(year, month, 0).getDate()
   for (let i = firstWeekday - 1; i >= 0; i--) {
-    const date = DateTime.fromObject({
-      year: prevMonth.year,
-      month: prevMonth.month,
-      day: daysInPrevMonth - i,
-    })
+    const date = new Date(year, month - 1, prevMonthLastDay - i)
     days.push({
       date,
       events: [],
-      isToday: date.hasSame(DateTime.now(), 'day'),
+      isToday: isSameDay(date, today),
       isCurrentMonth: false,
     })
   }
 
   // Adiciona os dias do mês atual
   for (let day = 1; day <= daysInMonth; day++) {
-    const date = DateTime.fromObject({
-      year: currentMonth.value.year,
-      month: currentMonth.value.month,
-      day,
-    })
+    const date = new Date(year, month, day)
     days.push({
       date,
       events: [],
-      isToday: date.hasSame(DateTime.now(), 'day'),
+      isToday: isSameDay(date, today),
       isCurrentMonth: true,
     })
   }
 
   // Adiciona dias do próximo mês para completar a última semana
-  const nextMonth = currentMonth.value.plus({ months: 1 })
   const remainingDays = 42 - days.length // 6 semanas * 7 dias
   for (let day = 1; day <= remainingDays; day++) {
-    const date = DateTime.fromObject({
-      year: nextMonth.year,
-      month: nextMonth.month,
-      day,
-    })
+    const date = new Date(year, month + 1, day)
     days.push({
       date,
       events: [],
-      isToday: date.hasSame(DateTime.now(), 'day'),
+      isToday: isSameDay(date, today),
       isCurrentMonth: false,
     })
   }
@@ -96,24 +105,33 @@ const calendar = computed(() => {
   days.forEach((day) => {
     day.events = props.events.filter((ev) => {
       // Verifica se o evento já passou da data final (se tiver)
-      if (ev.data_limite && DateTime.fromISO(ev.data_limite) < day.date) {
-        return false
+      if (ev.data_limite) {
+        const limite = parseISOPath(ev.data_limite as string)
+        if (limite < day.date && !isSameDay(limite, day.date)) {
+          return false
+        }
       }
 
       // Evento único
       if (!ev.recorrente && ev.data_evento) {
-        return DateTime.fromISO(ev.data_evento).hasSame(day.date, 'day')
+        return isSameDay(parseISOPath(ev.data_evento as string), day.date)
       }
 
-      // Evento semanal comum
-      if (ev.recorrente && ev.dia === day.date.weekday) {
+      // Evento semanal comum (weekday: 0=domingo, 1=segunda, ... no JS date; na API do Luxon era 1=seg, 7=dom)
+      // Ajuste: se a API retornava 1 para segunda e 7 para domingo, o JS Date tem 0 para domingo e 1 para segunda
+      const evDia = Number(ev.dia)
+      const jsEvDia = evDia === 7 ? 0 : evDia
+      if (ev.recorrente && jsEvDia === day.date.getDay()) {
         return true
       }
 
       // Evento especial: primeiro domingo
-      if (ev.tipo_especial === 'primeiro_domingo' && day.date.weekday === 7) {
-        const firstSunday = day.date.startOf('month').plus({ days: (7 - day.date.startOf('month').weekday) % 7 })
-        return day.date.hasSame(firstSunday, 'day')
+      if (ev.tipo_especial === 'primeiro_domingo' && day.date.getDay() === 0) {
+        // Encontra o primeiro domingo do mês deste dia
+        const firstOfMonth = new Date(day.date.getFullYear(), day.date.getMonth(), 1)
+        const offset = (7 - firstOfMonth.getDay()) % 7
+        const firstSunday = new Date(day.date.getFullYear(), day.date.getMonth(), 1 + offset)
+        return isSameDay(day.date, firstSunday)
       }
 
       return false
@@ -125,20 +143,28 @@ const calendar = computed(() => {
 
 // Funções para navegar entre os meses
 function previousMonth() {
-  currentMonth.value = currentMonth.value.minus({ months: 1 })
+  currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() - 1, 1)
 }
 
 function nextMonth() {
-  currentMonth.value = currentMonth.value.plus({ months: 1 })
+  currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() + 1, 1)
 }
 
 function goToToday() {
-  currentMonth.value = DateTime.now()
+  const d = new Date()
+  currentMonth.value = new Date(d.getFullYear(), d.getMonth(), 1)
 }
 
 // Formata o horário do evento
 function formatTime(time: string) {
-  return DateTime.fromISO(time).toFormat('HH:mm')
+  if (!time)
+    return ''
+  // Assume time is something like "14:30:00" or ISO format
+  if (time.includes('T')) {
+    const d = new Date(time)
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
+  return time.substring(0, 5)
 }
 </script>
 
@@ -150,7 +176,7 @@ function formatTime(time: string) {
         <v-icon>mdi-chevron-left</v-icon>
       </v-btn>
       <div class="text-h6 font-weight-bold">
-        {{ monthNames[currentMonth.month - 1] }} {{ currentMonth.year }}
+        {{ monthNames[currentMonth.getMonth()] }} {{ currentMonth.getFullYear() }}
       </div>
       <v-btn icon @click="nextMonth">
         <v-icon>mdi-chevron-right</v-icon>
@@ -190,7 +216,7 @@ function formatTime(time: string) {
       >
         <!-- Número do dia -->
         <div class="day-number" :class="{ today: day.isToday }">
-          {{ day.date.day }}
+          {{ day.date.getDate() }}
         </div>
 
         <!-- Lista de eventos -->

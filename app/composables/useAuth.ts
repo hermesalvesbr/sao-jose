@@ -73,12 +73,10 @@ class AuthService {
   }
 
   /**
-   * Realiza login com email e senha
-   * @param credentials Credenciais de login
-   */
-  /**
    * Realiza login com email e senha usando o authentication('json')
    * @param credentials Credenciais de login
+   * @param credentials.email O e-mail do usuário
+   * @param credentials.password A senha do usuário
    */
   public async entrar(credentials: { email: string, password: string }) {
     this.loading.value = true

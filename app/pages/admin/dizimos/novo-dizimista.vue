@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DateTime } from 'luxon'
+// Luxon removido
 
 definePageMeta({
   layout: 'admin',
@@ -37,11 +37,18 @@ const isFormValid = computed(() => {
 
 // Lista de católicos formatada para o select
 const catolicosOptions = computed(() => {
-  return catolicos.value.map((catolico: any) => ({
-    value: catolico.id,
-    title: catolico.nome,
-    subtitle: `Tel: ${catolico.telefone || 'Não informado'} • ${DateTime.fromISO(catolico.nascimento).toFormat('dd/MM/yyyy')}`,
-  }))
+  return catolicos.value.map((catolico: any) => {
+    let dataFormatada = 'N/A'
+    if (catolico.nascimento) {
+      const [y, m, d] = catolico.nascimento.substring(0, 10).split('-')
+      dataFormatada = `${d}/${m}/${y}`
+    }
+    return {
+      value: catolico.id,
+      title: catolico.nome,
+      subtitle: `Tel: ${catolico.telefone || 'Não informado'} • ${dataFormatada}`,
+    }
+  })
 })
 
 // Função para submeter o formulário

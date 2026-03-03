@@ -1,0 +1,271 @@
+import type {
+  PdvCategory,
+  PdvProduct,
+  PdvSale,
+  PdvSaleItem,
+} from '~/types/schema'
+import { createItem, deleteItem, readItems, updateItem, uploadFiles } from '@directus/sdk'
+
+export function usePdv() {
+  const { getAuthClient } = useAuth()
+  const loading = ref(false)
+
+  // CATEGORIES
+  const fetchCategories = async (query = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_categories', query))
+    }
+    catch (e) {
+      console.error('Error fetching categories:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createCategory = async (data: Partial<PdvCategory>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_categories', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateCategory = async (id: string, data: Partial<PdvCategory>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_categories', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const deleteCategory = async (id: string) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(deleteItem('pdv_categories', id))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // PRODUCTS
+  const fetchProducts = async (query = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_products', query))
+    }
+    catch (e) {
+      console.error('Error fetching products:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createProduct = async (data: Partial<PdvProduct>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_products', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateProduct = async (id: string, data: Partial<PdvProduct>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_products', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const deleteProduct = async (id: string) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(deleteItem('pdv_products', id))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // STOCK MOVEMENTS REMOVED
+
+  // SALES
+  const fetchSales = async (query = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_sales', query))
+    }
+    catch (e) {
+      console.error('Error fetching sales:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createSale = async (data: Partial<PdvSale>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_sales', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateSale = async (id: string, data: Partial<PdvSale>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_sales', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // SALE ITEMS
+  const fetchSaleItems = async (query = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_sale_items', query))
+    }
+    catch (e) {
+      console.error('Error fetching sale items:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createSaleItem = async (data: Partial<PdvSaleItem>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_sale_items', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // PRODUCTION POINTS
+  const fetchProductionPoints = async (query = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_production_points', query))
+    }
+    catch (e) {
+      console.error('Error fetching production points:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createProductionPoint = async (data: Record<string, any>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_production_points', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateProductionPoint = async (id: string, data: Record<string, any>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_production_points', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const deleteProductionPoint = async (id: string) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(deleteItem('pdv_production_points', id))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // FILE UPLOAD
+  const uploadFile = async (file: File): Promise<string | null> => {
+    try {
+      const client = await getAuthClient()
+      const formData = new FormData()
+      formData.append('file', file)
+      const result = await client.request(uploadFiles(formData))
+      return (result as any)?.id || null
+    }
+    catch (e) {
+      console.error('Error uploading file:', e)
+      throw e
+    }
+  }
+
+  // Asset URL helper
+  const getAssetUrl = async (fileId: string | null | undefined): Promise<string | null> => {
+    if (!fileId) return null
+    const { url } = await $fetch<{ url: string }>('/api/directus')
+    return `${url.replace(/\/$/, '')}/assets/${fileId}`
+  }
+
+  return {
+    loading,
+    fetchCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    fetchProducts,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    fetchSales,
+    createSale,
+    updateSale,
+    fetchSaleItems,
+    createSaleItem,
+    fetchProductionPoints,
+    createProductionPoint,
+    updateProductionPoint,
+    deleteProductionPoint,
+    uploadFile,
+    getAssetUrl,
+  }
+}

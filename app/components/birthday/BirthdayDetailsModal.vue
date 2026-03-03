@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Catolico } from '~/types/schema'
-import { DateTime } from 'luxon'
 
 interface Props {
   modelValue: boolean
@@ -33,8 +32,8 @@ function formatDate(date: string | undefined) {
     'Novembro',
     'Dezembro',
   ]
-  const dt = DateTime.fromISO(date)
-  return `${dt.day} de ${meses[dt.month - 1]}`
+  const [, m, d] = date.split('-')
+  return `${Number.parseInt(d as string, 10)} de ${meses[Number.parseInt(m as string, 10) - 1]}`
 }
 
 function getSexoIcon(sexo: string | undefined) {
@@ -49,15 +48,17 @@ function getDiasParaAniversario(nascimento: string | undefined) {
   if (!nascimento)
     return 'Data não informada'
 
-  const hoje = DateTime.now()
-  const dataNascimento = DateTime.fromISO(nascimento)
-  const proximoAniversario = DateTime.fromObject({
-    year: hoje.year,
-    month: dataNascimento.month,
-    day: dataNascimento.day,
-  })
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
 
-  const diasRestantes = Math.floor(proximoAniversario.diff(hoje, 'days').days)
+  const [, m, d] = nascimento.split('-')
+  const mesNascimento = Number.parseInt(m as string, 10) - 1
+  const diaNascimento = Number.parseInt(d as string, 10)
+
+  const proximoAniversario = new Date(hoje.getFullYear(), mesNascimento, diaNascimento)
+
+  const diffTime = proximoAniversario.valueOf() - hoje.valueOf()
+  const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
   // Se o aniversário já passou este ano, calcula para o próximo ano
   if (diasRestantes < 0) {

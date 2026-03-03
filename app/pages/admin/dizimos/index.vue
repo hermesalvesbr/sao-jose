@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DateTime } from 'luxon'
+// Luxon removido
 
 definePageMeta({
   layout: 'admin',
@@ -40,14 +40,21 @@ const estatisticasFormatadas = computed(() => {
 
 // Últimos pagamentos para exibir no dashboard
 const ultimosPagamentos = computed(() => {
-  return pagamentos.value.slice(0, 5).map((pagamento: any) => ({
-    ...pagamento,
-    dataFormatada: DateTime.fromISO(pagamento.data_pagamento).toFormat('dd/MM/yyyy'),
-    valorFormatado: new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(pagamento.valor_pago),
-  }))
+  return pagamentos.value.slice(0, 5).map((pagamento: any) => {
+    let dataFormatada = 'N/A'
+    if (pagamento.data_pagamento) {
+      const [y, m, d] = pagamento.data_pagamento.substring(0, 10).split('-')
+      dataFormatada = `${d}/${m}/${y}`
+    }
+    return {
+      ...pagamento,
+      dataFormatada,
+      valorFormatado: new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }).format(pagamento.valor_pago),
+    }
+  })
 })
 </script>
 

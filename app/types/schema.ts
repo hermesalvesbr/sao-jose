@@ -1,4 +1,4 @@
-/** * Generated TypeScript types for Directus Schema * Generated on: 2025-07-06T13:29:40.391Z */
+/** * Generated TypeScript types for Directus Schema */
 export interface Agenda {
   id: string;
   status: string;
@@ -88,6 +88,94 @@ export interface PagamentoDizimo {
   data_pagamento: 'datetime';
 }
 
+export interface PdvCategory {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  sort_order: number;
+  active: boolean;
+  name: string;
+  icon: string;
+}
+
+export interface PdvOperator {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  name: string;
+  active: boolean;
+}
+
+export interface PdvProductionPoint {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  name: string;
+  active: boolean;
+}
+
+export interface PdvProduct {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  name: string;
+  active: boolean;
+  stock_quantity: number;
+  price: number;
+  sort_order: number;
+  production_point_id: string;
+  category_id: string;
+  imagem: string | DirectusFile;
+}
+
+export interface PdvSaleItem {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  sale_id: string;
+  product_id: string;
+  quantity: number;
+  total_price: number;
+  unit_price: number;
+}
+
+export interface PdvSale {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  sale_number: number;
+  total_amount: number;
+  payment_method: string;
+  operator_id: string;
+  sale_status: string;
+  printed: boolean;
+  created_at: 'datetime';
+}
+
 export interface DirectusUser {
   id: string;
   instituicao: number | Instituicao;
@@ -98,7 +186,7 @@ export interface DirectusUser {
   location: string;
   title: string;
   description: string;
-  tags: string;
+  tags: string[];
   avatar: string;
   language: string;
   tfa_secret: boolean;
@@ -126,10 +214,10 @@ export interface DirectusFile {
   filename_download: string;
   title: string;
   type: string;
-  folder: string;
-  uploaded_by: string;
+  folder: string | DirectusFolder;
+  uploaded_by: string | DirectusUser;
   uploaded_on: string;
-  modified_by: string;
+  modified_by: string | DirectusUser;
   modified_on: string;
   charset: string;
   filesize: number;
@@ -139,7 +227,7 @@ export interface DirectusFile {
   embed: string;
   description: string;
   location: string;
-  tags: string;
+  tags: string[];
   metadata: string;
   created_on: string;
   focal_point_x: string;
@@ -151,7 +239,7 @@ export interface DirectusFile {
 export interface DirectusFolder {
   id: string;
   name: string;
-  parent: string;
+  parent: string | DirectusFolder;
 }
 
 export interface DirectusRole {
@@ -163,7 +251,7 @@ export interface DirectusRole {
   app_access: boolean;
   children: string;
   users: string;
-  parent: string;
+  parent: string | DirectusRole;
   policies: string;
 }
 
@@ -174,6 +262,13 @@ export interface ApiCollections {
   instituicao: Instituicao[];
   oferta_financeira: OfertaFinanceira[];
   pagamento_dizimo: PagamentoDizimo[];
+  pdv_categories: PdvCategory[];
+  pdv_operators: PdvOperator[];
+  pdv_production_points: PdvProductionPoint[];
+  pdv_products: PdvProduct[];
+  pdv_sale_items: PdvSaleItem[];
+  pdv_sales: PdvSale[];
   directus_users: DirectusUser[];
+  directus_files: DirectusFile[];
 }
 
