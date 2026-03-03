@@ -29,8 +29,13 @@ const pdvItems = [
   { title: 'Vendas', icon: 'mdi-receipt-text-outline', to: '/admin/pdv/vendas' },
 ]
 
-// Page title from route
-const pageTitle = computed(() => {
+const financeiroItems = [
+  { title: 'Relatório Diário', icon: 'mdi-file-chart-outline', to: '/admin/pdv/relatorio' },
+  { title: 'Despesas', icon: 'mdi-cash-minus', to: '/admin/pdv/despesas' },
+]
+
+// Page title from route (reserved for future use in app-bar)
+const _pageTitle = computed(() => {
   const titles: Record<string, string> = {
     '/admin/resumo': 'Resumo',
     '/admin': 'Resumo',
@@ -43,6 +48,8 @@ const pageTitle = computed(() => {
     '/admin/pdv/produtos': 'Produtos',
     '/admin/pdv/pontos': 'Pontos de Produção',
     '/admin/pdv/vendas': 'Vendas',
+    '/admin/pdv/relatorio': 'Relatório Financeiro Diário',
+    '/admin/pdv/despesas': 'Despesas',
   }
   return titles[route.path] || 'Painel'
 })
@@ -62,6 +69,8 @@ const breadcrumbs = computed(() => {
     categorias: 'Categorias',
     produtos: 'Produtos',
     vendas: 'Vendas',
+    relatorio: 'Relatório',
+    despesas: 'Despesas',
   }
   segments.forEach((seg, i) => {
     path += `/${seg}`
@@ -150,6 +159,33 @@ onMounted(() => {
       <v-list density="compact" nav class="px-2">
         <v-list-item
           v-for="item in pdvItems"
+          :key="item.to"
+          :to="item.to"
+          :active="isActive(item.to)"
+          active-color="primary"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" />
+          </template>
+          <v-list-item-title class="text-body-2">
+            {{ item.title }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+
+      <v-divider class="mx-3 my-2" />
+
+      <!-- Financeiro Section -->
+      <div v-if="!rail" class="px-4 pt-2 pb-1">
+        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
+          Financeiro
+        </div>
+      </div>
+      <v-list density="compact" nav class="px-2">
+        <v-list-item
+          v-for="item in financeiroItems"
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"

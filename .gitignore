@@ -31,3 +31,4 @@ yarn.lock
 # Schema dumps and local test scripts
 schema_dump.json
 scripts/
+.vscode/mcp.json

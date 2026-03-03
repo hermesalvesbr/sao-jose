@@ -99,7 +99,8 @@ function openEdit(item: any) {
 }
 
 async function save() {
-  if (!editedItem.value.name.trim()) return
+  if (!editedItem.value.name.trim())
+    return
   try {
     if (editedId.value) {
       await updateProductionPoint(editedId.value, { ...editedItem.value })
@@ -121,7 +122,8 @@ function confirmDelete(id: string) {
 }
 
 async function performDelete() {
-  if (!itemToDelete.value) return
+  if (!itemToDelete.value)
+    return
   try {
     await deleteProductionPoint(itemToDelete.value)
     deleteDialog.value = false

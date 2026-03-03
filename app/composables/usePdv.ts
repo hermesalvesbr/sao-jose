@@ -1,5 +1,6 @@
 import type {
   PdvCategory,
+  PdvExpense,
   PdvProduct,
   PdvSale,
   PdvSaleItem,
@@ -224,6 +225,71 @@ export function usePdv() {
     }
   }
 
+  // OPERATORS
+  const fetchOperators = async (query: Record<string, unknown> = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_operators', query as any))
+    }
+    catch (e) {
+      console.error('Error fetching operators:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // EXPENSES
+  const fetchExpenses = async (query: Record<string, unknown> = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_expenses', query as any))
+    }
+    catch (e) {
+      console.error('Error fetching expenses:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createExpense = async (data: Partial<PdvExpense>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_expenses', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateExpense = async (id: string, data: Partial<PdvExpense>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_expenses', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const deleteExpense = async (id: string) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(deleteItem('pdv_expenses', id))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
   // FILE UPLOAD
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
@@ -241,7 +307,8 @@ export function usePdv() {
 
   // Asset URL helper
   const getAssetUrl = async (fileId: string | null | undefined): Promise<string | null> => {
-    if (!fileId) return null
+    if (!fileId)
+      return null
     const { url } = await $fetch<{ url: string }>('/api/directus')
     return `${url.replace(/\/$/, '')}/assets/${fileId}`
   }
@@ -265,6 +332,11 @@ export function usePdv() {
     createProductionPoint,
     updateProductionPoint,
     deleteProductionPoint,
+    fetchOperators,
+    fetchExpenses,
+    createExpense,
+    updateExpense,
+    deleteExpense,
     uploadFile,
     getAssetUrl,
   }

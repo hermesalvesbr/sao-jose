@@ -286,7 +286,9 @@ function getCategoryColor(index: number) {
 
 <style scoped>
 .category-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .category-card:hover {

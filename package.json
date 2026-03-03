@@ -6,11 +6,14 @@
     "node": ">=18.18.0"
   },
   "scripts": {
-    "build": "nuxt build",
+    "build": "bun run lint && bun run typecheck && nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "nuxt typecheck",
     "gen:types": "bun run scripts/genTypes.ts"
   },
   "dependencies": {

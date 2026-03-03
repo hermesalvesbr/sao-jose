@@ -551,7 +551,9 @@ function goBack() {
 <style scoped>
 .pos-product-card {
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
   border-color: rgb(var(--v-theme-surface-variant)) !important;
 }
 

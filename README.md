@@ -4,13 +4,13 @@ Sistema completo de gestão paroquial e ponto de venda para o Novenário de São
 
 ## 🛠️ Tecnologias
 
-| Camada | Tecnologia |
-|--------|-----------|
-| **Back-end / CMS** | Directus 11 (headless) |
-| **Front-end** | Nuxt 4 + Vuetify 4 + TypeScript |
-| **Package Manager** | Bun |
-| **SDK** | `@directus/sdk` |
-| **Ícones** | `@mdi/font` (Material Design Icons) |
+| Camada              | Tecnologia                          |
+| ------------------- | ----------------------------------- |
+| **Back-end / CMS**  | Directus 11 (headless)              |
+| **Front-end**       | Nuxt 4 + Vuetify 4 + TypeScript     |
+| **Package Manager** | Bun                                 |
+| **SDK**             | `@directus/sdk`                     |
+| **Ícones**          | `@mdi/font` (Material Design Icons) |
 
 ## 🚀 Começando
 
@@ -57,12 +57,12 @@ Sistema completo de vendas para o Novenário de São José, separando os pontos 
 
 O sistema separa os produtos por **ponto de produção**, permitindo que cada equipe gerencie suas vendas de forma independente:
 
-| Ponto | Descrição | Exemplos |
-|-------|-----------|----------|
-| 🍔 **Cozinha** | Alimentação quente | Pastéis, cachorro-quente, espetinhos |
-| 🧁 **Confeitaria** | Doces e sobremesas | Bolos, brigadeiros, cocadas |
-| 🍺 **Bar / Bebidas** | Bebidas em geral | Refrigerantes, sucos, água |
-| 🛍️ **Lojinha** | Artigos religiosos e souvenirs | Camisetas, chaveiros, santos |
+| Ponto                | Descrição                      | Exemplos                             |
+| -------------------- | ------------------------------ | ------------------------------------ |
+| 🍔 **Cozinha**       | Alimentação quente             | Pastéis, cachorro-quente, espetinhos |
+| 🧁 **Confeitaria**   | Doces e sobremesas             | Bolos, brigadeiros, cocadas          |
+| 🍺 **Bar / Bebidas** | Bebidas em geral               | Refrigerantes, sucos, água           |
+| 🛍️ **Lojinha**       | Artigos religiosos e souvenirs | Camisetas, chaveiros, santos         |
 
 > **Padrão:** Ao cadastrar um novo produto, o ponto de produção **Lojinha** vem pré-selecionado.
 
@@ -70,7 +70,7 @@ O sistema separa os produtos por **ponto de produção**, permitindo que cada eq
 
 O sistema opera com um modelo simplificado para eventos paroquiais:
 
-```
+```text
 ╔══════════════════════════════════════════════════════════╗
 ║                    FLUXO DE VENDA                        ║
 ╠══════════════════════════════════════════════════════════╣
@@ -90,14 +90,14 @@ O sistema opera com um modelo simplificado para eventos paroquiais:
 
 ### 🖥️ Telas do PDV
 
-| Rota | Descrição |
-|------|-----------|
-| `/admin/pdv` | **Dashboard** — KPIs: total de produtos, estoque baixo, vendas e receita do mês |
-| `/admin/pdv/terminal` | **Terminal PDV** — Tela fullscreen de venda com grid de produtos e carrinho |
-| `/admin/pdv/produtos` | **Produtos** — CRUD completo com imagem, categoria, ponto de produção e estoque |
-| `/admin/pdv/categorias` | **Categorias** — Organização dos produtos por tipo |
-| `/admin/pdv/pontos` | **Pontos de Produção** — Barracas de Comida, Lojinha, etc. |
-| `/admin/pdv/vendas` | **Vendas** — Histórico de vendas com status e forma de pagamento |
+| Rota                    | Descrição                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `/admin/pdv`            | **Dashboard** — KPIs: total de produtos, estoque baixo, vendas e receita do mês |
+| `/admin/pdv/terminal`   | **Terminal PDV** — Tela fullscreen de venda com grid de produtos e carrinho     |
+| `/admin/pdv/produtos`   | **Produtos** — CRUD completo com imagem, categoria, ponto de produção e estoque |
+| `/admin/pdv/categorias` | **Categorias** — Organização dos produtos por tipo                              |
+| `/admin/pdv/pontos`     | **Pontos de Produção** — Barracas de Comida, Lojinha, etc.                      |
+| `/admin/pdv/vendas`     | **Vendas** — Histórico de vendas com status e forma de pagamento                |
 
 ### 🎯 Terminal PDV (Fullscreen)
 
@@ -122,14 +122,14 @@ A tela principal de venda é otimizada para operação rápida:
 
 ### 📊 Collections do Directus (prefixo `pdv_`)
 
-| Collection | Descrição |
-|------------|-----------|
-| `pdv_categories` | Categorias de produtos (nome, ícone, ativo, ordem) |
-| `pdv_products` | Catálogo de produtos (nome, preço, estoque, categoria, ponto, imagem) |
-| `pdv_production_points` | Pontos de produção / barracas (nome, ativo) |
-| `pdv_sales` | Vendas realizadas (total, forma de pagamento, status, operador) |
-| `pdv_sale_items` | Itens da venda (produto, quantidade, preço unitário, subtotal) |
-| `pdv_operators` | Operadores do PDV |
+| Collection              | Descrição                                                             |
+| ----------------------- | --------------------------------------------------------------------- |
+| `pdv_categories`        | Categorias de produtos (nome, ícone, ativo, ordem)                    |
+| `pdv_products`          | Catálogo de produtos (nome, preço, estoque, categoria, ponto, imagem) |
+| `pdv_production_points` | Pontos de produção / barracas (nome, ativo)                           |
+| `pdv_sales`             | Vendas realizadas (total, forma de pagamento, status, operador)       |
+| `pdv_sale_items`        | Itens da venda (produto, quantidade, preço unitário, subtotal)        |
+| `pdv_operators`         | Operadores do PDV                                                     |
 
 ---
 

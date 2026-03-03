@@ -83,7 +83,8 @@ function formatCurrency(val: number) {
 }
 
 function formatDate(dateStr: string) {
-  if (!dateStr) return '-'
+  if (!dateStr)
+    return '-'
   return new Date(dateStr).toLocaleString('pt-BR', {
     day: '2-digit',
     month: 'short',
@@ -93,14 +94,18 @@ function formatDate(dateStr: string) {
 }
 
 function getStatusColor(status: string) {
-  if (status === 'finalizada') return 'success'
-  if (status === 'cancelada') return 'error'
+  if (status === 'finalizada')
+    return 'success'
+  if (status === 'cancelada')
+    return 'error'
   return 'warning'
 }
 
 function getStatusLabel(status: string) {
-  if (status === 'finalizada') return 'Finalizada'
-  if (status === 'cancelada') return 'Cancelada'
+  if (status === 'finalizada')
+    return 'Finalizada'
+  if (status === 'cancelada')
+    return 'Cancelada'
   return 'Pendente'
 }
 
@@ -115,8 +120,10 @@ function getPaymentIcon(method: string) {
 }
 
 function getStockColor(qty: number) {
-  if (qty <= 0) return 'error'
-  if (qty <= 2) return 'warning'
+  if (qty <= 0)
+    return 'error'
+  if (qty <= 2)
+    return 'warning'
   return 'info'
 }
 </script>
@@ -450,7 +457,9 @@ function getStockColor(qty: number) {
 
 <style scoped>
 .kpi-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   border: none !important;
 }
 
