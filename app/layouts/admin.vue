@@ -18,6 +18,7 @@ const generalItems = [
   { title: 'Resumo', icon: 'mdi-view-dashboard-outline', to: '/admin/resumo' },
   { title: 'Ofertório', icon: 'mdi-cash-multiple', to: '/admin/ofertorio/' },
   { title: 'Dízimos', icon: 'mdi-account-cash-outline', to: '/admin/dizimos' },
+  { title: 'Consolidado', icon: 'mdi-finance', to: '/admin/relatorio-consolidado' },
 ]
 
 const pdvItems = [
@@ -27,11 +28,14 @@ const pdvItems = [
   { title: 'Categorias', icon: 'mdi-tag-multiple-outline', to: '/admin/pdv/categorias' },
   { title: 'Pontos', icon: 'mdi-store-outline', to: '/admin/pdv/pontos' },
   { title: 'Vendas', icon: 'mdi-receipt-text-outline', to: '/admin/pdv/vendas' },
+  { title: 'Escala', icon: 'mdi-calendar-account-outline', to: '/admin/pdv/escala' },
 ]
 
 const financeiroItems = [
   { title: 'Relatório Diário', icon: 'mdi-file-chart-outline', to: '/admin/pdv/relatorio' },
+  { title: 'Vendas por Item', icon: 'mdi-chart-bar', to: '/admin/pdv/relatorio-itens' },
   { title: 'Despesas', icon: 'mdi-cash-minus', to: '/admin/pdv/despesas' },
+  { title: 'Sangria de Caixa', icon: 'mdi-cash-register', to: '/admin/pdv/sangria' },
 ]
 
 // Page title from route (reserved for future use in app-bar)
@@ -60,17 +64,21 @@ const breadcrumbs = computed(() => {
   const crumbs: { title: string, to?: string, disabled?: boolean }[] = []
   let path = ''
   const labels: Record<string, string> = {
-    admin: 'Admin',
-    resumo: 'Resumo',
-    ofertorio: 'Ofertório',
-    add: 'Novo',
-    dizimos: 'Dízimos',
-    pdv: 'PDV',
-    categorias: 'Categorias',
-    produtos: 'Produtos',
-    vendas: 'Vendas',
-    relatorio: 'Relatório',
-    despesas: 'Despesas',
+    'admin': 'Admin',
+    'resumo': 'Resumo',
+    'ofertorio': 'Ofertório',
+    'add': 'Novo',
+    'dizimos': 'Dízimos',
+    'relatorio-consolidado': 'Consolidado',
+    'pdv': 'PDV',
+    'categorias': 'Categorias',
+    'produtos': 'Produtos',
+    'vendas': 'Vendas',
+    'escala': 'Escala',
+    'relatorio': 'Relatório',
+    'relatorio-itens': 'Vendas por Item',
+    'despesas': 'Despesas',
+    'sangria': 'Sangria',
   }
   segments.forEach((seg, i) => {
     path += `/${seg}`

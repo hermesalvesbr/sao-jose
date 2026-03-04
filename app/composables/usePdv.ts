@@ -1,9 +1,11 @@
 import type {
+  PdvCashWithdrawal,
   PdvCategory,
   PdvExpense,
   PdvProduct,
   PdvSale,
   PdvSaleItem,
+  PdvSchedule,
 } from '~/types/schema'
 import { createItem, deleteItem, readItems, updateItem, uploadFiles } from '@directus/sdk'
 
@@ -290,6 +292,104 @@ export function usePdv() {
     }
   }
 
+  // CASH WITHDRAWALS (Sangria de Caixa)
+  const fetchCashWithdrawals = async (query: Record<string, unknown> = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_cash_withdrawals', query as any))
+    }
+    catch (e) {
+      console.error('Error fetching cash withdrawals:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createCashWithdrawal = async (data: Partial<PdvCashWithdrawal>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_cash_withdrawals', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateCashWithdrawal = async (id: string, data: Partial<PdvCashWithdrawal>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_cash_withdrawals', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const deleteCashWithdrawal = async (id: string) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(deleteItem('pdv_cash_withdrawals', id))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  // SCHEDULES (Escala de Voluntários)
+  const fetchSchedules = async (query: Record<string, unknown> = {}) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(readItems('pdv_schedules', query as any))
+    }
+    catch (e) {
+      console.error('Error fetching schedules:', e)
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const createSchedule = async (data: Partial<PdvSchedule>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_schedules', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const updateSchedule = async (id: string, data: Partial<PdvSchedule>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(updateItem('pdv_schedules', id, data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  const deleteSchedule = async (id: string) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(deleteItem('pdv_schedules', id))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
   // FILE UPLOAD
   const uploadFile = async (file: File): Promise<string | null> => {
     try {
@@ -339,5 +439,13 @@ export function usePdv() {
     deleteExpense,
     uploadFile,
     getAssetUrl,
+    fetchCashWithdrawals,
+    createCashWithdrawal,
+    updateCashWithdrawal,
+    deleteCashWithdrawal,
+    fetchSchedules,
+    createSchedule,
+    updateSchedule,
+    deleteSchedule,
   }
 }

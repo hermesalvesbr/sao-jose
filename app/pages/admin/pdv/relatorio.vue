@@ -9,7 +9,7 @@
  */
 definePageMeta({ layout: 'admin' })
 
-const { fetchSales, fetchExpenses, fetchOperators } = usePdv()
+const { fetchSales, fetchExpenses, fetchOperators, fetchCashWithdrawals } = usePdv()
 const { user } = useAuth()
 
 // ─── Dates ─────────────────────────────────────────────────────────────────────
@@ -24,6 +24,7 @@ const dateTo = ref(today)
 // ─── State ─────────────────────────────────────────────────────────────────────
 const sales = ref<any[]>([])
 const expenses = ref<any[]>([])
+const sangrias = ref<any[]>([])
 const operators = ref<any[]>([])
 const loading = ref(false)
 const reportGenerated = ref(false)
@@ -65,7 +66,7 @@ async function loadReport() {
 
   loading.value = true
   try {
-    const [salesRes, expensesRes, operatorsRes] = await Promise.all([
+    const [salesRes, expensesRes, sangriasRes, operatorsRes] = await Promise.all([
       fetchSales({
         fields: [
           'id',
@@ -98,6 +99,16 @@ async function loadReport() {
         sort: ['data_despesa'],
         limit: -1,
       }),
+      fetchCashWithdrawals({
+        fields: ['id', 'valor', 'motivo', 'data_hora'],
+        filter: {
+          _and: [
+            { data_hora: { _gte: `${dateFrom.value}T00:00:00` } },
+            { data_hora: { _lte: `${dateTo.value}T23:59:59` } },
+          ],
+        },
+        limit: -1,
+      }),
       fetchOperators({
         filter: { active: { _eq: true } },
         sort: ['name'],
@@ -107,6 +118,7 @@ async function loadReport() {
 
     sales.value = (salesRes as any[]) || []
     expenses.value = (expensesRes as any[]) || []
+    sangrias.value = (sangriasRes as any[]) || []
     operators.value = (operatorsRes as any[]) || []
     reportGenerated.value = true
   }
@@ -170,31 +182,21 @@ const totalExpenses = computed(() =>
   expenses.value.reduce((s, e) => s + Number(e.valor || 0), 0),
 )
 
-const saldoLiquido = computed(() => grandTotal.value.total - totalExpenses.value)
+const totalSangrias = computed(() =>
+  sangrias.value.reduce((s, w) => s + Number(w.valor || 0), 0),
+)
 
-// ─── Period label ─────────────────────────────────────────────────────────────
+const saldoLiquido = computed(() => grandTotal.value.total - totalExpenses.value - totalSangrias.value)
+
 const periodLabel = computed(() => {
-  if (dateFrom.value === dateTo.value) {
+  if (dateFrom.value === dateTo.value)
     return formatDate(dateFrom.value)
-  }
-  return `${formatDate(dateFrom.value)} a ${formatDate(dateTo.value)}`
+  return `${formatDate(dateFrom.value)} – ${formatDate(dateTo.value)}`
 })
 
-// ─── Print ─────────────────────────────────────────────────────────────────────
+// ─── Print ────────────────────────────────────────────────────────────────────────────────────
 function printReport() {
   window.print()
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function formatDate(dateStr: string) {
-  if (!dateStr)
-    return ''
-  const [year, month, day] = dateStr.split('-')
-  return `${day}/${month}/${year}`
-}
-
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
 }
 
 const responsavelNome = computed(() =>
@@ -464,10 +466,10 @@ const responsavelNome = computed(() =>
             <tbody>
               <tr class="total-row">
                 <td class="font-weight-bold" style="width: 75%;">
-                  TOTAL DO DINHEIRO – <span class="text-error">DESPESAS (R$)</span>
+                  TOTAL DO DINHEIRO – <span class="text-error">DESPESAS + SANGRIAS (R$)</span>
                 </td>
                 <td class="text-end font-weight-black" style="width: 25%;">
-                  {{ formatCurrency(grandTotal.dinheiro - totalExpenses) }}
+                  {{ formatCurrency(grandTotal.dinheiro - totalExpenses - totalSangrias) }}
                 </td>
               </tr>
             </tbody>
@@ -498,6 +500,14 @@ const responsavelNome = computed(() =>
                 </td>
                 <td class="text-end font-weight-bold text-error-print">
                   {{ formatCurrency(totalExpenses) }}
+                </td>
+              </tr>
+              <tr>
+                <td class="font-weight-medium text-warning">
+                  - SANGRIAS DE CAIXA R$
+                </td>
+                <td class="text-end font-weight-bold text-error-print">
+                  {{ formatCurrency(totalSangrias) }}
                 </td>
               </tr>
               <tr class="total-row saldo-row">

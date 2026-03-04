@@ -275,6 +275,44 @@ export interface PdvExpense {
   observacao: string
 }
 
+export interface PdvCashWithdrawal {
+  id: string
+  status: string
+  sort: number
+  user_created: string | DirectusUser
+  date_created: 'datetime'
+  user_updated: string | DirectusUser
+  date_updated: 'datetime'
+  /** Valor retirado do caixa em R$ */
+  valor: number
+  /** Motivo da sangria (ex: troco, pagamento fornecedores) */
+  motivo: string
+  /** Data e hora exata da retirada */
+  data_hora: string
+  /** Operador responsável pela retirada */
+  operator_id: string | PdvOperator
+  /** Observações adicionais */
+  observacao: string
+}
+
+export interface PdvSchedule {
+  id: string
+  status: string
+  sort: number
+  user_created: string | DirectusUser
+  date_created: 'datetime'
+  user_updated: string | DirectusUser
+  date_updated: 'datetime'
+  /** Data da escala (YYYY-MM-DD) */
+  data: string
+  /** Barraca / Ponto de produção */
+  production_point_id: string | PdvProductionPoint
+  /** Nomes dos voluntários (texto livre, separado por vírgula/quebra de linha) */
+  voluntarios: string
+  /** Observações do dia */
+  observacao: string
+}
+
 export interface ApiCollections {
   agenda: Agenda[]
   catolico: Catolico[]
@@ -283,12 +321,14 @@ export interface ApiCollections {
   oferta_financeira: OfertaFinanceira[]
   pagamento_dizimo: PagamentoDizimo[]
   pdv_categories: PdvCategory[]
+  pdv_cash_withdrawals: PdvCashWithdrawal[]
   pdv_expenses: PdvExpense[]
   pdv_operators: PdvOperator[]
   pdv_production_points: PdvProductionPoint[]
   pdv_products: PdvProduct[]
   pdv_sale_items: PdvSaleItem[]
   pdv_sales: PdvSale[]
+  pdv_schedules: PdvSchedule[]
   directus_users: DirectusUser[]
   directus_files: DirectusFile[]
 }
