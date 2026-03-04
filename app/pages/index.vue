@@ -10,6 +10,12 @@ const {
   temAniversariante,
 } = useAniversariantes()
 
+usePublicSeo({
+  title: 'Início',
+  description: 'Agenda da Capela São José com eventos da comunidade e aniversariantes em destaque.',
+  path: '/',
+})
+
 const period = ref<'hoje' | 'semana' | 'mes'>('hoje')
 
 // Controla painel aberto na semana

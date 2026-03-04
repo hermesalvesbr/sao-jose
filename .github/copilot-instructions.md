@@ -2,10 +2,10 @@
 
 ## Core Commands
 
-- **Build:** `bun run build` or `npm run build` (Nuxt build)
-- **Dev:** `bun run dev` or `npm run dev` (Nuxt dev server)
-- **Generate:** `bun run generate` or `npm run generate` (Static site generation)
-- **Preview:** `bun run preview` or `npm run preview` (Preview production build)
+- **Build:** `bun run build` (Nuxt build)
+- **Dev:** `bun run dev` (Nuxt dev server)
+- **Generate:** `bun run generate` (Static site generation)
+- **Preview:** `bun run preview` (Preview production build)
 - **Type Generation:** `bun run gen:types` (Runs `scripts/genTypes.ts`)
 - **Lint:** Project uses ESLint with Antfu config; run lint via your editor or custom script if present (no direct script found).
 

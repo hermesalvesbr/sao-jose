@@ -54,12 +54,10 @@ function prevMonth() {
   currentMonth.value = (currentMonth.value + 11) % 12
 }
 
-useSeoMeta({
+usePublicSeo({
   title: 'Aniversariantes',
-  description: 'Veja os aniversariantes do mês na comunidade.',
-  ogTitle: 'Aniversariantes',
-  ogDescription: 'Veja os aniversariantes do mês na comunidade.',
-  ogType: 'website',
+  description: 'Veja os aniversariantes do mês e celebre a vida de quem faz parte da comunidade.',
+  path: '/aniversariantes',
 })
 </script>
 

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useHead, useSeoMeta } from '#imports'
-
 useHead({
   titleTemplate: title => title ? `${title} - Capela São José` : 'Capela São José',
 })
@@ -8,12 +6,20 @@ useHead({
 useSeoMeta({
   title: 'Capela São José',
   description: 'Sistema de Gestão da Capela São José: acompanhe fiéis, aniversariantes e ações da comunidade.',
+  applicationName: 'Capela São José',
+  robots: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1',
+
   ogTitle: 'Capela São José',
   ogDescription: 'Sistema de Gestão da Capela São José: acompanhe fiéis, aniversariantes e ações da comunidade.',
   ogImage: '/images/og-image.png',
+  ogSiteName: 'Capela São José',
   ogLocale: 'pt_BR',
   ogType: 'website',
+
   twitterCard: 'summary_large_image',
+  twitterTitle: 'Capela São José',
+  twitterDescription: 'Sistema de Gestão da Capela São José: acompanhe fiéis, aniversariantes e ações da comunidade.',
+  twitterImage: '/images/og-image.png',
 })
 </script>
 

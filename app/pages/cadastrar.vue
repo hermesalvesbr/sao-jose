@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { Catolico } from '~/types/schema'
-import { useSeoMeta } from '#imports'
 import { createItem, readItems } from '@directus/sdk'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -247,12 +246,10 @@ interface Schema {
   catolico: Catolico[]
 }
 
-useSeoMeta({
+usePublicSeo({
   title: 'Cadastro de Católico',
   description: 'Cadastre-se para participar da comunidade católica e receber novidades pelo WhatsApp.',
-  ogTitle: 'Cadastro de Católico',
-  ogDescription: 'Cadastre-se para participar da comunidade católica e receber novidades pelo WhatsApp.',
-  ogType: 'website',
+  path: '/cadastrar',
 })
 
 function _formatDateBR(dateStr: string): string {

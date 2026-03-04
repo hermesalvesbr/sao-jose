@@ -49,6 +49,7 @@ export default defineNuxtConfig({
       token: '', // injected at runtime via DIRECTUS_TOKEN env var
     },
     public: {
+      siteUrl: '', // injected at runtime via NUXT_PUBLIC_SITE_URL
       directus: {
         url: '', // injected at runtime via NUXT_PUBLIC_DIRECTUS_URL env var
       },

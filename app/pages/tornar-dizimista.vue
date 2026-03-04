@@ -159,12 +159,10 @@ const isFormValid = computed(() => {
   return catolicoFound.value && !alreadyDizimista.value && valorMensal.value && valorMensal.value > 0 && !submitting.value
 })
 
-useSeoMeta({
+usePublicSeo({
   title: 'Tornar-se Dizimista',
   description: 'Contribua com a sua comunidade tornando-se um dizimista. Um gesto de fé e partilha.',
-  ogTitle: 'Tornar-se Dizimista',
-  ogDescription: 'Contribua com a sua comunidade tornando-se um dizimista. Um gesto de fé e partilha.',
-  ogType: 'website',
+  path: '/tornar-dizimista',
 })
 </script>
 
