@@ -1,5 +1,6 @@
 import type { ThemeDefinition } from 'vuetify'
 import { createVuetify } from 'vuetify'
+import { VMaskInput } from 'vuetify/labs/VMaskInput'
 
 // import this after install `@mdi/font` package
 import '@mdi/font/css/materialdesignicons.css'
@@ -86,6 +87,9 @@ const sidebarTheme: ThemeDefinition = {
 
 export default defineNuxtPlugin((app) => {
   const vuetify = createVuetify({
+    components: {
+      VMaskInput,
+    },
     theme: {
       defaultTheme: 'cidadeTema',
       themes: {

@@ -380,7 +380,7 @@ function formatTime(time: string) {
   padding: 2px 4px;
   background: rgba(255, 112, 67, 0.12);
   border-radius: 4px;
-  border-left: 3px solid #FF7043;
+  border-left: 3px solid #ff7043;
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;

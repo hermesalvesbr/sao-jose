@@ -90,7 +90,9 @@ watch(() => route.fullPath, () => {
             v-for="item in drawerItems"
             :key="item.title"
             :to="item.to"
-            :disabled="item.disabled"            active-class="bg-primary-darken-1"            class="mb-2 mx-2 rounded-lg"
+            :disabled="item.disabled"
+            active-class="bg-primary-darken-1"
+            class="mb-2 mx-2 rounded-lg"
             :tabindex="item.disabled ? -1 : 0"
             :aria-disabled="item.disabled ? 'true' : 'false'"
             ripple

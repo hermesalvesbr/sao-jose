@@ -35,7 +35,8 @@ const aniversariantesFiltrados = computed(() => {
       .sort((a, b) => {
         const ma = getMesIndex(a.nascimento as string)
         const mb = getMesIndex(b.nascimento as string)
-        if (ma !== mb) return ma - mb
+        if (ma !== mb)
+          return ma - mb
         return Number.parseInt(getDia(a.nascimento as string), 10)
           - Number.parseInt(getDia(b.nascimento as string), 10)
       })

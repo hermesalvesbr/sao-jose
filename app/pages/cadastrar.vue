@@ -4,6 +4,7 @@ import type { Catolico } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { VMaskInput } from 'vuetify/labs/VMaskInput'
 
 const phone = ref('')
 const phoneExists = ref<null | boolean>(null)
@@ -97,55 +98,43 @@ async function checkPhone() {
 /**
  * Normaliza o nome do fiel para padronização de dados
  */
+/** Preposições e artigos que permanecem minúsculos na capitalização */
+const PREPOSICOES = new Set([
+  'da',
+  'de',
+  'do',
+  'das',
+  'dos',
+  'e',
+  'em',
+  'na',
+  'no',
+  'nas',
+  'nos',
+  'por',
+  'para',
+  'com',
+  'sem',
+  'sob',
+  'sobre',
+  'entre',
+  'até',
+  'após',
+  'ante',
+  'contra',
+  'desde',
+  'perante',
+  'trás',
+])
+
 function normalizeNomeFiel(nome: string): string {
-  const palavrasMinusculas = [
-    'da',
-    'de',
-    'do',
-    'das',
-    'dos',
-    'e',
-    'em',
-    'na',
-    'no',
-    'nas',
-    'nos',
-    'por',
-    'para',
-    'com',
-    'sem',
-    'sob',
-    'sobre',
-    'entre',
-    'até',
-    'após',
-    'ante',
-    'após',
-    'até',
-    'com',
-    'contra',
-    'desde',
-    'em',
-    'entre',
-    'para',
-    'perante',
-    'por',
-    'sem',
-    'sob',
-    'sobre',
-    'trás',
-  ]
   let normalized = nome.replace(/[^a-zA-Z\u00C0-\u00FF\s-]/g, '')
   normalized = normalized.toLowerCase()
   normalized = normalized.replace(/\s+/g, ' ').trim()
   normalized = normalized.split(' ').map((word, index) => {
-    if (index === 0) {
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    }
-    if (palavrasMinusculas.includes(word.toLowerCase())) {
-      return word.toLowerCase()
-    }
-    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    if (index > 0 && PREPOSICOES.has(word))
+      return word
+    return word.charAt(0).toUpperCase() + word.slice(1)
   }).join(' ')
   return normalized
 }
@@ -166,16 +155,29 @@ function openConfirmDialog() {
     nome: normalizeNomeFiel(fullName.value),
     telefone: phone.value.replace(/\D/g, ''),
     sexo: genderOptions.find(g => g.value === gender.value)?.title || '',
-    nascimento: birthDate.value, // Já está no formato DD/MM/AAAA
+    nascimento: formatBirthDateBR(birthDate.value),
   }
   confirmDialog.value = true
 }
 
-function parseDateBRtoISO(dateStr: string): string | undefined {
+function formatBirthDateBR(dateStr: string): string {
   if (!dateStr)
+    return ''
+
+  const digits = dateStr.replace(/\D/g, '')
+  if (digits.length === 8) {
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`
+  }
+
+  return dateStr
+}
+
+function parseDateBRtoISO(dateStr: string): string | undefined {
+  const normalized = formatBirthDateBR(dateStr)
+  if (!normalized)
     return undefined
   const pattern = /^(\d{2})\/(\d{2})\/(\d{4})$/
-  const match = dateStr.match(pattern)
+  const match = normalized.match(pattern)
   if (!match)
     return undefined
   return `${match[3]}-${match[2]}-${match[1]}`
@@ -237,7 +239,7 @@ const isFormValid = computed(() => {
     phoneExists.value === false
     && !!fullName.value
     && !!gender.value
-    && !!birthDate.value
+    && /^\d{2}\/\d{2}\/\d{4}$/.test(formatBirthDateBR(birthDate.value))
     && !submitting.value
   )
 })
@@ -251,18 +253,6 @@ usePublicSeo({
   description: 'Cadastre-se para participar da comunidade católica e receber novidades pelo WhatsApp.',
   path: '/cadastrar',
 })
-
-function _formatDateBR(dateStr: string): string {
-  if (!dateStr)
-    return ''
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime()))
-    return dateStr
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = String(d.getFullYear()).slice(-2)
-  return `${day}/${month}/${year}`
-}
 
 function formatPhoneBR(phone: string): string {
   if (!phone)
@@ -279,196 +269,186 @@ function formatPhoneBR(phone: string): string {
 </script>
 
 <template>
-  <v-container class="fill-height d-flex flex-column justify-center align-center" fluid>
-    <v-card class="pa-4" max-width="420" width="100%">
-      <v-card-title class="text-h6 text-center mb-2">
-        Cadastro de Católico
-      </v-card-title>
-      <v-form ref="formRef" validate-on="input" @submit.prevent="onFormSubmit">
-        <v-row no-gutters align="center">
-          <v-col cols="9">
-            <v-text-field
-              v-model="phone"
-              label="Telefone (WhatsApp)"
-              :rules="phoneRules"
-              prepend-inner-icon="mdi-whatsapp"
-              type="tel"
-              :maxlength="15"
-              required
-              :disabled="checkingPhone"
-              :loading="checkingPhone"
-              autocomplete="tel"
-              placeholder="(87) 99200-5656"
-              color="success"
-              class="arrojado-phone"
-              @blur="checkPhone"
-              @input="phone = formatPhoneBR($event.target.value)"
-              @keydown.enter.prevent="phoneExists !== false && checkPhone"
-            />
-          </v-col>
-          <v-col cols="3" class="d-flex align-center justify-center mb-5">
-            <v-btn
-              icon
-              :loading="checkingPhone"
-              :disabled="checkingPhone || !phone || phone.replace(/\D/g, '').length < 10"
-              aria-label="Verificar telefone"
-              @click="checkPhone"
-            >
-              <v-icon>mdi-arrow-right</v-icon>
-            </v-btn>
-          </v-col>
-        </v-row>
-        <template v-if="phoneExists === false">
-          <v-text-field
-            v-model="fullName"
-            label="Nome completo"
-            :rules="nameRules"
-            prepend-inner-icon="mdi-account"
-            required
-            autocomplete="name"
-            @blur="fullName = normalizeNomeFiel(fullName)"
-          />
-          <v-select
-            v-model="gender"
-            :items="genderOptions"
-            label="Sexo"
-            :rules="genderRules"
-            prepend-inner-icon="mdi-gender-male-female"
-            required
-          />
-          <v-text-field
-            v-model="birthDate"
-            label="Data de nascimento"
-            :rules="birthRules"
-            prepend-inner-icon="mdi-cake-variant"
-            type="date"
-            required
-            @input="($event: any) => {
-              if ($event.target.value) {
-                const parts = $event.target.value.split('-')
-                if (parts.length === 3) birthDate = `${parts[2]}/${parts[1]}/${parts[0]}`
-              }
-            }"
-          />
-          <v-btn
-            class="mt-4"
-            color="primary"
-            type="submit"
-            block
-            :loading="submitting"
-            :disabled="!isFormValid"
-          >
-            Cadastrar
-          </v-btn>
-        </template>
-      </v-form>
-    </v-card>
-    <!-- Modal de confirmação -->
-    <v-dialog v-model="confirmDialog" max-width="420">
-      <v-card class="pa-5 text-center confirm-modal">
-        <template #title>
-          <v-icon color="primary" size="40">
-            mdi-account-check
+  <v-container class="fill-height d-flex align-center justify-center" fluid>
+    <v-card max-width="440" width="100%" class="mx-3" rounded="xl" elevation="1">
+      <v-card-text class="pa-5 pa-sm-7">
+        <!-- Header -->
+        <div class="text-center mb-5">
+          <v-icon size="44" color="primary" class="mb-2">
+            mdi-cross
           </v-icon>
-          <span class="font-weight-bold text-h6 d-block mt-2">Conferir dados do cadastro</span>
-        </template>
-        <v-divider class="my-3" />
-        <div class="mb-2 text-left">
-          <div class="mb-1">
-            <v-icon color="success" size="20">
-              mdi-account
-            </v-icon> <b>Nome:</b> {{ confirmData.nome }}
-          </div>
-          <div class="mb-1">
-            <v-icon color="success" size="20">
-              mdi-whatsapp
-            </v-icon> <b>Telefone:</b> {{ formatPhoneBR(confirmData.telefone) }}
-          </div>
-          <div class="mb-1">
-            <v-icon color="success" size="20">
-              mdi-gender-male-female
-            </v-icon> <b>Sexo:</b> {{ confirmData.sexo }}
-          </div>
-          <div class="mb-1">
-            <v-icon color="success" size="20">
-              mdi-cake-variant
-            </v-icon> <b>Nascimento:</b> {{ confirmData.nascimento }}
-          </div>
+          <h1 class="text-h5 font-weight-bold">
+            Cadastro de Católico
+          </h1>
+          <p class="text-body-2 text-medium-emphasis mt-1">
+            Preencha para fazer parte da comunidade
+          </p>
         </div>
-        <v-divider class="my-3" />
-        <div class="d-flex flex-column gap-2">
-          <v-btn color="primary" class="mb-2" block :loading="submitting" @click="onConfirmSubmit">
-            Confirmar e cadastrar
+
+        <v-form ref="formRef" validate-on="input" @submit.prevent="onFormSubmit">
+          <!-- Phone — botão embutido no campo -->
+          <VMaskInput
+            v-model="phone"
+            label="WhatsApp"
+            :rules="phoneRules"
+            mask="(##) #####-####"
+            prepend-inner-icon="mdi-whatsapp"
+            type="tel"
+            :maxlength="15"
+            :disabled="checkingPhone"
+            :loading="checkingPhone"
+            autocomplete="tel"
+            variant="outlined"
+            rounded="lg"
+            @keydown.enter.prevent="checkPhone"
+          >
+            <template #append-inner>
+              <v-btn
+                icon
+                size="small"
+                color="primary"
+                variant="text"
+                :loading="checkingPhone"
+                :disabled="checkingPhone || !phone || phone.replace(/\D/g, '').length < 10"
+                @click.stop="checkPhone"
+              >
+                <v-icon>mdi-arrow-right-circle</v-icon>
+              </v-btn>
+            </template>
+          </VMaskInput>
+
+          <!-- Campos extras — reveal animado -->
+          <v-expand-transition>
+            <div v-if="phoneExists === false">
+              <v-text-field
+                v-model="fullName"
+                label="Nome completo"
+                :rules="nameRules"
+                variant="outlined"
+                rounded="lg"
+                autocomplete="name"
+                @blur="fullName = normalizeNomeFiel(fullName)"
+              />
+
+              <v-row dense>
+                <v-col cols="6">
+                  <v-select
+                    v-model="gender"
+                    :items="genderOptions"
+                    label="Sexo"
+                    :rules="genderRules"
+                    variant="outlined"
+                    rounded="lg"
+                  />
+                </v-col>
+                <v-col cols="6">
+                  <MaskedDateField
+                    v-model="birthDate"
+                    label="Nascimento"
+                    :rules="birthRules"
+                    variant="outlined"
+                    rounded="lg"
+                  />
+                </v-col>
+              </v-row>
+
+              <v-btn
+                class="mt-2"
+                color="primary"
+                size="large"
+                type="submit"
+                block
+                rounded="lg"
+                :loading="submitting"
+                :disabled="!isFormValid"
+              >
+                Cadastrar
+              </v-btn>
+            </div>
+          </v-expand-transition>
+        </v-form>
+      </v-card-text>
+    </v-card>
+
+    <!-- Confirmação -->
+    <v-dialog v-model="confirmDialog" max-width="400">
+      <v-card rounded="xl">
+        <v-card-title class="text-h6 pt-5 px-5">
+          Conferir dados
+        </v-card-title>
+        <v-card-text class="px-5 pb-2">
+          <v-table density="compact">
+            <tbody>
+              <tr>
+                <td class="text-medium-emphasis">
+                  Nome
+                </td>
+                <td class="font-weight-medium">
+                  {{ confirmData.nome }}
+                </td>
+              </tr>
+              <tr>
+                <td class="text-medium-emphasis">
+                  Telefone
+                </td>
+                <td class="font-weight-medium">
+                  {{ formatPhoneBR(confirmData.telefone) }}
+                </td>
+              </tr>
+              <tr>
+                <td class="text-medium-emphasis">
+                  Sexo
+                </td>
+                <td class="font-weight-medium">
+                  {{ confirmData.sexo }}
+                </td>
+              </tr>
+              <tr>
+                <td class="text-medium-emphasis">
+                  Nascimento
+                </td>
+                <td class="font-weight-medium">
+                  {{ confirmData.nascimento }}
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions class="px-5 pb-4">
+          <v-btn variant="text" :disabled="submitting" @click="confirmDialog = false">
+            Editar
           </v-btn>
-          <v-btn variant="outlined" color="secondary" block :disabled="submitting" @click="confirmDialog = false">
-            Editar dados
+          <v-spacer />
+          <v-btn color="primary" :loading="submitting" @click="onConfirmSubmit">
+            Confirmar
           </v-btn>
-        </div>
+        </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-snackbar
-      v-model="snackbar"
-      :timeout="7000"
-      color="error"
-      location="top"
-    >
+
+    <!-- Sucesso -->
+    <v-dialog v-model="successDialog" max-width="400">
+      <v-card rounded="xl" class="text-center pa-6">
+        <v-icon size="56" color="success" class="mb-3">
+          mdi-check-circle-outline
+        </v-icon>
+        <h2 class="text-h6 font-weight-bold mb-2">
+          Cadastro realizado!
+        </h2>
+        <p class="text-body-2 text-medium-emphasis mb-5">
+          <strong>{{ successName }}</strong> agora faz parte da comunidade.
+        </p>
+        <v-btn color="primary" block rounded="lg" class="mb-2" @click="resetForm">
+          Novo cadastro
+        </v-btn>
+        <v-btn variant="text" block @click="router.push('/')">
+          Voltar ao início
+        </v-btn>
+      </v-card>
+    </v-dialog>
+
+    <v-snackbar v-model="snackbar" :timeout="7000" color="error">
       {{ snackbarText }}
     </v-snackbar>
-    <v-dialog v-model="successDialog" max-width="400">
-      <v-card class="pa-5 text-center" prepend-icon="mdi-party-popper">
-        <template #title>
-          <span class="font-weight-black"> Cadastro realizado com sucesso!</span>
-        </template>
-        <div class="mb-4">
-          Parabéns, <span class="text-primary">{{ successName }}</span> foi cadastrado(a) com sucesso!<br>
-          Que alegria tê-lo(a) em nossa comunidade. 🙏
-        </div>
-        <v-btn color="primary" class="mb-2" block @click="resetForm">
-          Cadastrar novo fiel
-        </v-btn>
-        <v-btn variant="outlined" color="secondary" block @click="router.push('/')">
-          Voltar para início
-        </v-btn>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
-
-<style scoped>
-.v-card {
-  box-shadow: 0 2px 12px #5d40371a;
-  border-radius: 18px;
-}
-.arrojado-phone input {
-  font-size: 1.2rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: #388e3c;
-  background: #f9fbe7;
-  border-radius: 8px;
-}
-@media (max-width: 600px) {
-  .v-card {
-    max-width: 100vw;
-    min-width: 0;
-    padding: 8px !important;
-  }
-  .arrojado-phone input {
-    font-size: 1rem;
-  }
-}
-.confirm-modal {
-  border-radius: 20px;
-  background: linear-gradient(135deg, #f9fbe7 80%, #e8f5e9 100%);
-  box-shadow: 0 4px 24px #388e3c22;
-}
-.confirm-modal .v-icon {
-  vertical-align: middle;
-}
-.confirm-modal .text-h6 {
-  color: #388e3c;
-}
-.confirm-modal b {
-  color: #5d4037;
-}
-</style>
