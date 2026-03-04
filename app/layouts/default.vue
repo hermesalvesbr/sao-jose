@@ -71,6 +71,7 @@ watch(() => route.fullPath, () => {
     <v-navigation-drawer
       v-model="drawer"
       app
+      theme="dark"
       color="#5D4037"
       width="260"
       temporary
@@ -84,13 +85,12 @@ watch(() => route.fullPath, () => {
       class="pt-4"
     >
       <div class="d-flex flex-column h-100">
-        <v-list density="comfortable" nav class="flex-grow-1">
+        <v-list density="comfortable" nav bg-color="transparent" class="flex-grow-1">
           <v-list-item
             v-for="item in drawerItems"
             :key="item.title"
             :to="item.to"
-            :disabled="item.disabled"
-            class="mb-2 mx-2 rounded-lg"
+            :disabled="item.disabled"            active-class="bg-primary-darken-1"            class="mb-2 mx-2 rounded-lg"
             :tabindex="item.disabled ? -1 : 0"
             :aria-disabled="item.disabled ? 'true' : 'false'"
             ripple
@@ -165,14 +165,19 @@ watch(() => route.fullPath, () => {
 </template>
 
 <style>
-/* Apenas estilos específicos que não podem ser expressos por classes utilitárias */
+/* Itens do drawer — hover e foco */
 .v-list-item:not(.v-list-item--disabled):hover {
-  background-color: rgba(109, 76, 65, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 .v-list-item:focus-visible {
   box-shadow: 0 0 0 2px #ffc107 !important;
-  background-color: rgba(109, 76, 65, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Item ativo da rota atual */
+.v-list-item--active {
+  background-color: rgba(255, 193, 7, 0.25) !important;
 }
 
 .v-list-item--disabled .v-list-item-title,

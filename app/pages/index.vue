@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import type { Agenda } from '@/types/schema'
-import { readItems } from '@directus/sdk'
-import { executeWithRetry } from '@/composables/useDirectusClient'
+
+const { events, loading, error } = useAgenda()
+const {
+  aniversariantesHoje,
+  aniversariantesProximos,
+  aniversariantesSemana,
+  aniversariantesDoMes,
+  temAniversariante,
+} = useAniversariantes()
 
 const period = ref<'hoje' | 'semana' | 'mes'>('hoje')
-const events = ref<Agenda[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
 
-// Novo: controla painel aberto na semana
+// Controla painel aberto na semana
 const openedWeekPanel = ref<number[]>([])
 
 const weekDays = [
@@ -20,29 +24,6 @@ const weekDays = [
   'sexta',
   'sábado',
 ]
-
-/** Busca eventos da agenda no Directus */
-async function fetchAgenda() {
-  loading.value = true
-  error.value = null
-  try {
-    const result = await executeWithRetry(async client =>
-      client.request(readItems('agenda', {
-        limit: -1,
-        sort: ['-data_evento'],
-      })),
-    )
-    events.value = Array.isArray(result) ? result as Agenda[] : []
-  }
-  catch {
-    error.value = 'Erro ao buscar agenda. Por favor, tente novamente mais tarde.'
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-onMounted(fetchAgenda)
 
 // Watcher para abrir painel do dia atual ao mudar para 'semana'
 watch(period, (val) => {
@@ -187,23 +168,23 @@ function formatTime(time: any) {
     <!-- Convite para cadastro -->
     <v-alert type="success" class="mb-4 text-center" border="start" color="yellow-lighten-4" elevation="1">
       <span class="font-weight-bold">Seja da família São José 💛</span>
-      <NuxtLink to="/cadastrar" class="ms-2 text-primary text-decoration-underline font-weight-bold">
+      <NuxtLink to="/cadastrar" class="ms-2 text-secondary-darken-1 text-decoration-underline font-weight-bold">
         Cadastre-se!
       </NuxtLink>
     </v-alert>
-    <v-card id="agenda-card" class="mb-6 pa-4" color="#FFF8E1" elevation="2">
+    <v-card id="agenda-card" class="mb-6 pa-4" style="background-color: rgb(var(--v-theme-secondary));" elevation="2">
       <div class="d-flex align-center justify-space-between">
-        <div class="text-h5 font-weight-bold" style="color: #FFD600">
+        <div class="text-h5 font-weight-bold pl-4" style="color: rgb(var(--v-theme-on-secondary));">
           Agenda
         </div>
-        <v-btn icon variant="text" color="yellow-darken-2">
+        <v-btn icon variant="text" style="color: rgb(var(--v-theme-on-secondary));">
           <v-icon size="32">
             mdi-calendar-month
           </v-icon>
         </v-btn>
       </div>
-      <v-divider class="my-2" color="#A1887F" />
-      <v-btn-toggle v-model="period" class="mt-2 pa-2 my-2" color="yellow-darken-2" mandatory>
+      <v-divider class="my-2" color="white" opacity="0.3" />
+      <v-btn-toggle v-model="period" class="mt-2 pa-2 my-2" color="secondary" mandatory>
         <v-btn value="hoje">
           Hoje
         </v-btn>
@@ -246,6 +227,26 @@ function formatTime(time: any) {
           </v-alert>
         </v-col>
       </v-row>
+
+      <!-- Aniversariantes de Hoje (prioridade secundária) -->
+      <BirthdayCarousel
+        v-if="aniversariantesHoje.length > 0"
+        :aniversariantes="aniversariantesHoje"
+        title="Aniversariantes de Hoje 🎉"
+        icon="mdi-cake-variant"
+        variant="card"
+        class="mt-4"
+      />
+
+      <!-- Próximos aniversariantes (se não há nenhum hoje) -->
+      <BirthdayCarousel
+        v-else-if="aniversariantesProximos.length > 0"
+        :aniversariantes="aniversariantesProximos"
+        title="Próximos Aniversariantes"
+        icon="mdi-cake-variant-outline"
+        variant="compact"
+        class="mt-4"
+      />
     </template>
 
     <!-- Visualização SEMANA -->
@@ -253,7 +254,7 @@ function formatTime(time: any) {
       <v-expansion-panels v-model="openedWeekPanel" multiple>
         <v-expansion-panel v-for="(dayEvents, i) in weekEvents" :key="i">
           <v-expansion-panel-title>
-            <span class="text-subtitle-1 font-weight-bold" style="color: #FFD600">
+            <span class="text-subtitle-1 font-weight-bold text-secondary">
               {{ (weekDays[i] ? weekDays[i].charAt(0).toUpperCase() + weekDays[i].slice(1) : '') }}
             </span>
           </v-expansion-panel-title>
@@ -284,17 +285,31 @@ function formatTime(time: any) {
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
+
+      <!-- Aniversariantes da Semana -->
+      <BirthdayCarousel
+        v-if="aniversariantesSemana.length > 0"
+        :aniversariantes="aniversariantesSemana"
+        title="Aniversariantes da Semana"
+        icon="mdi-cake-variant"
+        variant="compact"
+        class="mt-4"
+      />
     </template>
 
     <!-- Visualização MÊS -->
     <template v-else>
-      <AgendaMensal :events="events" />
+      <AgendaMensal :events="events" :aniversariantes-por-dia="temAniversariante" />
+
+      <!-- Aniversariantes do Mês -->
+      <BirthdayCarousel
+        v-if="aniversariantesDoMes(new Date().getMonth()).length > 0"
+        :aniversariantes="aniversariantesDoMes(new Date().getMonth())"
+        title="Aniversariantes do Mês"
+        icon="mdi-cake-variant"
+        variant="card"
+        class="mt-4"
+      />
     </template>
   </div>
 </template>
-
-<style scoped>
-.v-card-title {
-  color: #ffd600;
-}
-</style>

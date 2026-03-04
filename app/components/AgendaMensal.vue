@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import type { Agenda } from '@/types/schema'
+import type { Catolico } from '~/types/schema'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{
   events: Agenda[]
+  /** Função que retorna aniversariantes de uma data específica */
+  aniversariantesPorDia?: (date: Date) => Catolico[]
 }>()
 
 // Estado para controlar o mês atual (usa o dia 1 do mês atual)
@@ -62,6 +65,7 @@ const calendar = computed(() => {
   const days: Array<{
     date: Date
     events: Agenda[]
+    birthdays: Catolico[]
     isToday: boolean
     isCurrentMonth: boolean
   }> = []
@@ -73,6 +77,7 @@ const calendar = computed(() => {
     days.push({
       date,
       events: [],
+      birthdays: [],
       isToday: isSameDay(date, today),
       isCurrentMonth: false,
     })
@@ -84,6 +89,7 @@ const calendar = computed(() => {
     days.push({
       date,
       events: [],
+      birthdays: [],
       isToday: isSameDay(date, today),
       isCurrentMonth: true,
     })
@@ -96,6 +102,7 @@ const calendar = computed(() => {
     days.push({
       date,
       events: [],
+      birthdays: [],
       isToday: isSameDay(date, today),
       isCurrentMonth: false,
     })
@@ -103,6 +110,11 @@ const calendar = computed(() => {
 
   // Adiciona os eventos aos dias correspondentes
   days.forEach((day) => {
+    // Aniversariantes
+    if (props.aniversariantesPorDia) {
+      day.birthdays = props.aniversariantesPorDia(day.date)
+    }
+
     day.events = props.events.filter((ev) => {
       // Verifica se o evento já passou da data final (se tiver)
       if (ev.data_limite) {
@@ -217,6 +229,25 @@ function formatTime(time: string) {
         <!-- Número do dia -->
         <div class="day-number" :class="{ today: day.isToday }">
           {{ day.date.getDate() }}
+          <v-icon
+            v-if="day.birthdays.length > 0"
+            icon="mdi-cake-variant"
+            size="12"
+            color="accent"
+            class="ms-1 birthday-dot"
+          />
+        </div>
+
+        <!-- Aniversariantes do dia -->
+        <div v-if="day.birthdays.length > 0" class="birthday-list">
+          <v-tooltip v-for="b in day.birthdays" :key="b.id" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <div v-bind="tooltipProps" class="birthday-item">
+                🎂 {{ b.nome.split(' ')[0] }}
+              </div>
+            </template>
+            <span>{{ b.nome }}</span>
+          </v-tooltip>
         </div>
 
         <!-- Lista de eventos -->
@@ -334,5 +365,28 @@ function formatTime(time: string) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.birthday-dot {
+  vertical-align: middle;
+}
+
+.birthday-list {
+  font-size: 0.8em;
+  margin-bottom: 4px;
+}
+
+.birthday-item {
+  padding: 2px 4px;
+  background: rgba(255, 112, 67, 0.12);
+  border-radius: 4px;
+  border-left: 3px solid #FF7043;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #5d4037;
+  font-size: 0.9em;
+  cursor: default;
 }
 </style>

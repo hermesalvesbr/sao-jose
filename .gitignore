@@ -32,3 +32,4 @@ yarn.lock
 schema_dump.json
 scripts/
 .vscode/mcp.json
+.playwright-mcp/

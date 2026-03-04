@@ -46,11 +46,11 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     directus: {
-      token: import.meta.env.DIRECTUS_TOKEN,
+      token: '', // injected at runtime via DIRECTUS_TOKEN env var
     },
     public: {
       directus: {
-        url: import.meta.env.NUXT_PUBLIC_DIRECTUS_URL,
+        url: '', // injected at runtime via NUXT_PUBLIC_DIRECTUS_URL env var
       },
     },
   },

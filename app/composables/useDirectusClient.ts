@@ -36,17 +36,16 @@ async function retryOperation<T>(operation: () => Promise<T>, maxRetries = 3): P
 }
 
 /**
- * Cria um client Directus usando dados do endpoint interno /api/directus
+ * Cria um client Directus usando dados do endpoint interno /api/directus.
+ * Não possui retry interno — o caller (executeWithRetry) é responsável pelas tentativas.
  * @returns Promise<DirectusClient>
  * @throws Error caso não seja possível obter as credenciais
  */
 export async function useDirectusClient() {
-  return retryOperation(async () => {
-    const { url, token } = await $fetch<DirectusConfig>('/api/directus')
-    return createDirectus<ApiCollections>(url)
-      .with(staticToken(token))
-      .with(rest())
-  })
+  const { url, token } = await $fetch<DirectusConfig>('/api/directus')
+  return createDirectus<ApiCollections>(url)
+    .with(staticToken(token))
+    .with(rest())
 }
 
 /**
