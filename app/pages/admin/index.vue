@@ -45,6 +45,11 @@ async function handleLogin() {
           <v-toolbar color="primary" dark flat>
             <v-toolbar-title>Administração</v-toolbar-title>
           </v-toolbar>
+          <v-progress-linear
+            color="blue-darken-3"
+            indeterminate
+            :active="loading"
+          />
           <v-card-text>
             <v-form @submit.prevent="handleLogin">
               <v-text-field

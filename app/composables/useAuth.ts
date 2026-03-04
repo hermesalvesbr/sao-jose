@@ -1,33 +1,51 @@
-import type { AuthenticationClient, DirectusClient, RestClient } from '@directus/sdk'
+import type { AuthenticationClient, AuthenticationStorage, DirectusClient, RestClient } from '@directus/sdk'
 import type { ApiCollections } from '~/types/schema'
-import { authentication, createDirectus, login as directusLogin, readMe, rest } from '@directus/sdk'
+import { authentication, createDirectus, readMe, rest } from '@directus/sdk'
+
+/** Chave única no localStorage para persistir o estado completo de autenticação do SDK. */
+const AUTH_STORAGE_KEY = 'directus_auth'
+
+/**
+ * Adaptador de armazenamento que serializa/deserializa o estado completo
+ * de autenticação do Directus SDK (access_token, refresh_token, expires_at)
+ * em uma única entrada do localStorage.
+ */
+function createLocalStorageAdapter(): AuthenticationStorage {
+  return {
+    get() {
+      if (typeof window === 'undefined') return null
+      try {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+        return raw ? JSON.parse(raw) : null
+      }
+      catch {
+        return null
+      }
+    },
+    set(value) {
+      if (typeof window === 'undefined') return
+      if (value) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(value))
+      }
+      else {
+        localStorage.removeItem(AUTH_STORAGE_KEY)
+      }
+    },
+  }
+}
 
 /**
  * AuthService encapsula autenticação e gerenciamento do usuário autenticado via Directus.
- * Evita múltiplos fetchs da URL do Directus e expõe métodos para login, logout, token e avatar.
+ * Usa um cliente SDK singleton com autoRefresh e storage adapter para persistência robusta.
+ * O SDK gerencia automaticamente a renovação do access_token antes do vencimento.
  */
 class AuthService {
   private directusUrl: string | null = null
-  private token: string | null = null
-  private _refreshToken: string | null = null
+  private _client: (DirectusClient<ApiCollections> & RestClient<ApiCollections> & AuthenticationClient<ApiCollections>) | null = null
   public loading = ref(false)
   public error = ref<Error | null>(null)
   public isAuthenticated = ref(false)
   public user = ref<any>(null)
-
-  constructor() {
-    // Restaura o token do localStorage, se existir
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('directus_token')
-      if (storedToken) {
-        this.token = storedToken
-      }
-      const storedRefreshToken = localStorage.getItem('directus_refresh_token')
-      if (storedRefreshToken) {
-        this._refreshToken = storedRefreshToken
-      }
-    }
-  }
 
   /**
    * Busca e armazena a URL do Directus apenas uma vez.
@@ -41,7 +59,25 @@ class AuthService {
   }
 
   /**
-   * Cria um cliente Directus com autenticação por token estático
+   * Retorna o cliente SDK singleton com autoRefresh e storage adapter.
+   * O mesmo cliente é reutilizado em toda vida útil do app, garantindo
+   * que o SDK gerencie tokens e renovações automaticamente.
+   */
+  public async getAuthClient(): Promise<DirectusClient<ApiCollections> & RestClient<ApiCollections> & AuthenticationClient<ApiCollections>> {
+    if (!this._client) {
+      const url = await this.ensureDirectusUrl()
+      this._client = createDirectus<ApiCollections>(url)
+        .with(rest())
+        .with(authentication('json', {
+          autoRefresh: true,
+          storage: createLocalStorageAdapter(),
+        }))
+    }
+    return this._client
+  }
+
+  /**
+   * Cria um cliente Directus com autenticação por token estático (legado).
    * @param token Token estático para autenticação
    */
   public async getStaticClient(token?: string): Promise<DirectusClient<ApiCollections> & RestClient<ApiCollections> & AuthenticationClient<ApiCollections>> {
@@ -56,56 +92,23 @@ class AuthService {
   }
 
   /**
-   * Cria um cliente Directus com autenticação por login/senha
-   */
-  /**
-   * Cria um cliente Directus com autenticação por login/senha (modo JSON, recomendado para login via API)
-   */
-  public async getAuthClient(): Promise<DirectusClient<ApiCollections> & RestClient<ApiCollections> & AuthenticationClient<ApiCollections>> {
-    const url = await this.ensureDirectusUrl()
-    const client = createDirectus<ApiCollections>(url)
-      .with(rest())
-      .with(authentication('json'))
-    if (this.token) {
-      client.setToken(this.token)
-    }
-    return client
-  }
-
-  /**
-   * Realiza login com email e senha usando o authentication('json')
-   * @param credentials Credenciais de login
-   * @param credentials.email O e-mail do usuário
-   * @param credentials.password A senha do usuário
+   * Realiza login com email e senha.
+   * O SDK persiste automaticamente access_token, refresh_token e expires_at
+   * via o storage adapter, e agenda a renovação automática.
    */
   public async entrar(credentials: { email: string, password: string }) {
     this.loading.value = true
     this.error.value = null
     try {
       const client = await this.getAuthClient()
-      // Alternativa: login via request(login(...)) para máxima compatibilidade
-      const result = await client.request(directusLogin({ email: credentials.email, password: credentials.password }))
-      if (result.access_token) {
-        this.token = result.access_token
-        if (result.refresh_token) {
-          this._refreshToken = result.refresh_token
-        }
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('directus_token', this.token)
-          if (this._refreshToken) {
-            localStorage.setItem('directus_refresh_token', this._refreshToken)
-          }
-        }
-        this.isAuthenticated.value = true
-        await this.fetchCurrentUser()
-      }
-      return result
+      await client.login({ email: credentials.email, password: credentials.password })
+      this.isAuthenticated.value = true
+      await this.fetchCurrentUser()
     }
     catch (e) {
       this.error.value = e as Error
       this.isAuthenticated.value = false
       this.user.value = null
-      this.token = null
       console.error('Login failed:', e)
       throw e
     }
@@ -115,12 +118,20 @@ class AuthService {
   }
 
   /**
-   * Verifica se o usuário atual está autenticado e busca seus dados
+   * Verifica se há sessão válida restaurando o token do storage.
+   * O SDK executa refresh automático se o access_token estiver expirado.
    * @returns Os dados do usuário se autenticado, caso contrário, `null`
    */
   public async checkUser() {
     try {
       const client = await this.getAuthClient()
+      // getToken() dispara o refresh automático se necessário
+      const token = await client.getToken()
+      if (!token) {
+        this.isAuthenticated.value = false
+        this.user.value = null
+        return null
+      }
       const userData = await client.request(readMe({
         fields: ['id', 'email', 'first_name', 'last_name', 'role', 'avatar'],
       }))
@@ -139,7 +150,7 @@ class AuthService {
   }
 
   /**
-   * Busca os dados do usuário atual
+   * Busca os dados do usuário atual.
    */
   public async fetchCurrentUser() {
     try {
@@ -156,8 +167,8 @@ class AuthService {
   }
 
   /**
-   * Obtém o token de acesso do usuário autenticado
-   * @returns O token de acesso ou `null` se ocorrer um erro
+   * Obtém o token de acesso atual (com refresh automático se necessário).
+   * @returns O token de acesso ou `null`
    */
   public async getToken() {
     try {
@@ -171,33 +182,21 @@ class AuthService {
   }
 
   /**
-   * Realiza o logout do usuário, invalidando o token
+   * Realiza o logout: invalida o token no servidor e limpa o storage.
    */
   public async logout() {
     this.loading.value = true
     try {
-      // Realiza o logout localmente, sem depender do refresh token
+      const client = await this.getAuthClient()
+      try {
+        await client.logout()
+      }
+      catch {
+        // ignora erro de rede no logout — limpeza local ocorre de qualquer forma
+      }
       this.isAuthenticated.value = false
       this.user.value = null
       this.error.value = null
-      this.token = null
-      this._refreshToken = null
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('directus_token')
-        localStorage.removeItem('directus_refresh_token')
-      }
-      // Limpa o cache do usuário se o composable useUser existir (evita erro SSR)
-      try {
-        if (typeof window !== 'undefined' && typeof (window as any).useUser === 'function') {
-          const { clearUser } = (window as any).useUser()
-          if (typeof clearUser === 'function')
-            clearUser()
-        }
-      }
-      catch {
-        // useUser pode não existir
-      }
-      // Redireciona para a página de login
       await navigateTo('/admin')
     }
     catch (e) {
@@ -210,33 +209,20 @@ class AuthService {
   }
 
   /**
-   * Refresh do token de autenticação
+   * Força o refresh manual do token de autenticação.
    */
   public async refreshToken() {
     try {
       const client = await this.getAuthClient()
       const result = await client.refresh()
-      if (result.access_token) {
-        this.token = result.access_token
-        if (result.refresh_token) {
-          this._refreshToken = result.refresh_token
-        }
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('directus_token', this.token)
-          if (this._refreshToken) {
-            localStorage.setItem('directus_refresh_token', this._refreshToken)
-          }
-        }
-        this.isAuthenticated.value = true
-        await this.fetchCurrentUser()
-      }
+      this.isAuthenticated.value = true
+      await this.fetchCurrentUser()
       return result
     }
     catch (e) {
       console.error('Falha ao renovar token:', e)
       this.isAuthenticated.value = false
       this.user.value = null
-      this.token = null
       this.error.value = e as Error
       return null
     }
@@ -251,11 +237,7 @@ class AuthService {
       return null
     if (!this.directusUrl)
       return null
-    let url = `${this.directusUrl.replace(/\/$/, '')}/assets/${this.user.value.avatar}`
-    if (this.token) {
-      url += `?access_token=${this.token}`
-    }
-    return url
+    return `${this.directusUrl.replace(/\/$/, '')}/assets/${this.user.value.avatar}`
   }
 
   public async init() {
