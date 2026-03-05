@@ -8,12 +8,20 @@ definePageMeta({
 
 const { user } = useAuth()
 const { fetchOfertas } = useOfertas()
-const directus = await useDirectusClient()
-const { data: eventos } = useAsyncData('agenda', () => {
-  return directus.request(readItems('agenda', {
-    fields: ['id', 'titulo', 'recorrente', 'dia', 'data_evento', 'tipo_especial', 'data_limite'],
-    limit: -1,
-  }))
+
+// Busca de eventos feita somente no cliente para garantir que o token esteja disponível
+const eventos = ref<any[] | null>(null)
+onMounted(async () => {
+  const directus = await useDirectusClient()
+  try {
+    eventos.value = await directus.request(readItems('agenda', {
+      fields: ['id', 'titulo', 'recorrente', 'dia', 'data_evento', 'tipo_especial', 'data_limite'],
+      limit: -1,
+    }))
+  }
+  catch (err) {
+    console.error('Erro ao carregar agenda:', err)
+  }
 })
 
 // Controlar exibição do modal da calculadora
@@ -121,6 +129,7 @@ async function registrarOferta() {
   }
 
   try {
+    const directus = await useDirectusClient()
     const ofertaData = {
       ...oferta.value,
       data_entrada: new Date(dataEntradaString.value).toISOString(),

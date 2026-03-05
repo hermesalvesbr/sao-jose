@@ -1,12 +1,6 @@
 // composables/directus/useDirectusClient.ts
 import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { ApiCollections } from '@/types/schema'
-import { createDirectus, rest, staticToken } from '@directus/sdk'
-
-interface DirectusConfig {
-  url: string
-  token: string
-}
 
 /**
  * Função genérica para tentar uma operação várias vezes
@@ -36,16 +30,12 @@ async function retryOperation<T>(operation: () => Promise<T>, maxRetries = 3): P
 }
 
 /**
- * Cria um client Directus usando dados do endpoint interno /api/directus.
- * Não possui retry interno — o caller (executeWithRetry) é responsável pelas tentativas.
- * @returns Promise<DirectusClient>
- * @throws Error caso não seja possível obter as credenciais
+ * Retorna o client Directus autenticado com o token do usuário logado.
+ * Usa o mesmo cliente singleton de useAuth (com autoRefresh de JWT).
  */
 export async function useDirectusClient() {
-  const { url, token } = await $fetch<DirectusConfig>('/api/directus')
-  return createDirectus<ApiCollections>(url)
-    .with(staticToken(token))
-    .with(rest())
+  const { getAuthClient } = useAuth()
+  return getAuthClient()
 }
 
 /**

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 /**
- * Campo de moeda brasileira com máscara R$ 9.999,99
- * Formata automaticamente para Real brasileiro
- * Props compatíveis com MaskedTextField
+ * Campo de moeda brasileira — formata como R$ XX,XX ao sair do campo.
+ * Enquanto focado, aceita digitação natural (ex: "20" ou "20,50").
  */
 
 interface Props {
@@ -22,101 +21,84 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  modelValue: '',
   placeholder: 'R$ 0,00',
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modelValue': [value: number]
   'blur': [event: FocusEvent]
 }>()
 
-// Função para formatar o valor como moeda brasileira
-function formatCurrency(value: string | number): string {
-  if (value === '' || value === null || value === undefined)
-    return ''
-
-  // Se é um número, converte para string
-  const stringValue = typeof value === 'number' ? (value * 100).toString() : value.toString()
-
-  // Remove todos os caracteres não numéricos
-  const numbersOnly = stringValue.replace(/\D/g, '')
-
-  if (!numbersOnly || numbersOnly === '0')
-    return 'R$ 0,00'
-
-  // Converte para número e divide por 100 para ter os centavos
-  const number = Number.parseInt(numbersOnly) / 100
-
-  // Formata como moeda brasileira
+function formatBRL(num: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(number)
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num)
 }
 
-// Função para converter valor formatado para número
-function parseValue(formattedValue: string): number {
-  const numbersOnly = formattedValue.replace(/\D/g, '')
-  return numbersOnly ? Number.parseInt(numbersOnly) / 100 : 0
+// Strips currency formatting and parses as a decimal number.
+// "R$ 1.500,50" → 1500.50 | "20" → 20 | "20,50" → 20.50
+function parseBRL(raw: string): number {
+  const cleaned = raw.replace(/[^\d,]/g, '').replace(',', '.')
+  return Number.parseFloat(cleaned) || 0
 }
 
-// Valor interno formatado
-const internalValue = ref(formatCurrency(props.modelValue || ''))
+function toNumeric(val: string | number | undefined): number {
+  if (val === undefined || val === null || val === '')
+    return 0
+  return typeof val === 'number' ? val : parseBRL(String(val))
+}
 
-// Observa mudanças no modelValue externo
-watch(() => props.modelValue, (newValue) => {
-  if (newValue !== undefined && newValue !== null) {
-    const formatted = formatCurrency(newValue)
-    if (formatted !== internalValue.value) {
-      internalValue.value = formatted
-    }
+const isFocused = ref(false)
+const displayValue = ref(formatBRL(toNumeric(props.modelValue)))
+
+watch(() => props.modelValue, (val) => {
+  if (!isFocused.value) {
+    displayValue.value = formatBRL(toNumeric(val))
   }
 })
 
-// Validação de valor máximo e mínimo
+function handleFocus() {
+  isFocused.value = true
+  const num = toNumeric(props.modelValue)
+  // Show plain decimal so the user can edit naturally
+  displayValue.value = num > 0 ? String(num).replace('.', ',') : ''
+}
+
+function handleInput(event: Event) {
+  const raw = (event.target as HTMLInputElement).value
+  displayValue.value = raw
+  emit('update:modelValue', parseBRL(raw))
+}
+
+function handleBlur(event: FocusEvent) {
+  isFocused.value = false
+  const num = toNumeric(props.modelValue)
+  displayValue.value = formatBRL(num)
+  emit('blur', event)
+}
+
 const currencyRules = computed(() => {
   const rules = [...(props.rules || [])]
 
   if (props.maxValue !== undefined) {
     rules.push((value: string) => {
-      const numValue = parseValue(value)
-      return numValue <= props.maxValue! || `Valor não pode ser maior que ${formatCurrency(props.maxValue!)}`
+      const numValue = parseBRL(value)
+      return numValue <= props.maxValue! || `Valor não pode ser maior que ${formatBRL(props.maxValue!)}`
     })
   }
 
   if (props.minValue !== undefined) {
     rules.push((value: string) => {
-      const numValue = parseValue(value)
-      return numValue >= props.minValue! || `Valor não pode ser menor que ${formatCurrency(props.minValue!)}`
+      const numValue = parseBRL(value)
+      return numValue >= props.minValue! || `Valor não pode ser menor que ${formatBRL(props.minValue!)}`
     })
   }
 
   return rules
 })
-
-// Manipula a entrada do usuário
-function handleInput(event: Event) {
-  const target = event.target as HTMLInputElement
-  const value = target.value
-
-  // Formata o valor enquanto digita
-  const formatted = formatCurrency(value)
-  internalValue.value = formatted
-
-  // Emite o valor numérico para o v-model
-  const numericValue = parseValue(formatted)
-  emit('update:modelValue', numericValue.toString())
-
-  // Atualiza o campo visualmente
-  nextTick(() => {
-    target.value = formatted
-  })
-}
-
-function handleBlur(event: FocusEvent) {
-  emit('blur', event)
-}
 </script>
 
 <template>
@@ -124,9 +106,9 @@ function handleBlur(event: FocusEvent) {
     v-bind="$attrs"
     :label="label"
     :rules="currencyRules"
-    :model-value="internalValue"
+    :model-value="displayValue"
     :prepend-inner-icon="prependInnerIcon"
-    type="tel"
+    type="text"
     :required="required"
     :disabled="disabled"
     :loading="loading"
@@ -134,7 +116,8 @@ function handleBlur(event: FocusEvent) {
     :color="color"
     :placeholder="placeholder"
     :class="customClass"
-    inputmode="numeric"
+    inputmode="decimal"
+    @focus="handleFocus"
     @input="handleInput"
     @blur="handleBlur"
   />
