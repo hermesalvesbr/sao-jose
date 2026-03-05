@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import type { AnuncianteResumo } from '~/types/schema'
+import type { AdsNovenario, AnuncianteResumo } from '~/types/schema'
+
+type AnuncianteListItem = AnuncianteResumo & Pick<AdsNovenario, 'midia'>
 
 useHead({ title: 'Anunciantes — Novenário São José' })
 usePublicSeo({
@@ -7,11 +9,20 @@ usePublicSeo({
   description: 'Transparência na exibição dos anúncios do novenário. Consulte as estatísticas de cada anunciante.',
 })
 
-const { formatarTempo, formatarMoeda, custoSegundo, formatarDataHora } = useAnunciantesPublico()
+const config = useRuntimeConfig()
+const directusUrl = computed(() => (config.public.directus.url as string).replace(/\/$/, ''))
+const directusToken = computed(() => config.public.directus.token as string)
 
-const { data: anunciantes, pending } = await useAsyncData<AnuncianteResumo[]>(
+function getMediaUrl(midia: string): string {
+  const token = directusToken.value
+  return `${directusUrl.value}/assets/${midia}${token ? `?access_token=${token}` : ''}`
+}
+
+const { formatarTempo, formatarDataHora } = useAnunciantesPublico()
+
+const { data: anunciantes, pending } = await useAsyncData<AnuncianteListItem[]>(
   'anunciantes-lista',
-  () => $fetch<AnuncianteResumo[]>('/api/anunciantes'),
+  () => $fetch<AnuncianteListItem[]>('/api/anunciantes'),
 )
 
 const total = computed(() => anunciantes.value?.length ?? 0)
@@ -119,19 +130,30 @@ function chipIcon(tipo: string): string {
           <div class="anunc-header" />
 
           <v-card-text class="pa-5">
-            <!-- Nome + tipo -->
-            <div class="d-flex align-center justify-space-between mb-3">
-              <div class="text-h6 font-weight-bold text-brown-darken-3 anunc-nome">
-                {{ item.anunciante }}
+            <!-- Nome + imagem + tipo -->
+            <div class="d-flex align-center ga-3 mb-3">
+              <v-avatar v-if="item.midia" size="48" rounded="lg">
+                <v-img :src="getMediaUrl(item.midia)" :alt="item.anunciante" cover />
+              </v-avatar>
+              <v-avatar v-else size="48" rounded="lg" color="#FFF8E1">
+                <v-icon color="#E6A800">
+                  mdi-bullhorn-outline
+                </v-icon>
+              </v-avatar>
+              <div class="flex-grow-1" style="min-width: 0">
+                <div class="text-h6 font-weight-bold text-brown-darken-3 anunc-nome">
+                  {{ item.anunciante }}
+                </div>
+                <v-chip
+                  :color="chipColor(item.tipo_midia)"
+                  size="small"
+                  :prepend-icon="chipIcon(item.tipo_midia)"
+                  label
+                  class="mt-1"
+                >
+                  {{ item.tipo_midia }}
+                </v-chip>
               </div>
-              <v-chip
-                :color="chipColor(item.tipo_midia)"
-                size="small"
-                :prepend-icon="chipIcon(item.tipo_midia)"
-                label
-              >
-                {{ item.tipo_midia }}
-              </v-chip>
             </div>
 
             <!-- KPIs do card -->
@@ -153,22 +175,6 @@ function chipIcon(tipo: string): string {
                   </v-icon>Tempo exibido
                 </span>
                 <strong>{{ formatarTempo(item.total_duracao_exibida) }}</strong>
-              </div>
-              <div class="d-flex justify-space-between text-body-2">
-                <span class="text-medium-emphasis">
-                  <v-icon size="14" class="mr-1">
-                    mdi-cash
-                  </v-icon>Valor pago
-                </span>
-                <strong>{{ formatarMoeda(item.valor_pago) }}</strong>
-              </div>
-              <div class="d-flex justify-space-between text-body-2">
-                <span class="text-medium-emphasis">
-                  <v-icon size="14" class="mr-1">
-                    mdi-speedometer
-                  </v-icon>Custo/segundo
-                </span>
-                <strong>{{ custoSegundo(item.valor_pago, item.total_duracao_exibida) }}</strong>
               </div>
               <div class="d-flex justify-space-between text-body-2">
                 <span class="text-medium-emphasis">

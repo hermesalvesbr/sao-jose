@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const [ad, logs] = await Promise.all([
     client.request(
       readItem('ads_novenario', id, {
-        fields: ['id', 'anunciante', 'tipo_midia', 'duracao', 'valor_pago', 'midia'],
+        fields: ['id', 'anunciante', 'tipo_midia', 'duracao', 'midia'],
       } as never),
     ),
     client.request(

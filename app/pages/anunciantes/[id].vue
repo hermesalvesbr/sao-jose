@@ -16,8 +16,6 @@ function getMediaUrl(midia: string): string {
 
 const {
   formatarTempo,
-  formatarMoeda,
-  custoSegundo,
   formatarData,
   formatarHora,
 } = useAnunciantesPublico()
@@ -41,8 +39,6 @@ const totalExibicoes = computed(() => logs.value.length)
 const totalDuracao = computed(() =>
   logs.value.reduce((a, l) => a + (l.duracao_exibida || 0), 0),
 )
-const valorPago = computed(() => ad.value?.valor_pago ?? 0)
-const custoS = computed(() => custoSegundo(valorPago.value, totalDuracao.value))
 
 // Exibições por dia (para o gráfico de barras simples)
 const exibicoesPorDia = computed(() => {
@@ -166,7 +162,7 @@ function chipColor(tipo: string): string {
 
       <!-- KPI cards -->
       <v-row class="mb-6" dense>
-        <v-col cols="6" md="3">
+        <v-col cols="6" md="6">
           <v-card rounded="lg" color="#FFF8E1" flat border>
             <v-card-text class="pa-4 text-center">
               <v-icon color="#5D4037" class="mb-1">
@@ -181,7 +177,7 @@ function chipColor(tipo: string): string {
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col cols="6" md="3">
+        <v-col cols="6" md="6">
           <v-card rounded="lg" color="#FFF8E1" flat border>
             <v-card-text class="pa-4 text-center">
               <v-icon color="#5D4037" class="mb-1">
@@ -192,36 +188,6 @@ function chipColor(tipo: string): string {
               </div>
               <div class="text-caption text-medium-emphasis">
                 Tempo Total no Ar
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" md="3">
-          <v-card rounded="lg" color="#FFF8E1" flat border>
-            <v-card-text class="pa-4 text-center">
-              <v-icon color="#5D4037" class="mb-1">
-                mdi-cash
-              </v-icon>
-              <div class="text-h5 font-weight-bold text-brown-darken-3">
-                {{ formatarMoeda(valorPago) }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                Valor Pago
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" md="3">
-          <v-card rounded="lg" color="#FFF8E1" flat border>
-            <v-card-text class="pa-4 text-center">
-              <v-icon color="#5D4037" class="mb-1">
-                mdi-speedometer
-              </v-icon>
-              <div class="text-h5 font-weight-bold text-brown-darken-3">
-                {{ custoS }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                Custo / Segundo
               </div>
             </v-card-text>
           </v-card>

@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const [ads, logs] = await Promise.all([
     client.request(
       readItems('ads_novenario', {
-        fields: ['id', 'anunciante', 'tipo_midia', 'duracao', 'valor_pago'],
+        fields: ['id', 'anunciante', 'tipo_midia', 'duracao', 'midia'],
         filter: { status: { _eq: 'published' } },
         sort: ['sort'],
         limit: -1,
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
       anunciante: ad.anunciante,
       tipo_midia: ad.tipo_midia,
       duracao: ad.duracao,
-      valor_pago: ad.valor_pago,
+      midia: ad.midia,
       total_exibicoes: adLogs.length,
       total_duracao_exibida: totalDuracao,
       ultima_exibicao: sorted[0]?.exibido_em ?? null,
