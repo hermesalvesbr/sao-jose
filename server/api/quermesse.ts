@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     ),
     client.request(
       readItems('pdv_categories', {
-        fields: ['id', 'name', 'icon', 'sort_order', 'points_id.id', 'points_id.name'],
+        fields: ['id', 'name', 'icon', 'sort_order', { points_id: ['id', 'name'] }],
         filter: { active: { _eq: true }, status: { _eq: 'published' } },
         sort: ['sort_order'],
         limit: -1,
