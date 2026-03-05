@@ -19,17 +19,49 @@ const { data, pending, error } = await useAsyncData<AnuncianteDetalhe>(
 const ad = computed<AdsNovenario | null>(() => data.value?.ad ?? null)
 const logs = computed<AdsLogEntry[]>(() => data.value?.logs ?? [])
 
-useHead({
-  title: computed(() =>
-    ad.value ? `${ad.value.anunciante} — Anunciantes` : 'Anunciante — Novenário',
-  ),
-})
-
 // KPIs derivados
 const totalExibicoes = computed(() => logs.value.length)
 const totalDuracao = computed(() =>
   logs.value.reduce((a, l) => a + (l.duracao_exibida || 0), 0),
 )
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+const seoTitle = computed(() =>
+  ad.value ? `${ad.value.anunciante} — Anunciante do Novenário` : 'Anunciante — Novenário São José',
+)
+const seoDescription = computed(() => {
+  if (!ad.value)
+    return 'Detalhes e estatísticas de exibição de anunciante do Novenário de São José.'
+  const e = totalExibicoes.value
+  const t = formatarTempo(totalDuracao.value)
+  return `${ad.value.anunciante} — anunciante do Novenário de São José. ${e.toLocaleString('pt-BR')} exibições, ${t} de tempo total no telão de LED.`
+})
+const seoImage = computed(() =>
+  ad.value?.midia ? getDirectusAssetUrl(ad.value.midia) : undefined,
+)
+
+useHead({
+  title: seoTitle,
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Início', 'item': '/' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Anunciantes', 'item': '/anunciantes' },
+          { '@type': 'ListItem', 'position': 3, 'name': ad.value?.anunciante ?? 'Anunciante' },
+        ],
+      }),
+    },
+  ],
+})
+usePublicSeo({
+  title: seoTitle.value,
+  description: seoDescription.value,
+  image: seoImage.value,
+})
 
 // Exibições por dia (para o gráfico de barras simples)
 const exibicoesPorDia = computed(() => {

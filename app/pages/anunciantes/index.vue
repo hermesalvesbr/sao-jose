@@ -3,12 +3,6 @@ import type { AdsNovenario, AnuncianteResumo } from '~/types/schema'
 
 type AnuncianteListItem = AnuncianteResumo & Pick<AdsNovenario, 'midia'>
 
-useHead({ title: 'Anunciantes — Novenário São José' })
-usePublicSeo({
-  title: 'Anunciantes do Novenário',
-  description: 'Transparência na exibição dos anúncios do novenário. Consulte as estatísticas de cada anunciante.',
-})
-
 const { formatarTempo, formatarDataHora } = useAnunciantesPublico()
 
 const { data: anunciantes, pending } = await useAsyncData<AnuncianteListItem[]>(
@@ -23,6 +17,37 @@ const totalExibicoes = computed(() =>
 const totalTempo = computed(() =>
   anunciantes.value?.reduce((a, x) => a + x.total_duracao_exibida, 0) ?? 0,
 )
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+const seoTitle = 'Anunciantes do Novenário de São José'
+const seoDescription = computed(() => {
+  const t = total.value
+  const e = totalExibicoes.value
+  return t
+    ? `Veja os ${t} anunciantes do Novenário de São José com ${e.toLocaleString('pt-BR')} exibições no telão de LED. Transparência total na veiculação dos anúncios.`
+    : 'Transparência na exibição dos anúncios do novenário. Consulte as estatísticas de cada anunciante.'
+})
+
+useHead({
+  title: `${seoTitle} — Capela São José`,
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          { '@type': 'ListItem', 'position': 1, 'name': 'Início', 'item': '/' },
+          { '@type': 'ListItem', 'position': 2, 'name': 'Anunciantes' },
+        ],
+      }),
+    },
+  ],
+})
+usePublicSeo({
+  title: seoTitle,
+  description: seoDescription.value,
+})
 
 function chipColor(tipo: string): string {
   return tipo === 'video' ? 'deep-purple-lighten-2' : 'teal-lighten-2'
