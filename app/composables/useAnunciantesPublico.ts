@@ -15,13 +15,13 @@ export function useAnunciantesPublico() {
   }
 
   function formatarMoeda(valor: number): string {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+    return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
   function custoSegundo(valorPago: number, totalDuracao: number): string {
     if (!totalDuracao)
       return '—'
-    return (valorPago / totalDuracao).toLocaleString('pt-BR', {
+    return (Number(valorPago) / totalDuracao).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
       minimumFractionDigits: 4,

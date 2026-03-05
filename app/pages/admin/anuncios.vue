@@ -23,6 +23,9 @@ const defaultItem = {
   valor_pago: 0,
   midia: null as string | null,
   status: 'published',
+  status_pagamento: 'pendente' as 'pendente' | 'pago' | 'permuta',
+  meio_pagamento: null as string | null,
+  data_pagamento: null as string | null,
 }
 const editedItem = ref({ ...defaultItem })
 
@@ -32,6 +35,8 @@ const headers = [
   { title: 'Duração', key: 'duracao', align: 'center' as const },
   { title: 'Valor Pago', key: 'valor_pago', align: 'end' as const },
   { title: 'R$/seg', key: 'custo_segundo', align: 'end' as const, sortable: false },
+  { title: 'Pagamento', key: 'status_pagamento', align: 'center' as const },
+  { title: 'Meio', key: 'meio_pagamento', align: 'center' as const },
   { title: 'Status', key: 'status', align: 'center' as const },
   { title: 'Ações', key: 'actions', sortable: false, align: 'end' as const },
 ]
@@ -72,6 +77,9 @@ async function editItem(item: AdsNovenario): Promise<void> {
     valor_pago: Number(item.valor_pago),
     midia: midiaId,
     status: item.status,
+    status_pagamento: (item.status_pagamento ?? 'pendente') as 'pendente' | 'pago' | 'permuta',
+    meio_pagamento: item.meio_pagamento ?? null,
+    data_pagamento: item.data_pagamento ?? null,
   }
   midiaFile.value = null
   midiaPreview.value = midiaId ? await getAssetUrl(midiaId) : null
@@ -118,6 +126,9 @@ async function saveItem(): Promise<void> {
       duracao: editedItem.value.duracao,
       valor_pago: Number(editedItem.value.valor_pago),
       status: editedItem.value.status,
+      status_pagamento: editedItem.value.status_pagamento,
+      meio_pagamento: editedItem.value.meio_pagamento || null,
+      data_pagamento: editedItem.value.data_pagamento || null,
     }
 
     if (midiaFile.value) {
@@ -317,6 +328,25 @@ const custoSegundoPreview = computed(() => {
           </v-chip>
         </template>
 
+        <template #[`item.status_pagamento`]="{ item }">
+          <v-chip
+            :color="item.status_pagamento === 'pago' ? 'success' : item.status_pagamento === 'permuta' ? 'info' : 'warning'"
+            size="small"
+            variant="tonal"
+          >
+            <v-icon start size="12" :icon="item.status_pagamento === 'pago' ? 'mdi-check-circle' : item.status_pagamento === 'permuta' ? 'mdi-swap-horizontal' : 'mdi-clock-outline'" />
+            {{ item.status_pagamento === 'pago' ? 'Pago' : item.status_pagamento === 'permuta' ? 'Permuta' : 'Pendente' }}
+          </v-chip>
+        </template>
+
+        <template #[`item.meio_pagamento`]="{ item }">
+          <span v-if="item.meio_pagamento" class="text-body-2">
+            <v-icon size="14" class="mr-1">{{ item.meio_pagamento === 'pix' ? 'mdi-qrcode' : item.meio_pagamento === 'cartao' ? 'mdi-credit-card-outline' : 'mdi-cash' }}</v-icon>
+            {{ item.meio_pagamento === 'pix' ? 'PIX' : item.meio_pagamento === 'cartao' ? 'Cartão' : 'Dinheiro' }}
+          </span>
+          <span v-else class="text-medium-emphasis">—</span>
+        </template>
+
         <template #[`item.status`]="{ item }">
           <v-chip
             :color="item.status === 'published' ? 'success' : 'grey'"
@@ -461,6 +491,57 @@ const custoSegundoPreview = computed(() => {
                     {{ formatCurrency(custoSegundoPreview) }}/s
                   </div>
                 </v-card>
+              </v-col>
+
+              <!-- Pagamento -->
+              <v-col cols="12">
+                <v-divider class="mb-3" />
+                <div class="text-body-2 font-weight-bold text-medium-emphasis mb-3">
+                  <v-icon size="16" class="mr-1">
+                    mdi-cash-check
+                  </v-icon>
+                  Informações de Pagamento
+                </div>
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="editedItem.status_pagamento"
+                  :items="[
+                    { title: 'Pendente', value: 'pendente' },
+                    { title: 'Pago', value: 'pago' },
+                    { title: 'Permuta', value: 'permuta' },
+                  ]"
+                  label="Status Pagamento"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-cash-check"
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="editedItem.meio_pagamento"
+                  :items="[
+                    { title: 'Dinheiro', value: 'dinheiro' },
+                    { title: 'PIX', value: 'pix' },
+                    { title: 'Cartão', value: 'cartao' },
+                  ]"
+                  label="Meio de Pagamento"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-credit-card-outline"
+                  clearable
+                />
+              </v-col>
+
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="editedItem.data_pagamento"
+                  label="Data do Pagamento"
+                  type="date"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-calendar-check"
+                  clearable
+                />
               </v-col>
 
               <v-col cols="12">

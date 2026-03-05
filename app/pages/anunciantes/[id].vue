@@ -5,6 +5,15 @@ import type { AdsLogEntry, AdsNovenario } from '~/types/schema'
 const route = useRoute()
 const id = route.params.id as string
 
+const config = useRuntimeConfig()
+const directusUrl = computed(() => (config.public.directus.url as string).replace(/\/$/, ''))
+const directusToken = computed(() => config.public.directus.token as string)
+
+function getMediaUrl(midia: string): string {
+  const token = directusToken.value
+  return `${directusUrl.value}/assets/${midia}${token ? `?access_token=${token}` : ''}`
+}
+
 const {
   formatarTempo,
   formatarMoeda,
@@ -124,6 +133,35 @@ function chipColor(tipo: string): string {
             </div>
           </div>
         </v-card-text>
+      </v-card>
+
+      <!-- Preview da mídia no telão -->
+      <v-card rounded="xl" flat border class="mb-6 pa-5">
+        <div class="text-subtitle-1 font-weight-bold text-brown-darken-3 mb-4">
+          <v-icon start size="18">
+            mdi-television-play
+          </v-icon>
+          Pré-visualização — como aparece no telão
+        </div>
+        <div class="preview-wrapper">
+          <video
+            v-if="ad.tipo_midia === 'video'"
+            :src="getMediaUrl(ad.midia)"
+            controls
+            muted
+            playsinline
+            class="preview-media"
+          />
+          <img
+            v-else
+            :src="getMediaUrl(ad.midia)"
+            :alt="ad.anunciante"
+            class="preview-media"
+          >
+        </div>
+        <div class="text-caption text-medium-emphasis mt-2 text-center">
+          Duração programada: <strong>{{ ad.duracao }}s</strong>
+        </div>
       </v-card>
 
       <!-- KPI cards -->
@@ -274,6 +312,25 @@ function chipColor(tipo: string): string {
 <style scoped>
 .anunc-detail-header {
   background: linear-gradient(135deg, #5d4037, #8d6e63);
+}
+
+.preview-wrapper {
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 420px;
+  aspect-ratio: 16 / 9;
+  margin: 0 auto;
+}
+
+.preview-media {
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  display: block;
 }
 
 .bar-chart {

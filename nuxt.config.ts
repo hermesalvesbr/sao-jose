@@ -52,6 +52,7 @@ export default defineNuxtConfig({
       siteUrl: import.meta.env.NUXT_PUBLIC_SITE_URL || '',
       directus: {
         url: import.meta.env.NUXT_PUBLIC_DIRECTUS_URL || '',
+        token: import.meta.env.NUXT_PUBLIC_DIRECTUS_TOKEN || '',
       },
     },
   },

@@ -45,6 +45,9 @@ const ofertaItems = ref<any[]>([])
 // Dízimos
 const dizimoItems = ref<any[]>([])
 
+// Anúncios
+const adsItems = ref<any[]>([])
+
 // ─── Load data ───────────────────────────────────────────────────────────────
 async function loadReport() {
   if (!dateFrom.value || !dateTo.value)
@@ -54,7 +57,7 @@ async function loadReport() {
   try {
     const client = await directusClient
 
-    const [salesRes, expensesRes, withdrawalsRes, ofertasRes, dizimosRes] = await Promise.all([
+    const [salesRes, expensesRes, withdrawalsRes, ofertasRes, dizimosRes, adsRes] = await Promise.all([
       // Vendas PDV finalizadas
       fetchSales({
         fields: ['id', 'total_amount', 'payment_method', 'sale_status', 'date_created'],
@@ -111,6 +114,18 @@ async function loadReport() {
         },
         limit: -1,
       } as any)),
+      // Anúncios (ads_novenario)
+      client.request(readItems('ads_novenario', {
+        fields: ['id', 'anunciante', 'valor_pago', 'date_created', 'status', 'status_pagamento', 'meio_pagamento', 'data_pagamento'],
+        filter: {
+          _and: [
+            { status: { _eq: 'published' } },
+            { date_created: { _gte: `${dateFrom.value}T00:00:00` } },
+            { date_created: { _lte: `${dateTo.value}T23:59:59` } },
+          ],
+        },
+        limit: -1,
+      } as any)),
     ])
 
     pdvSales.value = (salesRes as any[]) || []
@@ -118,6 +133,7 @@ async function loadReport() {
     pdvWithdrawals.value = (withdrawalsRes as any[]) || []
     ofertaItems.value = (ofertasRes as any[]) || []
     dizimoItems.value = (dizimosRes as any[]) || []
+    adsItems.value = (adsRes as any[]) || []
     reportGenerated.value = true
   }
   catch (e) {
@@ -183,12 +199,38 @@ const dizimoByMethod = computed(() => {
   return acc
 })
 
+/** Valor pendente de receber (status = pendente). */
+const adsPendente = computed(() =>
+  adsItems.value
+    .filter(a => !a.status_pagamento || a.status_pagamento === 'pendente')
+    .reduce((s, a) => s + Number(a.valor_pago || 0), 0),
+)
+
+/** Anúncios pagos por meio de pagamento. */
+const adsByMethod = computed(() => {
+  const acc = { dinheiro: 0, pix: 0, cartao: 0, total: 0 }
+  for (const a of adsItems.value) {
+    if (a.status_pagamento !== 'pago' && a.status_pagamento !== 'permuta')
+      continue
+    const amt = Number(a.valor_pago || 0)
+    const meio: string = (a.meio_pagamento ?? 'dinheiro').toLowerCase()
+    if (meio === 'pix')
+      acc.pix += amt
+    else if (meio === 'cartao')
+      acc.cartao += amt
+    else
+      acc.dinheiro += amt
+    acc.total += amt
+  }
+  return acc
+})
+
 /** Totais por coluna de pagamento. */
 const grandByMethod = computed(() => ({
-  dinheiro: pdvByMethod.value.dinheiro + ofertaByMethod.value.dinheiro + dizimoByMethod.value.dinheiro,
-  pix: pdvByMethod.value.pix + ofertaByMethod.value.pix + dizimoByMethod.value.pix,
-  cartao: pdvByMethod.value.cartao + ofertaByMethod.value.cartao + dizimoByMethod.value.cartao,
-  total: pdvByMethod.value.total + ofertaByMethod.value.total + dizimoByMethod.value.total,
+  dinheiro: pdvByMethod.value.dinheiro + ofertaByMethod.value.dinheiro + dizimoByMethod.value.dinheiro + adsByMethod.value.dinheiro,
+  pix: pdvByMethod.value.pix + ofertaByMethod.value.pix + dizimoByMethod.value.pix + adsByMethod.value.pix,
+  cartao: pdvByMethod.value.cartao + ofertaByMethod.value.cartao + dizimoByMethod.value.cartao + adsByMethod.value.cartao,
+  total: pdvByMethod.value.total + ofertaByMethod.value.total + dizimoByMethod.value.total + adsByMethod.value.total,
 }))
 
 const totalExpenses = computed(() =>
@@ -392,6 +434,27 @@ function printPage() {
                 </td>
                 <td class="col-money text-end font-weight-bold">
                   {{ formatCurrency(dizimoByMethod.total) }}
+                </td>
+              </tr>
+              <tr class="data-row">
+                <td class="font-weight-medium">
+                  <v-icon size="16" icon="mdi-bullhorn-outline" class="me-1 no-print" />
+                  Anúncios ({{ adsItems.length }}× — {{ adsItems.filter(a => a.status_pagamento === 'pago' || a.status_pagamento === 'permuta').length }} pago(s))
+                  <v-chip v-if="adsPendente > 0" size="x-small" color="warning" label class="ml-2 no-print">
+                    {{ formatCurrency(adsPendente) }} pendente
+                  </v-chip>
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(adsByMethod.dinheiro) }}
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(adsByMethod.pix) }}
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(adsByMethod.cartao) }}
+                </td>
+                <td class="col-money text-end font-weight-bold">
+                  {{ formatCurrency(adsByMethod.total) }}
                 </td>
               </tr>
             </tbody>

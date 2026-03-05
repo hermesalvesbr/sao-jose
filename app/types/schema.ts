@@ -36,6 +36,12 @@ export interface AdsNovenario {
   duracao: number;
   /** Valor pago pelo anunciante em R$ */
   valor_pago: number;
+  /** Situação do pagamento: pendente | pago | permuta */
+  status_pagamento: 'pendente' | 'pago' | 'permuta';
+  /** Meio de pagamento: dinheiro | pix | cartao */
+  meio_pagamento: string | null;
+  /** Data em que o pagamento foi recebido */
+  data_pagamento: string | null;
 }
 
 export interface Agenda {
