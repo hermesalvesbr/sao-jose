@@ -159,6 +159,8 @@ function onVideoEnded(): void {
 onMounted(async () => {
   await carregarAnuncios()
   preloadImages()
+  if (anuncios.value.length > 1)
+    currentIndex.value = Math.floor(Math.random() * anuncios.value.length)
   adStartTime = Date.now()
   scheduleNext()
 

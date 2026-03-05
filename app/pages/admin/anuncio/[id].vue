@@ -20,7 +20,7 @@ const snackbarColor = ref<'success' | 'error' | 'warning'>('success')
 const defaultItem = {
   anunciante: '',
   tipo_midia: 'imagem' as 'imagem' | 'video',
-  duracao: 10,
+  duracao: 30,
   valor_pago: 0,
   midia: null as string | null,
   status: 'published',
