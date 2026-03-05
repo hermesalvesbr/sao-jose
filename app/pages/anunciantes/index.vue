@@ -10,6 +10,18 @@ const { data: anunciantes, pending } = await useAsyncData<AnuncianteListItem[]>(
   () => $fetch<AnuncianteListItem[]>('/api/anunciantes'),
 )
 
+const busca = ref('')
+
+const anunciantesFiltrados = computed(() => {
+  const lista = anunciantes.value ?? []
+  const termo = busca.value.trim().toLowerCase()
+  if (!termo)
+    return lista
+  return lista.filter(a => a.anunciante.toLowerCase().includes(termo))
+})
+
+const tituloBuscaVazia = computed(() => `Nenhum resultado para "${busca.value.trim()}"`)
+
 const total = computed(() => anunciantes.value?.length ?? 0)
 const totalExibicoes = computed(() =>
   anunciantes.value?.reduce((a, x) => a + x.total_exibicoes, 0) ?? 0,
@@ -120,15 +132,29 @@ function chipIcon(tipo: string): string {
       </v-col>
     </v-row>
 
+    <!-- Busca -->
+    <v-text-field
+      v-model="busca"
+      placeholder="Buscar anunciante..."
+      prepend-inner-icon="mdi-magnify"
+      variant="outlined"
+      density="compact"
+      rounded="lg"
+      clearable
+      hide-details
+      class="mb-6"
+      :disabled="pending"
+    />
+
     <!-- Loading -->
     <div v-if="pending" class="d-flex justify-center py-12">
       <v-progress-circular indeterminate color="#E6A800" />
     </div>
 
     <!-- Lista de anunciantes -->
-    <v-row v-else-if="anunciantes && anunciantes.length > 0">
+    <v-row v-else-if="anunciantesFiltrados.length > 0">
       <v-col
-        v-for="item in anunciantes"
+        v-for="item in anunciantesFiltrados"
         :key="item.id"
         cols="12"
         sm="6"
@@ -218,7 +244,16 @@ function chipIcon(tipo: string): string {
       </v-col>
     </v-row>
 
-    <!-- Empty state -->
+    <!-- Empty state: busca sem resultado -->
+    <v-empty-state
+      v-else-if="busca.trim() && anunciantes && anunciantes.length > 0"
+      icon="mdi-magnify-close"
+      :title="tituloBuscaVazia"
+      text="Tente buscar por outro nome."
+      class="mt-8"
+    />
+
+    <!-- Empty state: sem dados -->
     <v-empty-state
       v-else
       icon="mdi-handshake-outline"

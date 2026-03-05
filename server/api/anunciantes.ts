@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     ) as unknown as RawLog[],
   ])
 
-  return ads.map((ad) => {
+  const result = ads.map((ad) => {
     const adLogs = logs.filter(l => l.ads === ad.id)
     const totalDuracao = adLogs.reduce((acc, l) => acc + (l.duracao_exibida || 0), 0)
     const sorted = [...adLogs].sort(
@@ -48,5 +48,15 @@ export default defineEventHandler(async (event) => {
       total_duracao_exibida: totalDuracao,
       ultima_exibicao: sorted[0]?.exibido_em ?? null,
     }
+  })
+
+  return result.sort((a, b) => {
+    if (!a.ultima_exibicao && !b.ultima_exibicao)
+      return 0
+    if (!a.ultima_exibicao)
+      return 1
+    if (!b.ultima_exibicao)
+      return -1
+    return new Date(b.ultima_exibicao).getTime() - new Date(a.ultima_exibicao).getTime()
   })
 })
