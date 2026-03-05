@@ -67,7 +67,7 @@ async function editItem(item: AdsNovenario): Promise<void> {
   const midiaId = typeof item.midia === 'object' && item.midia ? (item.midia as { id: string }).id : item.midia as string | null
   editedItem.value = {
     anunciante: item.anunciante,
-    tipo_midia: item.tipo_midia,
+    tipo_midia: item.tipo_midia as 'imagem' | 'video',
     duracao: item.duracao,
     valor_pago: Number(item.valor_pago),
     midia: midiaId,

@@ -7,69 +7,186 @@ useHead({ title: 'Telão — Anúncios Novenário' })
 const config = useRuntimeConfig()
 const directusUrl = computed(() => (config.public.directus.url as string).replace(/\/$/, ''))
 
-const { data: anuncios } = await useAsyncData<AdsNovenario[]>(
-  'ads-public',
-  () => $fetch<AdsNovenario[]>('/api/ads-novenario'),
-  {
-    getCachedData: (key, nuxtApp) =>
-      nuxtApp.payload.data[key] ?? nuxtApp.static.data[key],
-  },
-)
+// ─── localStorage helpers (safe – opera sem internet em modo kiosk) ───────────
+const ADS_CACHE_KEY = 'telao:ads'
+const LOG_QUEUE_KEY = 'telao:log-queue'
 
-const currentIndex = ref(0)
-const transitioning = ref(false)
-let timer: ReturnType<typeof setTimeout> | null = null
+function lsGet<T>(key: string): T | null {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? 'null') as T
+  }
+  catch {
+    return null
+  }
+}
 
-const currentAd = computed(() => anuncios.value?.[currentIndex.value] ?? null)
+function lsSet(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  }
+  catch { /* quota esgotada – ignora */ }
+}
 
+// ─── Ads data com fallback offline ───────────────────────────────────────────
+const anuncios = ref<AdsNovenario[]>([])
+
+async function carregarAnuncios(): Promise<void> {
+  try {
+    const data = await $fetch<AdsNovenario[]>('/api/ads-novenario')
+    anuncios.value = data
+    lsSet(ADS_CACHE_KEY, data) // atualiza cache local sempre que carregar com sucesso
+  }
+  catch {
+    // Sem internet: usa cache local para manter o telão funcionando
+    const cached = lsGet<AdsNovenario[]>(ADS_CACHE_KEY)
+    if (cached?.length)
+      anuncios.value = cached
+  }
+}
+
+// ─── Media helpers ────────────────────────────────────────────────────────────
 function getMediaUrl(ad: AdsNovenario): string {
-  const fileId = typeof ad.midia === 'object' && ad.midia ? (ad.midia as { id: string }).id : ad.midia as string
+  const fileId = typeof ad.midia === 'object' && ad.midia
+    ? (ad.midia as { id: string }).id
+    : ad.midia as string
   return `${directusUrl.value}/assets/${fileId}`
 }
 
-function scheduleNext(): void {
-  if (timer)
-    clearTimeout(timer)
-  if (!anuncios.value || anuncios.value.length === 0)
-    return
-
-  const ad = anuncios.value[currentIndex.value]
-  const duracao = (ad?.duracao || 10) * 1000
-
-  timer = setTimeout(() => {
-    transitioning.value = true
-    setTimeout(() => {
-      currentIndex.value = (currentIndex.value + 1) % anuncios.value!.length
-      transitioning.value = false
-      scheduleNext()
-    }, 600)
-  }, duracao)
+// Pré-carrega imagens no browser cache para que fiquem disponíveis offline
+function preloadImages(): void {
+  anuncios.value.forEach((ad) => {
+    if (ad.tipo_midia !== 'video') {
+      const img = new Image()
+      img.src = getMediaUrl(ad)
+    }
+  })
 }
 
-function onVideoEnded(): void {
-  if (timer)
-    clearTimeout(timer)
+// ─── Display state ────────────────────────────────────────────────────────────
+const currentIndex = ref(0)
+const transitioning = ref(false)
+let timer: ReturnType<typeof setTimeout> | null = null
+let refreshInterval: ReturnType<typeof setInterval> | null = null
+let logFlushInterval: ReturnType<typeof setInterval> | null = null
+let adStartTime: number = Date.now()
+
+const currentAd = computed(() => anuncios.value[currentIndex.value] ?? null)
+
+// ─── Log de exibição com fila offline e retry ─────────────────────────────────
+interface LogPayload {
+  ads: string
+  exibido_em: string
+  duracao_exibida: number
+  anunciante: string
+  tipo_midia: string
+}
+
+async function sendLog(payload: LogPayload): Promise<void> {
+  await $fetch('/api/ads-log', { method: 'POST', body: payload })
+}
+
+function enqueueLog(payload: LogPayload): void {
+  const queue = lsGet<LogPayload[]>(LOG_QUEUE_KEY) ?? []
+  queue.push(payload)
+  lsSet(LOG_QUEUE_KEY, queue.slice(-200)) // limite de 200 entradas
+}
+
+// Chamado periodicamente para enviar logs que falharam por falta de conexão
+async function flushLogQueue(): Promise<void> {
+  const queue = lsGet<LogPayload[]>(LOG_QUEUE_KEY)
+  if (!queue?.length)
+    return
+  const remaining: LogPayload[] = []
+  for (const entry of queue) {
+    try {
+      await sendLog(entry)
+    }
+    catch {
+      remaining.push(entry)
+    }
+  }
+  lsSet(LOG_QUEUE_KEY, remaining)
+}
+
+async function registrarExibicao(ad: AdsNovenario, duracaoExibida: number): Promise<void> {
+  const payload: LogPayload = {
+    ads: ad.id,
+    exibido_em: new Date(adStartTime).toISOString(),
+    duracao_exibida: duracaoExibida,
+    anunciante: ad.anunciante,
+    tipo_midia: ad.tipo_midia,
+  }
+  try {
+    await sendLog(payload)
+  }
+  catch {
+    // Sem internet: persiste localmente; flushLogQueue() reenviará depois
+    enqueueLog(payload)
+  }
+}
+
+// ─── Rotação de anúncios ──────────────────────────────────────────────────────
+function avancarAd(duracaoReal?: number): void {
+  const ad = anuncios.value[currentIndex.value]
+  if (ad) {
+    const elapsed = duracaoReal ?? Math.round((Date.now() - adStartTime) / 1000)
+    registrarExibicao(ad, elapsed)
+  }
   transitioning.value = true
   setTimeout(() => {
-    currentIndex.value = (currentIndex.value + 1) % anuncios.value!.length
+    currentIndex.value = (currentIndex.value + 1) % Math.max(anuncios.value.length, 1)
+    adStartTime = Date.now()
     transitioning.value = false
     scheduleNext()
   }, 600)
 }
 
-onMounted(() => {
+function scheduleNext(): void {
+  if (timer)
+    clearTimeout(timer)
+  if (!anuncios.value.length)
+    return
+  const ad = anuncios.value[currentIndex.value]
+  const duracao = (ad?.duracao || 10) * 1000
+  timer = setTimeout(() => avancarAd(ad?.duracao), duracao)
+}
+
+function onVideoEnded(): void {
+  if (timer)
+    clearTimeout(timer)
+  const elapsed = Math.round((Date.now() - adStartTime) / 1000)
+  avancarAd(elapsed)
+}
+
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
+onMounted(async () => {
+  await carregarAnuncios()
+  preloadImages()
+  adStartTime = Date.now()
   scheduleNext()
+
+  // Atualiza lista de anúncios a cada 10 min (sem recarregar a página)
+  refreshInterval = setInterval(async () => {
+    await carregarAnuncios()
+    preloadImages()
+  }, 10 * 60 * 1000)
+
+  // Tenta reenviar logs pendentes a cada 5 min
+  logFlushInterval = setInterval(flushLogQueue, 5 * 60 * 1000)
 })
 
 onUnmounted(() => {
   if (timer)
     clearTimeout(timer)
+  if (refreshInterval)
+    clearInterval(refreshInterval)
+  if (logFlushInterval)
+    clearInterval(logFlushInterval)
 })
 
 watch(currentIndex, () => {
-  if (currentAd.value?.tipo_midia !== 'video') {
+  if (currentAd.value?.tipo_midia !== 'video')
     scheduleNext()
-  }
 })
 </script>
 

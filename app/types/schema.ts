@@ -1,4 +1,23 @@
 /** * Generated TypeScript types for Directus Schema */
+export interface AdsLog {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  ads: string | AdsNovenario;
+  /** Segundos efetivamente exibidos (pode diferir da duração programada em vídeos) */
+  duracao_exibida: number;
+  /** Data e hora exata em que o anúncio começou a ser exibido no telão */
+  exibido_em: 'datetime';
+  /** Nome do anunciante (denormalizado para relatórios) */
+  anunciante: string;
+  /** Tipo de mídia exibida (imagem ou video) */
+  tipo_midia: string;
+}
+
 export interface AdsNovenario {
   id: string;
   status: string;
@@ -9,10 +28,10 @@ export interface AdsNovenario {
   date_updated: 'datetime';
   /** Nome do anunciante/patrocinador */
   anunciante: string;
-  /** Arquivo de mídia (imagem ou vídeo) */
-  midia: string | DirectusFile;
-  /** Tipo de mídia: 'imagem' ou 'video' */
-  tipo_midia: 'imagem' | 'video';
+  /** Imagem ou vídeo do anúncio */
+  midia: string;
+  /** Tipo de mídia: imagem ou vídeo */
+  tipo_midia: string;
   /** Tempo de exibição em segundos (múltiplo de 5) */
   duracao: number;
   /** Valor pago pelo anunciante em R$ */
@@ -336,7 +355,31 @@ export interface DirectusRole {
   policies: string;
 }
 
+/** DTO retornado por /api/anunciantes — agrega dados de ads_log */
+export interface AnuncianteResumo {
+  id: string;
+  anunciante: string;
+  tipo_midia: string;
+  duracao: number;
+  valor_pago: number;
+  total_exibicoes: number;
+  /** Soma de duracao_exibida de todos os logs (segundos) */
+  total_duracao_exibida: number;
+  /** ISO string do log mais recente, ou null se nunca exibido */
+  ultima_exibicao: string | null;
+}
+
+/** Entrada de log simplificada, retornada por /api/anunciantes/[id] */
+export interface AdsLogEntry {
+  id: string;
+  exibido_em: string;
+  duracao_exibida: number;
+  anunciante: string;
+  tipo_midia: string;
+}
+
 export interface ApiCollections {
+  ads_log: AdsLog[];
   ads_novenario: AdsNovenario[];
   agenda: Agenda[];
   catolico: Catolico[];
