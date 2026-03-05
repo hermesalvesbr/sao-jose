@@ -21,8 +21,8 @@ const drawerItems: DrawerItem[] = [
   { title: 'Aniversariantes', icon: 'mdi-cake-variant', to: '/aniversariantes', tooltip: 'Ver aniversariantes' },
   { title: 'Telão Novenário', icon: 'mdi-television-play', to: '/telao', tooltip: 'Exibição de anúncios – telão' },
   { title: 'Anunciantes', icon: 'mdi-handshake-outline', to: '/anunciantes', tooltip: 'Transparência – anunciantes do novenário' },
-  { title: 'Missas', icon: 'mdi-church', to: '/missas', disabled: true, tooltip: 'Em breve: Missas' },
-  { title: 'Dízimos', icon: 'mdi-cash-multiple', to: '/dizimos', disabled: true, tooltip: 'Em breve: Dízimos' },
+  { title: 'Programação', icon: 'mdi-book-open-page-variant', to: '/programacao', tooltip: 'Programação completa do novenário' },
+  { title: 'Quermesse', icon: 'mdi-party-popper', to: '/quermesse', tooltip: 'Itens e preços da Quermesse de São José' },
 ]
 
 function navigate(item: DrawerItem) {
