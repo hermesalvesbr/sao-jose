@@ -1,5 +1,5 @@
 import type { AdsNovenario } from '~/types/schema'
-import { createItem, deleteItem, readItems, updateItem, uploadFiles } from '@directus/sdk'
+import { createItem, deleteItem, readItem, readItems, updateItem, uploadFiles } from '@directus/sdk'
 
 export function useAdsNovenario() {
   const { getAuthClient } = useAuth()
@@ -11,7 +11,7 @@ export function useAdsNovenario() {
     try {
       const client = await getAuthClient()
       const result = await client.request(readItems('ads_novenario', {
-        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort'],
+        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort', 'status_pagamento', 'meio_pagamento', 'data_pagamento'],
         sort: ['sort'],
         limit: -1,
       }))
@@ -20,6 +20,24 @@ export function useAdsNovenario() {
     catch (err) {
       console.error('Erro ao carregar anúncios:', err)
       anuncios.value = []
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchAnuncioById(id: string): Promise<AdsNovenario | null> {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      const result = await client.request(readItem('ads_novenario', id, {
+        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort', 'status_pagamento', 'meio_pagamento', 'data_pagamento'],
+      }))
+      return result as unknown as AdsNovenario
+    }
+    catch (err) {
+      console.error('Erro ao carregar anúncio:', err)
+      return null
     }
     finally {
       loading.value = false
@@ -59,13 +77,17 @@ export function useAdsNovenario() {
     if (!fileId)
       return null
     const { url } = await $fetch<{ url: string }>('/api/directus')
-    return `${url.replace(/\/$/, '')}/assets/${fileId}`
+    const { directus } = useRuntimeConfig().public
+    const token = (directus as { token?: string }).token ?? ''
+    const base = url.replace(/\/$/, '')
+    return token ? `${base}/assets/${fileId}?access_token=${token}` : `${base}/assets/${fileId}`
   }
 
   return {
     anuncios,
     loading,
     fetchAnuncios,
+    fetchAnuncioById,
     salvarAnuncio,
     atualizarAnuncio,
     removerAnuncio,
