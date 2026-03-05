@@ -298,3 +298,17 @@ onMounted(() => {
   cursor: pointer;
 }
 </style>
+
+<style>
+@media print {
+  .v-navigation-drawer,
+  .v-app-bar {
+    display: none !important;
+  }
+
+  .v-main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+</style>
