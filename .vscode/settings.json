@@ -47,5 +47,21 @@
     "scss",
     "pcss",
     "postcss"
-  ]
+  ],
+
+  "chat.instructionsFilesLocations": {
+    ".github/instructions": true
+  },
+  "chat.promptFilesLocations": {
+    ".github/prompts": true
+  },
+  "chat.agentFilesLocations": {
+    ".github/agents": true
+  },
+  "chat.hookFilesLocations": {
+    ".github/hooks": true
+  },
+  "chat.useAgentsMdFile": true,
+  "chat.includeApplyingInstructions": true,
+  "chat.includeReferencedInstructions": true
 }

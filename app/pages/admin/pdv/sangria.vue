@@ -155,7 +155,7 @@ async function saveForm() {
       data_hora: form.value.data_hora ? `${form.value.data_hora}:00` : new Date().toISOString(),
     }
     if (isEditing.value) {
-      await updateCashWithdrawal(editingId.value!, payload)
+      await updateCashWithdrawal(editingId.value!, payload as any)
       showSnack('Sangria atualizada com sucesso')
     }
     else {

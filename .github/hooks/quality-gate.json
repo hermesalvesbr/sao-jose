@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "bun run lint && bun run typecheck",
+        "windows": "bun run lint; if ($LASTEXITCODE -ne 0) { exit 1 }; bun run typecheck",
+        "timeout": 180,
+        "cwd": "."
+      }
+    ]
+  }
+}

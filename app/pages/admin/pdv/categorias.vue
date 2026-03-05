@@ -1,28 +1,41 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 definePageMeta({ layout: 'admin' })
 
-const { fetchCategories, createCategory, updateCategory, deleteCategory, fetchProducts } = usePdv()
+const { fetchCategories, createCategory, updateCategory, deleteCategory, fetchProducts, fetchProductionPoints } = usePdv()
 
 const items = ref<any[]>([])
+const productionPoints = ref<any[]>([])
 const productCounts = ref<Record<string, number>>({})
 const loading = ref(false)
 const dialog = ref(false)
 const deleteDialog = ref(false)
 const editedId = ref<string | null>(null)
-const editedItem = ref({ name: '', active: true, status: 'published', icon: '', sort_order: 1 })
-const defaultItem = { name: '', active: true, status: 'published', icon: '', sort_order: 1 }
+const editedItem = ref({ name: '', active: true, status: 'published', icon: '', sort_order: 1, points_id: undefined })
+const defaultItem = { name: '', active: true, status: 'published', icon: '', sort_order: 1, points_id: undefined }
 const itemToDelete = ref<string | null>(null)
+const selectedPoint = ref<string | null>(null)
+
+const filteredItems = computed(() => {
+  if (!selectedPoint.value)
+    return items.value
+  return items.value.filter((item) => {
+    const pointId = typeof item.points_id === 'object' && item.points_id ? item.points_id.id : item.points_id
+    return pointId === selectedPoint.value
+  })
+})
 
 async function loadItems() {
   loading.value = true
   try {
-    const [catRes, prodRes] = await Promise.all([
-      fetchCategories({ limit: -1, sort: 'sort_order' }),
+    const [catRes, prodRes, pointsRes] = await Promise.all([
+      fetchCategories({ limit: -1, sort: 'sort_order', fields: ['*', 'points_id.*'] }),
       fetchProducts({ limit: -1, fields: ['id', 'category_id'] }),
+      fetchProductionPoints({ limit: -1, filter: { active: { _eq: true } }, sort: 'name' }),
     ])
     items.value = catRes || []
+    productionPoints.value = pointsRes || []
 
     // Count products per category
     const counts: Record<string, number> = {}
@@ -115,7 +128,7 @@ function getCategoryColor(index: number) {
           Categorias
         </h1>
         <p class="text-body-2 text-medium-emphasis mt-1 mb-0">
-          Organize seus produtos em categorias
+          Organize seus produtos em categorias por ponto de produção
         </p>
       </div>
       <v-btn color="primary" prepend-icon="mdi-plus" size="large" @click="openNew">
@@ -123,16 +136,41 @@ function getCategoryColor(index: number) {
       </v-btn>
     </div>
 
+    <!-- Production Point Filter -->
+    <v-card rounded="xl" :elevation="0" class="border mb-4">
+      <v-card-text class="pa-4">
+        <v-chip-group
+          v-model="selectedPoint"
+          mandatory
+          color="primary"
+          selected-class="text-primary"
+        >
+          <v-chip value="" variant="outlined">
+            <v-icon start icon="mdi-view-grid-outline" />
+            Todos
+          </v-chip>
+          <v-chip
+            v-for="point in productionPoints"
+            :key="point.id"
+            :value="point.id"
+            variant="outlined"
+          >
+            {{ point.name }}
+          </v-chip>
+        </v-chip-group>
+      </v-card-text>
+    </v-card>
+
     <!-- Loading -->
     <div v-if="loading" class="d-flex justify-center pa-12">
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
 
     <!-- Empty State -->
-    <v-card v-else-if="items.length === 0" rounded="xl" :elevation="0" class="border text-center pa-12">
+    <v-card v-else-if="filteredItems.length === 0" rounded="xl" :elevation="0" class="border text-center pa-12">
       <v-icon icon="mdi-tag-plus-outline" size="64" color="grey-lighten-1" />
       <h3 class="text-h6 mt-4 mb-2">
-        Nenhuma categoria criada
+        Nenhuma categoria {{ selectedPoint ? 'neste ponto' : 'criada' }}
       </h3>
       <p class="text-body-2 text-medium-emphasis mb-4">
         Crie sua primeira categoria para organizar os produtos
@@ -145,7 +183,7 @@ function getCategoryColor(index: number) {
     <!-- Category Cards Grid -->
     <v-row v-else>
       <v-col
-        v-for="(item, index) in items"
+        v-for="(item, index) in filteredItems"
         :key="item.id"
         cols="12"
         sm="6"
@@ -171,6 +209,13 @@ function getCategoryColor(index: number) {
             <h3 class="text-subtitle-1 font-weight-bold mb-1">
               {{ item.name }}
             </h3>
+
+            <!-- Production Point -->
+            <div v-if="item.points_id" class="mb-2">
+              <v-chip size="x-small" variant="tonal" color="info">
+                {{ typeof item.points_id === 'object' ? item.points_id.name : '—' }}
+              </v-chip>
+            </div>
 
             <!-- Product Count -->
             <v-chip size="small" variant="tonal" color="secondary" class="mb-3">
@@ -222,12 +267,25 @@ function getCategoryColor(index: number) {
               required
               class="mb-2"
             />
+            <v-select
+              v-model="editedItem.points_id"
+              :items="productionPoints"
+              item-title="name"
+              item-value="id"
+              label="Ponto de Produção"
+              variant="outlined"
+              prepend-inner-icon="mdi-store-outline"
+              required
+              hint="Categoria pertence a qual barraca/ponto?"
+              persistent-hint
+              class="mb-2"
+            />
             <v-text-field
               v-model="editedItem.icon"
               label="Ícone MDI (sem prefixo mdi-)"
               variant="outlined"
               prepend-inner-icon="mdi-emoticon-outline"
-              hint="Ex: food, cup, beer, gift"
+              hint="Ex: food, cup, beer, gift, checkroom, palette"
               persistent-hint
               class="mb-2"
             />

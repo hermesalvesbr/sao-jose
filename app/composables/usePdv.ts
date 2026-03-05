@@ -62,6 +62,18 @@ export function usePdv() {
     }
   }
 
+  const fetchCategoriesByPoint = async (pointId: string | null = null) => {
+    const query: any = {
+      limit: -1,
+      sort: ['sort_order'],
+      fields: ['*', 'points_id.*'],
+    }
+    if (pointId) {
+      query.filter = { points_id: { _eq: pointId } }
+    }
+    return fetchCategories(query)
+  }
+
   // PRODUCTS
   const fetchProducts = async (query = {}) => {
     loading.value = true
@@ -416,6 +428,7 @@ export function usePdv() {
   return {
     loading,
     fetchCategories,
+    fetchCategoriesByPoint,
     createCategory,
     updateCategory,
     deleteCategory,

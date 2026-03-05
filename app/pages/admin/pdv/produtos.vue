@@ -14,9 +14,7 @@ const deleteDialog = ref(false)
 const editedId = ref<string | null>(null)
 const search = ref('')
 const selectedCategory = ref<string | null>(null)
-
-// Lojinha production point ID
-const LOJINHA_ID = '771786ea-9431-411b-8274-28b224bfb5ad'
+const selectedPoint = ref<string | null>(null)
 
 const defaultItem = {
   name: '',
@@ -24,7 +22,7 @@ const defaultItem = {
   active: true,
   price: 0,
   category_id: null as string | null,
-  production_point_id: LOJINHA_ID as string | null,
+  production_point_id: null as string | null,
   imagem: null as string | null,
   stock_quantity: 0,
   sort_order: 1,
@@ -44,8 +42,25 @@ const headers = [
   { title: 'Ações', key: 'actions', sortable: false, align: 'end' as const },
 ]
 
+const filteredCategories = computed(() => {
+  if (!selectedPoint.value)
+    return categories.value
+  return categories.value.filter((cat) => {
+    const pointId = typeof cat.points_id === 'object' && cat.points_id ? cat.points_id.id : cat.points_id
+    return pointId === selectedPoint.value
+  })
+})
+
 const filteredItems = computed(() => {
   let result = items.value
+  // Filter by production point first
+  if (selectedPoint.value) {
+    result = result.filter((p) => {
+      const ppId = typeof p.production_point_id === 'object' && p.production_point_id ? p.production_point_id.id : p.production_point_id
+      return ppId === selectedPoint.value
+    })
+  }
+  // Then by category
   if (selectedCategory.value) {
     result = result.filter((p) => {
       const catId = typeof p.category_id === 'object' && p.category_id ? p.category_id.id : p.category_id
@@ -59,9 +74,9 @@ async function loadData() {
   loading.value = true
   try {
     const [prodRes, catRes, ppRes] = await Promise.all([
-      fetchProducts({ limit: -1, fields: ['*', 'category_id.name', 'category_id.id', 'production_point_id.name', 'production_point_id.id'] }),
-      fetchCategories({ limit: -1 }),
-      fetchProductionPoints({ limit: -1 }),
+      fetchProducts({ limit: -1, fields: ['*', 'category_id.name', 'category_id.id', 'category_id.points_id', 'production_point_id.name', 'production_point_id.id'], sort: 'sort_order' }),
+      fetchCategories({ limit: -1, fields: ['*', 'points_id.*'], sort: 'sort_order' }),
+      fetchProductionPoints({ limit: -1, filter: { active: { _eq: true } }, sort: 'name' }),
     ])
     items.value = prodRes || []
     categories.value = catRes || []
@@ -74,6 +89,19 @@ async function loadData() {
     loading.value = false
   }
 }
+
+// Auto-fill production_point_id when category changes
+watch(() => editedItem.value.category_id, (newCatId) => {
+  if (!newCatId)
+    return
+  const category = categories.value.find((c) => c.id === newCatId)
+  if (category && category.points_id) {
+    const pointId = typeof category.points_id === 'object' && category.points_id ? category.points_id.id : category.points_id
+    if (pointId) {
+      editedItem.value.production_point_id = pointId
+    }
+  }
+})
 
 onMounted(() => {
   loadData()
@@ -187,6 +215,12 @@ function getCategoryName(item: any) {
     return item.category_id.name
   return '-'
 }
+
+function getProductionPointName(item: any) {
+  if (item.production_point_id && typeof item.production_point_id === 'object')
+    return item.production_point_id.name
+  return '-'
+}
 </script>
 
 <template>
@@ -222,20 +256,45 @@ function getCategoryName(item: any) {
             />
           </v-col>
           <v-col cols="12" sm="7" md="8" class="ps-sm-4 pt-3 pt-sm-0">
+            <!-- Production Point Filter -->
+            <div class="mb-2">
+              <v-chip-group v-model="selectedPoint" selected-class="text-primary" column>
+                <v-chip
+                  :value="null"
+                  variant="tonal"
+                  filter
+                  size="small"
+                >
+                  <v-icon start icon="mdi-store-outline" />
+                  Todos os Pontos
+                </v-chip>
+                <v-chip
+                  v-for="point in productionPoints"
+                  :key="point.id"
+                  :value="point.id"
+                  variant="tonal"
+                  filter
+                  size="small"
+                >
+                  {{ point.name }}
+                </v-chip>
+              </v-chip-group>
+            </div>
+            <!-- Category Filter -->
             <v-chip-group v-model="selectedCategory" selected-class="text-primary" column>
               <v-chip
                 :value="null"
-                variant="tonal"
+                variant="outlined"
                 filter
                 size="small"
               >
-                Todas
+                Todas Categorias
               </v-chip>
               <v-chip
-                v-for="cat in categories"
+                v-for="cat in filteredCategories"
                 :key="cat.id"
                 :value="cat.id"
-                variant="tonal"
+                variant="outlined"
                 filter
                 size="small"
               >
@@ -268,7 +327,7 @@ function getCategoryName(item: any) {
                 {{ item.name }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                {{ getCategoryName(item) }}
+                {{ getProductionPointName(item) }}
               </div>
             </div>
           </div>
@@ -356,6 +415,8 @@ function getCategoryName(item: any) {
                   variant="outlined"
                   prepend-inner-icon="mdi-tag-outline"
                   clearable
+                  hint="Ao selecionar, o ponto de produção será preenchido automaticamente"
+                  persistent-hint
                 />
               </v-col>
               <v-col cols="12">
@@ -368,8 +429,9 @@ function getCategoryName(item: any) {
                   variant="outlined"
                   prepend-inner-icon="mdi-store-outline"
                   clearable
-                  hint="Ex: Barracas de Comida, Lojinha"
+                  hint="Preenchido automaticamente pela categoria"
                   persistent-hint
+                  readonly
                 />
               </v-col>
               <v-col cols="12" md="6">

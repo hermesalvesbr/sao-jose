@@ -143,7 +143,7 @@ async function saveCell() {
     }
 
     if (editingSchedule.value) {
-      await updateSchedule(editingSchedule.value.id, payload)
+      await updateSchedule(editingSchedule.value.id, payload as any)
     }
     else {
       await createSchedule(payload as any)

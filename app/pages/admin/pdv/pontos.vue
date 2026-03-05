@@ -16,10 +16,12 @@ const {
   updateProductionPoint,
   deleteProductionPoint,
   fetchProducts,
+  fetchCategories,
 } = usePdv()
 
 const points = ref<any[]>([])
 const productCounts = ref<Record<string, number>>({})
+const categoryCounts = ref<Record<string, number>>({})
 const loading = ref(true)
 const dialog = ref(false)
 const deleteDialog = ref(false)
@@ -54,9 +56,10 @@ function getPointStyle(name: string) {
 async function loadData() {
   loading.value = true
   try {
-    const [res, prodsRes] = await Promise.all([
+    const [res, prodsRes, catsRes] = await Promise.all([
       fetchProductionPoints({ limit: -1 }),
       fetchProducts({ limit: -1, fields: ['id', 'production_point_id'] }),
+      fetchCategories({ limit: -1, fields: ['id', 'points_id'] }),
     ])
     points.value = res || []
 
@@ -71,6 +74,18 @@ async function loadData() {
       }
     }
     productCounts.value = counts
+
+    // Count categories per point
+    const catCounts: Record<string, number> = {}
+    for (const c of (catsRes || [])) {
+      const ppId = typeof c.points_id === 'object' && c.points_id
+        ? (c.points_id as any).id
+        : c.points_id
+      if (ppId) {
+        catCounts[ppId] = (catCounts[ppId] || 0) + 1
+      }
+    }
+    categoryCounts.value = catCounts
   }
   catch (e) {
     console.error('Error loading production points', e)
@@ -203,6 +218,11 @@ async function performDelete() {
             >
               {{ point.active ? 'Ativo' : 'Inativo' }}
             </v-chip>
+
+            <div class="text-body-2 text-on-surface-variant mb-1">
+              <v-icon icon="mdi-tag-multiple-outline" size="16" class="me-1" />
+              {{ categoryCounts[point.id] || 0 }} categoria(s)
+            </div>
 
             <div class="text-body-2 text-on-surface-variant">
               <v-icon icon="mdi-package-variant-closed" size="16" class="me-1" />

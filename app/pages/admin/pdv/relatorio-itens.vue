@@ -50,6 +50,10 @@ async function loadReport() {
         'product_id.name',
         'product_id.category_id.id',
         'product_id.category_id.name',
+        'product_id.category_id.points_id.id',
+        'product_id.category_id.points_id.name',
+        'product_id.production_point_id.id',
+        'product_id.production_point_id.name',
       ],
       filter: {
         _and: [
@@ -98,6 +102,14 @@ interface OperatorRow {
   name: string
   qtd: number
   total: number
+}
+
+interface ProductionPointRow {
+  id: string
+  name: string
+  qtd: number
+  total: number
+  categories: CategoryRow[]
 }
 
 /** Agrupa itens por produto e retorna lista de produtos ordenada por total desc. */
@@ -169,6 +181,92 @@ const operatorRows = computed((): OperatorRow[] => {
   return Array.from(map.values()).sort((a, b) => b.total - a.total)
 })
 
+/** Agrupa por ponto de produção (com subcategorias). */
+const productionPointRows = computed((): ProductionPointRow[] => {
+  const pointMap = new Map<string, ProductionPointRow>()
+  
+  // Primeiro, agrupa produtos por ponto
+  for (const p of productRows.value) {
+    // Busca o item original para pegar dados do ponto
+    const si = saleItems.value.find((item: any) => {
+      const prod = item.product_id
+      const prodId = typeof prod === 'object' && prod ? prod.id : prod
+      return prodId === p.id
+    })
+    
+    if (!si) continue
+    
+    const prod = si.product_id
+    const pp = typeof prod === 'object' && prod ? prod.production_point_id : null
+    const catPoints = typeof prod === 'object' && prod && prod.category_id && typeof prod.category_id === 'object' 
+      ? prod.category_id.points_id 
+      : null
+    
+    // Tenta pegar o ponto diretamente do produto, senão da categoria
+    const point = pp || catPoints
+    const ppId: string = typeof point === 'object' && point ? point.id : point ?? 'sem-ponto'
+    const ppName: string = typeof point === 'object' && point ? point.name : 'Sem Ponto'
+    
+    if (!pointMap.has(ppId)) {
+      pointMap.set(ppId, {
+        id: ppId,
+        name: ppName,
+        qtd: 0,
+        total: 0,
+        categories: [],
+      })
+    }
+    
+    const row = pointMap.get(ppId)!
+    row.qtd += p.qtd
+    row.total += p.total
+  }
+  
+  // Depois, agrupa categorias dentro de cada ponto
+  for (const point of pointMap.values()) {
+    const catMap = new Map<string, CategoryRow>()
+    
+    for (const p of productRows.value) {
+      const si = saleItems.value.find((item: any) => {
+        const prod = item.product_id
+        const prodId = typeof prod === 'object' && prod ? prod.id : prod
+        return prodId === p.id
+      })
+      
+      if (!si) continue
+      
+      const prod = si.product_id
+      const pp = typeof prod === 'object' && prod ? prod.production_point_id : null
+      const catPoints = typeof prod === 'object' && prod && prod.category_id && typeof prod.category_id === 'object' 
+        ? prod.category_id.points_id 
+        : null
+      const pointObj = pp || catPoints
+      const ppId: string = typeof pointObj === 'object' && pointObj ? pointObj.id : pointObj ?? 'sem-ponto'
+      
+      if (ppId !== point.id) continue
+      
+      if (!catMap.has(p.categoryId)) {
+        catMap.set(p.categoryId, {
+          id: p.categoryId,
+          name: p.categoryName,
+          qtd: 0,
+          total: 0,
+          products: [],
+        })
+      }
+      
+      const cat = catMap.get(p.categoryId)!
+      cat.qtd += p.qtd
+      cat.total += p.total
+      cat.products.push(p)
+    }
+    
+    point.categories = Array.from(catMap.values()).sort((a, b) => b.total - a.total)
+  }
+  
+  return Array.from(pointMap.values()).sort((a, b) => b.total - a.total)
+})
+
 const grandTotalQtd = computed(() => productRows.value.reduce((s, r) => s + r.qtd, 0))
 const grandTotalValue = computed(() => productRows.value.reduce((s, r) => s + r.total, 0))
 
@@ -186,6 +284,17 @@ function toggleCategory(id: string) {
 }
 function isCategoryExpanded(id: string) {
   return expandedCategories.value.has(id)
+}
+
+const expandedPoints = ref<Set<string>>(new Set())
+function togglePoint(id: string) {
+  if (expandedPoints.value.has(id))
+    expandedPoints.value.delete(id)
+  else
+    expandedPoints.value.add(id)
+}
+function isPointExpanded(id: string) {
+  return expandedPoints.value.has(id)
 }
 
 function printPage() {
@@ -281,6 +390,103 @@ function printPage() {
           DATA: {{ periodLabel }}
         </p>
       </div>
+
+      <!-- ─── Vendas por Ponto de Produção ──────────────────────────────────── -->
+      <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
+        <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
+          <v-icon icon="mdi-store-outline" color="primary" class="me-2" />
+          <span class="text-subtitle-1 font-weight-bold">Vendas por Ponto de Produção</span>
+          <v-chip size="small" variant="tonal" color="primary" class="ms-3">
+            {{ productionPointRows.length }} ponto(s)
+          </v-chip>
+        </v-card-title>
+        <div class="print-section-title print-only">
+          VENDAS POR PONTO DE PRODUÇÃO
+        </div>
+
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  PONTO / CATEGORIA
+                </th>
+                <th class="col-qty text-end">
+                  QTD ITENS
+                </th>
+                <th class="col-money text-end">
+                  TOTAL R$
+                </th>
+                <th class="col-action no-print" />
+              </tr>
+            </thead>
+            <tbody>
+              <template v-if="productionPointRows.length === 0">
+                <tr>
+                  <td colspan="4" class="text-center pa-6 text-medium-emphasis">
+                    Nenhum item vendido no período informado
+                  </td>
+                </tr>
+              </template>
+              <template v-for="point in productionPointRows" :key="point.id">
+                <!-- Production Point row -->
+                <tr class="data-row point-row" style="background: rgba(25, 118, 210, 0.08);">
+                  <td class="font-weight-bold text-primary">
+                    <v-icon icon="mdi-store" size="16" class="me-1" />
+                    {{ point.name }}
+                  </td>
+                  <td class="col-qty text-end font-weight-bold">
+                    {{ point.qtd }}
+                  </td>
+                  <td class="col-money text-end font-weight-bold text-primary">
+                    {{ formatCurrency(point.total) }}
+                  </td>
+                  <td class="col-action no-print text-end">
+                    <v-btn
+                      :icon="isPointExpanded(point.id) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                      size="x-small"
+                      variant="text"
+                      @click="togglePoint(point.id)"
+                    />
+                  </td>
+                </tr>
+                <!-- Category sub-rows -->
+                <template v-for="cat in point.categories" :key="cat.id">
+                  <tr
+                    class="cat-subrow"
+                    :class="{ 'hidden-screen': !isPointExpanded(point.id) }"
+                  >
+                    <td class="ps-6 font-weight-medium text-body-2">
+                      └ {{ cat.name }}
+                    </td>
+                    <td class="col-qty text-end text-body-2">
+                      {{ cat.qtd }}
+                    </td>
+                    <td class="col-money text-end text-body-2 font-weight-medium">
+                      {{ formatCurrency(cat.total) }}
+                    </td>
+                    <td class="no-print" />
+                  </tr>
+                </template>
+              </template>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td class="font-weight-black text-uppercase">
+                  Total Geral
+                </td>
+                <td class="col-qty text-end font-weight-bold">
+                  {{ grandTotalQtd }}
+                </td>
+                <td class="col-money text-end font-weight-black text-success-print">
+                  {{ formatCurrency(grandTotalValue) }}
+                </td>
+                <td class="no-print" />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </v-card>
 
       <!-- ─── Vendas por Categoria ──────────────────────────────────── -->
       <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
@@ -595,8 +801,14 @@ function printPage() {
   width: 40px;
 }
 
+.point-row {
+  background-color: rgba(25, 118, 210, 0.08);
+}
 .cat-row {
   background-color: rgba(var(--v-theme-secondary), 0.04);
+}
+.cat-subrow {
+  background-color: rgba(0, 0, 0, 0.02);
 }
 .product-row td {
   color: rgba(0, 0, 0, 0.65);

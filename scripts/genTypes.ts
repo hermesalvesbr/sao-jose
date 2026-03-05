@@ -32,10 +32,10 @@ try {
 
     // Vamos também mostrar todas as variáveis de ambiente disponíveis para verificação
     console.log('NUXT_PUBLIC_DIRECTUS_URL:', Bun.env.NUXT_PUBLIC_DIRECTUS_URL || '(não definido)')
-    console.log('DIRECTUS_TOKEN:', Bun.env.DIRECTUS_TOKEN ? '(definido)' : '(não definido)')
+    console.log('DIRECTUS_TOKEN:', Bun.env.NUXT_DIRECTUS_TOKEN ? '(definido)' : '(não definido)')
 
     const DIRECTUS_HOST = Bun.env.NUXT_PUBLIC_DIRECTUS_URL
-    const ADMIN_TOKEN = Bun.env.DIRECTUS_TOKEN
+    const ADMIN_TOKEN = Bun.env.NUXT_DIRECTUS_TOKEN
     const outputFile = path.resolve(rootPath, 'app/types/schema.ts')
 
     console.log('Gerando types do Directus...')

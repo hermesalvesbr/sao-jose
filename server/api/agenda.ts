@@ -6,6 +6,7 @@ import { readItems } from '@directus/sdk'
  * A requisição é feita server-side; o token nunca é exposto ao browser.
  */
 export default defineEventHandler(async (event) => {
+  assertMethod(event, 'GET')
   const client = createServerDirectusClient(event)
   return client.request(
     readItems('agenda', {

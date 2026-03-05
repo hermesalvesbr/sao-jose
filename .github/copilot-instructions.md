@@ -1,66 +1,84 @@
-# Copilot Instructions for AI Agents
+# Copilot Instructions for São José (Nuxt 4)
+
+## Stack and Runtime
+
+- Frontend: Nuxt 4 (`^4.3.1`), Vue 3 (`^3.5.x`), Vuetify 4 (`^4.0.x`)
+- Backend API: Nuxt server routes + Directus 11 via `@directus/sdk`
+- Runtime: Bun
+- Type safety: TypeScript strict via Nuxt typecheck
+- Lint/format: ESLint (`@antfu/eslint-config`) with formatter rules, no Prettier
+
+## Quality Gate (Mandatory)
+
+- Always deliver code with **zero new ESLint errors** and **zero TypeScript errors**.
+- Before finishing implementation, run:
+  - `bun run lint`
+  - `bun run typecheck`
+- If there are errors caused by the new change, fix them before returning.
 
 ## Core Commands
 
-- **Build:** `bun run build` (Nuxt build)
-- **Dev:** `bun run dev` (Nuxt dev server)
-- **Generate:** `bun run generate` (Static site generation)
-- **Preview:** `bun run preview` (Preview production build)
-- **Type Generation:** `bun run gen:types` (Runs `scripts/genTypes.ts`)
-- **Lint:** Project uses ESLint with Antfu config; run lint via your editor or custom script if present (no direct script found).
+- Dev: `bun run dev`
+- Build: `bun run build`
+- Generate static: `bun run generate`
+- Preview: `bun run preview`
+- Type generation (Directus): `bun run gen:types`
 
-## High-Level Architecture
+## Architecture and Boundaries
 
-- **Frontend:** Nuxt 3 (TypeScript, Composition API, `<script setup lang="ts">`), Vuetify 3 for UI.
-- **Backend:** Directus 11 (headless CMS, external API).
-- **Structure:**
-  - `app/` — main app code (components, pages, layouts, composables, plugins, utils)
-  - `server/` — backend/serverless API endpoints
-  - `types/` — domain types/interfaces
-  - `scripts/` — utility scripts (e.g., type generation)
-- **Data Store:** Directus (external, via `@directus/sdk`)
-- **No explicit test, migration, or docs scripts found.**
+- Use `<script setup lang="ts">` only. Options API is forbidden.
+- Keep business logic in composables/services, not in page templates.
+- Prefer small and reusable components.
+- Keep domain typing centered in `app/types/schema.ts` (`ApiCollections`).
 
-## Style & Coding Rules
+## Nuxt 4 Auto-import Rules (Mandatory)
 
-- **Vue:**
-  - Always use `<script setup lang="ts">` (Composition API only; Options API forbidden)
-  - Components in PascalCase; props in camelCase; events in kebab-case
-  - Composables must start with `use`
-  - No manual imports for auto-imported components/composables/plugins/utils/stores
-  - JSDoc comments in English for public APIs
-  - Small, focused, reusable components
-  - Use Vuetify grid/classes; avoid inline styles
-- **TypeScript:**
-  - Strong typing everywhere; avoid `any`/`unknown`
-  - Use interfaces/types for complex data
-  - Enums for constants; generics when needed
-- **Architecture:**
-  - Clean Architecture: clear separation (Presentation, Application, Domain, Infrastructure)
-  - Domain layer (`types/`) is independent; outer layers depend inward
-  - Use dependency injection and interfaces for loose coupling
-- **Formatting/Lint:**
-  - ESLint with `@antfu/eslint-config` (see `eslint.config.js`)
-  - Editor should auto-format on save
-- **Naming:**
-  - Files/components: PascalCase
-  - Composables: `useXxx`
-  - Plugins: `defineNuxtPlugin`
+- Never manually import Nuxt/Vue auto-imported utilities in app code.
+- Rely on auto-imports for items like:
+  - `ref`, `computed`, `watch`, `watchEffect`, `onMounted`
+  - `useRoute`, `useRouter`, `navigateTo`
+  - `definePageMeta`, `useHead`, `useSeoMeta`
+  - `useRuntimeConfig`, `useState`, `$fetch`
+  - Project composables in `app/composables/*`
 
-## Agent/Automation Rules
+## DRY Rules (Mandatory)
 
-- Follow all rules in `.cursor/rules/*.mdc` and `GUIDE.md` (see above)
-- Never use Options API or manual imports for auto-imported modules
-- Always keep codebase ready for Nuxt 4 upgrade
-- Document new public functions/components with JSDoc (in English)
-- Respect modular structure under `app/`
+- Follow DRY strictly: do not duplicate existing logic.
+- Before creating new composables/helpers, check and reuse:
+  - `useAuth`, `useDirectusClient`, `usePdv`, `usePdvReport`
+  - `useAgenda`, `useAniversariantes`, `useDizimos`, `useOfertas`, `usePublicSeo`
+- Extract repeated transformations/formatters into reusable functions.
 
-## Docs & References
+## Directus Integration Rules
 
-- See `README.md` and `GUIDE.md` for project context, goals, and structure
-- For new features, follow Clean Architecture and modularity
-- For UI, use Vuetify and follow theme/config in `app/plugins/vuetify.ts`
+- Prefer typed SDK calls: `readItems`, `createItem`, `updateItem`, `deleteItem`, `uploadFiles`.
+- Avoid raw `fetch('/items/...')` for Directus data access.
+- Use typed schema generics from `ApiCollections`.
+- Keep token security: token never exposed to client.
 
----
+## Server API Conventions (Nuxt 4)
 
-For more, see: https://aka.ms/vscode-instructions-docs
+- In `server/api`, do not use method suffixes in filenames (`.get.ts`, `.post.ts`, etc.).
+- Use neutral route filenames (`agenda.ts`, `aniversariantes.ts`, `directus.ts`).
+- If route should enforce HTTP method, validate inside handler (`assertMethod(event, 'GET')`).
+
+## Vuetify Rules
+
+- Use Vuetify components and grid system (`v-container`, `v-row`, `v-col`) instead of ad-hoc layout code.
+- Use project themes and defaults from `app/plugins/vuetify.ts`.
+- Prefer responsive behavior through `useDisplay()` when needed.
+
+## Naming and Patterns
+
+- Components/files: PascalCase.
+- Composables: `useXxx`.
+- Plugins: `defineNuxtPlugin`.
+- Keep code explicit, strongly typed, and readable.
+
+## References
+
+- `GUIDE.md`
+- `README.md`
+- `app/types/schema.ts`
+- `app/plugins/vuetify.ts`
+- `nuxt.config.ts`

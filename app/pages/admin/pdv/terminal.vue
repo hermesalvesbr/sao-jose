@@ -21,6 +21,7 @@ const { mobile } = useDisplay()
 const {
   fetchProducts,
   fetchCategories,
+  fetchProductionPoints,
   createSale,
   createSaleItem,
   updateProduct,
@@ -29,8 +30,10 @@ const {
 // State
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
+const productionPoints = ref<any[]>([])
 const loading = ref(true)
 const processing = ref(false)
+const selectedPoint = ref<string | null>(null)
 const selectedCategory = ref<string | null>(null)
 const productSearch = ref('')
 const cart = ref<any[]>([])
@@ -48,14 +51,35 @@ const paymentMethods = [
 ]
 
 // Computed
+const filteredCategories = computed(() => {
+  if (!selectedPoint.value)
+    return categories.value
+  return categories.value.filter((cat) => {
+    const pointId = typeof cat.points_id === 'object' && cat.points_id ? cat.points_id.id : cat.points_id
+    return pointId === selectedPoint.value
+  })
+})
+
 const filteredProducts = computed(() => {
   let result = products.value
+  // Filter by production point
+  if (selectedPoint.value) {
+    result = result.filter((p) => {
+      const ppId = typeof p.production_point_id === 'object' && p.production_point_id ? p.production_point_id.id : p.production_point_id
+      const catPointId = p.category_id && typeof p.category_id === 'object' && p.category_id.points_id
+        ? typeof p.category_id.points_id === 'object' ? p.category_id.points_id.id : p.category_id.points_id
+        : null
+      return ppId === selectedPoint.value || catPointId === selectedPoint.value
+    })
+  }
+  // Filter by category
   if (selectedCategory.value) {
     result = result.filter((p) => {
       const catId = typeof p.category_id === 'object' && p.category_id ? p.category_id.id : p.category_id
       return catId === selectedCategory.value
     })
   }
+  // Filter by search
   if (productSearch.value) {
     const term = productSearch.value.toLowerCase()
     result = result.filter(p => p.name?.toLowerCase().includes(term))
@@ -75,19 +99,26 @@ const cartItemCount = computed(() =>
 async function loadData() {
   loading.value = true
   try {
-    const [prodRes, catRes] = await Promise.all([
+    const [prodRes, catRes, pointsRes] = await Promise.all([
       fetchProducts({
         limit: -1,
-        fields: ['*', 'category_id.name', 'category_id.id'],
+        fields: ['*', 'category_id.name', 'category_id.id', 'category_id.points_id.*', 'production_point_id.*'],
         sort: ['sort_order', 'name'],
       }),
       fetchCategories({
         limit: -1,
+        fields: ['*', 'points_id.*'],
         sort: 'sort_order',
+      }),
+      fetchProductionPoints({
+        limit: -1,
+        filter: { active: { _eq: true } },
+        sort: 'name',
       }),
     ])
     products.value = prodRes || []
     categories.value = catRes || []
+    productionPoints.value = pointsRes || []
   }
   catch (e) {
     console.error('Failed to load POS data', e)
@@ -249,14 +280,37 @@ function goBack() {
                 hide-details
                 clearable
                 flat
-                class="mb-2"
+                class="mb-3"
               />
+              
+              <!-- Production Point Tabs -->
+              <v-tabs
+                v-model="selectedPoint"
+                color="primary"
+                density="compact"
+                class="mb-2"
+              >
+                <v-tab :value="null" class="text-none">
+                  <v-icon start icon="mdi-view-grid-outline" />
+                  Todos os Pontos
+                </v-tab>
+                <v-tab
+                  v-for="point in productionPoints"
+                  :key="point.id"
+                  :value="point.id"
+                  class="text-none"
+                >
+                  {{ point.name }}
+                </v-tab>
+              </v-tabs>
+
+              <!-- Category Chips -->
               <v-chip-group v-model="selectedCategory" selected-class="text-on-primary bg-primary" mandatory>
                 <v-chip :value="null" variant="tonal" filter size="small" label>
-                  Todos
+                  Todas
                 </v-chip>
                 <v-chip
-                  v-for="cat in categories"
+                  v-for="cat in filteredCategories"
                   :key="cat.id"
                   :value="cat.id"
                   variant="tonal"
