@@ -18,6 +18,7 @@ const generalItems = [
   { title: 'Resumo', icon: 'mdi-view-dashboard-outline', to: '/admin/resumo' },
   { title: 'Ofertório', icon: 'mdi-cash-multiple', to: '/admin/ofertorio/' },
   { title: 'Dízimos', icon: 'mdi-account-cash-outline', to: '/admin/dizimos' },
+  { title: 'Anúncios', icon: 'mdi-bullhorn-outline', to: '/admin/anuncios' },
   { title: 'Consolidado', icon: 'mdi-finance', to: '/admin/relatorio-consolidado' },
 ]
 
@@ -69,6 +70,7 @@ const breadcrumbs = computed(() => {
     'ofertorio': 'Ofertório',
     'add': 'Novo',
     'dizimos': 'Dízimos',
+    'anuncios': 'Anúncios',
     'relatorio-consolidado': 'Consolidado',
     'pdv': 'PDV',
     'categorias': 'Categorias',

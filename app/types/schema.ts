@@ -1,4 +1,24 @@
 /** * Generated TypeScript types for Directus Schema */
+export interface AdsNovenario {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  /** Nome do anunciante/patrocinador */
+  anunciante: string;
+  /** Arquivo de mídia (imagem ou vídeo) */
+  midia: string | DirectusFile;
+  /** Tipo de mídia: 'imagem' ou 'video' */
+  tipo_midia: 'imagem' | 'video';
+  /** Tempo de exibição em segundos (múltiplo de 5) */
+  duracao: number;
+  /** Valor pago pelo anunciante em R$ */
+  valor_pago: number;
+}
+
 export interface Agenda {
   id: string;
   status: string;
@@ -317,6 +337,7 @@ export interface DirectusRole {
 }
 
 export interface ApiCollections {
+  ads_novenario: AdsNovenario[];
   agenda: Agenda[];
   catolico: Catolico[];
   dizimista: Dizimista[];

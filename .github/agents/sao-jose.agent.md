@@ -2,11 +2,7 @@
 name: SaoJose
 description: Especialista em planejamento e revisão para Nuxt 4 + Vuetify 4 + Directus + TypeScript
 argument-hint: "Descreva a tarefa, feature ou problema a planejar/revisar"
-tools:
-  - codebase
-  - search
-  - editFiles
-  - runCommands
+ 
 ---
 
 # São José — Agente de Planejamento e Revisão

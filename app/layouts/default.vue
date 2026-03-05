@@ -19,6 +19,7 @@ const drawerItems: DrawerItem[] = [
   { title: 'Início', icon: 'mdi-home', to: '/', tooltip: 'Página inicial' },
   { title: 'Fazer parte', icon: 'mdi-account-plus', to: '/cadastrar', tooltip: 'Cadastrar novo católico' },
   { title: 'Aniversariantes', icon: 'mdi-cake-variant', to: '/aniversariantes', tooltip: 'Ver aniversariantes' },
+  { title: 'Telão Novenário', icon: 'mdi-television-play', to: '/telao', tooltip: 'Exibição de anúncios – telão' },
   { title: 'Missas', icon: 'mdi-church', to: '/missas', disabled: true, tooltip: 'Em breve: Missas' },
   { title: 'Dízimos', icon: 'mdi-cash-multiple', to: '/dizimos', disabled: true, tooltip: 'Em breve: Dízimos' },
 ]
