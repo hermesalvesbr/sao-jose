@@ -184,7 +184,7 @@ const operatorRows = computed((): OperatorRow[] => {
 /** Agrupa por ponto de produção (com subcategorias). */
 const productionPointRows = computed((): ProductionPointRow[] => {
   const pointMap = new Map<string, ProductionPointRow>()
-  
+
   // Primeiro, agrupa produtos por ponto
   for (const p of productRows.value) {
     // Busca o item original para pegar dados do ponto
@@ -193,20 +193,20 @@ const productionPointRows = computed((): ProductionPointRow[] => {
       const prodId = typeof prod === 'object' && prod ? prod.id : prod
       return prodId === p.id
     })
-    
+
     if (!si) continue
-    
+
     const prod = si.product_id
     const pp = typeof prod === 'object' && prod ? prod.production_point_id : null
-    const catPoints = typeof prod === 'object' && prod && prod.category_id && typeof prod.category_id === 'object' 
-      ? prod.category_id.points_id 
+    const catPoints = typeof prod === 'object' && prod && prod.category_id && typeof prod.category_id === 'object'
+      ? prod.category_id.points_id
       : null
-    
+
     // Tenta pegar o ponto diretamente do produto, senão da categoria
     const point = pp || catPoints
     const ppId: string = typeof point === 'object' && point ? point.id : point ?? 'sem-ponto'
     const ppName: string = typeof point === 'object' && point ? point.name : 'Sem Ponto'
-    
+
     if (!pointMap.has(ppId)) {
       pointMap.set(ppId, {
         id: ppId,
@@ -221,30 +221,30 @@ const productionPointRows = computed((): ProductionPointRow[] => {
     row.qtd += p.qtd
     row.total += p.total
   }
-  
+
   // Depois, agrupa categorias dentro de cada ponto
   for (const point of pointMap.values()) {
     const catMap = new Map<string, CategoryRow>()
-    
+
     for (const p of productRows.value) {
       const si = saleItems.value.find((item: any) => {
         const prod = item.product_id
         const prodId = typeof prod === 'object' && prod ? prod.id : prod
         return prodId === p.id
       })
-      
+
       if (!si) continue
-      
+
       const prod = si.product_id
       const pp = typeof prod === 'object' && prod ? prod.production_point_id : null
-      const catPoints = typeof prod === 'object' && prod && prod.category_id && typeof prod.category_id === 'object' 
-        ? prod.category_id.points_id 
+      const catPoints = typeof prod === 'object' && prod && prod.category_id && typeof prod.category_id === 'object'
+        ? prod.category_id.points_id
         : null
       const pointObj = pp || catPoints
       const ppId: string = typeof pointObj === 'object' && pointObj ? pointObj.id : pointObj ?? 'sem-ponto'
-      
+
       if (ppId !== point.id) continue
-      
+
       if (!catMap.has(p.categoryId)) {
         catMap.set(p.categoryId, {
           id: p.categoryId,
@@ -260,10 +260,10 @@ const productionPointRows = computed((): ProductionPointRow[] => {
       cat.total += p.total
       cat.products.push(p)
     }
-    
+
     point.categories = Array.from(catMap.values()).sort((a, b) => b.total - a.total)
   }
-  
+
   return Array.from(pointMap.values()).sort((a, b) => b.total - a.total)
 })
 

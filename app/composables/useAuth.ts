@@ -13,7 +13,8 @@ const AUTH_STORAGE_KEY = 'directus_auth'
 function createLocalStorageAdapter(): AuthenticationStorage {
   return {
     get() {
-      if (typeof window === 'undefined') return null
+      if (typeof window === 'undefined')
+        return null
       try {
         const raw = localStorage.getItem(AUTH_STORAGE_KEY)
         return raw ? JSON.parse(raw) : null
@@ -23,7 +24,8 @@ function createLocalStorageAdapter(): AuthenticationStorage {
       }
     },
     set(value) {
-      if (typeof window === 'undefined') return
+      if (typeof window === 'undefined')
+        return
       if (value) {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(value))
       }

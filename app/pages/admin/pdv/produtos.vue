@@ -94,7 +94,7 @@ async function loadData() {
 watch(() => editedItem.value.category_id, (newCatId) => {
   if (!newCatId)
     return
-  const category = categories.value.find((c) => c.id === newCatId)
+  const category = categories.value.find(c => c.id === newCatId)
   if (category && category.points_id) {
     const pointId = typeof category.points_id === 'object' && category.points_id ? category.points_id.id : category.points_id
     if (pointId) {
