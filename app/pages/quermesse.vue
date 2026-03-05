@@ -29,14 +29,12 @@ usePublicSeo({
 
 const { data, status, error } = useFetch<CardapioResponse>('/api/quermesse')
 const loading = computed(() => status.value === 'pending')
-const runtimeConfig = useRuntimeConfig()
 
 /** Monta URL de thumb do Directus para imagem do produto */
 function thumbUrl(imageId: string | null): string | null {
   if (!imageId)
     return null
-  const base = String(runtimeConfig.public.directus.url).replace(/\/$/, '')
-  return `${base}/assets/${encodeURIComponent(imageId)}?fit=cover&width=280&height=200&quality=80`
+  return getDirectusAssetUrl(imageId, { fit: 'cover', width: 280, height: 200, quality: 80 })
 }
 
 /** Agrupa categorias por ponto de produção e produtos por categoria */

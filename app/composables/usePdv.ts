@@ -418,11 +418,10 @@ export function usePdv() {
   }
 
   // Asset URL helper
-  const getAssetUrl = async (fileId: string | null | undefined): Promise<string | null> => {
+  const getAssetUrl = (fileId: string | null | undefined): string | null => {
     if (!fileId)
       return null
-    const { url } = await $fetch<{ url: string }>('/api/directus')
-    return `${url.replace(/\/$/, '')}/assets/${fileId}`
+    return getDirectusAssetUrl(fileId)
   }
 
   return {

@@ -9,15 +9,6 @@ usePublicSeo({
   description: 'Transparência na exibição dos anúncios do novenário. Consulte as estatísticas de cada anunciante.',
 })
 
-const config = useRuntimeConfig()
-const directusUrl = computed(() => (config.public.directus.url as string).replace(/\/$/, ''))
-const directusToken = computed(() => config.public.directus.token as string)
-
-function getMediaUrl(midia: string): string {
-  const token = directusToken.value
-  return `${directusUrl.value}/assets/${midia}${token ? `?access_token=${token}` : ''}`
-}
-
 const { formatarTempo, formatarDataHora } = useAnunciantesPublico()
 
 const { data: anunciantes, pending } = await useAsyncData<AnuncianteListItem[]>(
@@ -133,7 +124,7 @@ function chipIcon(tipo: string): string {
             <!-- Nome + imagem + tipo -->
             <div class="d-flex align-center ga-3 mb-3">
               <v-avatar v-if="item.midia" size="48" rounded="lg">
-                <v-img :src="getMediaUrl(item.midia)" :alt="item.anunciante" cover />
+                <v-img :src="getDirectusAssetUrl(item.midia)" :alt="item.anunciante" cover />
               </v-avatar>
               <v-avatar v-else size="48" rounded="lg" color="#FFF8E1">
                 <v-icon color="#E6A800">

@@ -5,15 +5,6 @@ import type { AdsLogEntry, AdsNovenario } from '~/types/schema'
 const route = useRoute()
 const id = route.params.id as string
 
-const config = useRuntimeConfig()
-const directusUrl = computed(() => (config.public.directus.url as string).replace(/\/$/, ''))
-const directusToken = computed(() => config.public.directus.token as string)
-
-function getMediaUrl(midia: string): string {
-  const token = directusToken.value
-  return `${directusUrl.value}/assets/${midia}${token ? `?access_token=${token}` : ''}`
-}
-
 const {
   formatarTempo,
   formatarData,
@@ -142,7 +133,7 @@ function chipColor(tipo: string): string {
         <div class="preview-wrapper">
           <video
             v-if="ad.tipo_midia === 'video'"
-            :src="getMediaUrl(ad.midia)"
+            :src="getDirectusAssetUrl(ad.midia)"
             controls
             muted
             playsinline
@@ -150,7 +141,7 @@ function chipColor(tipo: string): string {
           />
           <img
             v-else
-            :src="getMediaUrl(ad.midia)"
+            :src="getDirectusAssetUrl(ad.midia)"
             :alt="ad.anunciante"
             class="preview-media"
           >

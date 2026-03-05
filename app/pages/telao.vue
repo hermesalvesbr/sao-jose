@@ -4,10 +4,6 @@ import type { AdsNovenario } from '~/types/schema'
 definePageMeta({ layout: false })
 useHead({ title: 'Telão — Anúncios Novenário' })
 
-const config = useRuntimeConfig()
-const directusUrl = computed(() => (config.public.directus.url as string).replace(/\/$/, ''))
-const directusToken = computed(() => config.public.directus.token as string)
-
 // ─── localStorage helpers (safe – opera sem internet em modo kiosk) ───────────
 const ADS_CACHE_KEY = 'telao:ads'
 const LOG_QUEUE_KEY = 'telao:log-queue'
@@ -50,8 +46,7 @@ function getMediaUrl(ad: AdsNovenario): string {
   const fileId = typeof ad.midia === 'object' && ad.midia
     ? (ad.midia as { id: string }).id
     : ad.midia as string
-  const token = directusToken.value
-  return `${directusUrl.value}/assets/${fileId}${token ? `?access_token=${token}` : ''}`
+  return getDirectusAssetUrl(fileId)
 }
 
 // Pré-carrega imagens no browser cache para que fiquem disponíveis offline

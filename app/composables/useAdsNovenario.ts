@@ -73,14 +73,10 @@ export function useAdsNovenario() {
     }
   }
 
-  async function getAssetUrl(fileId: string | null | undefined): Promise<string | null> {
+  function getAssetUrl(fileId: string | null | undefined): string | null {
     if (!fileId)
       return null
-    const { url } = await $fetch<{ url: string }>('/api/directus')
-    const { directus } = useRuntimeConfig().public
-    const token = (directus as { token?: string }).token ?? ''
-    const base = url.replace(/\/$/, '')
-    return token ? `${base}/assets/${fileId}?access_token=${token}` : `${base}/assets/${fileId}`
+    return getDirectusAssetUrl(fileId)
   }
 
   return {

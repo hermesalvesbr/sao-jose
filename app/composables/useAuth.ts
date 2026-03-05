@@ -239,7 +239,7 @@ class AuthService {
       return null
     if (!this.directusUrl)
       return null
-    return `${this.directusUrl.replace(/\/$/, '')}/assets/${this.user.value.avatar}`
+    return getDirectusAssetUrl(this.user.value.avatar)
   }
 
   public async init() {
