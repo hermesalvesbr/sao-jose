@@ -194,7 +194,9 @@ const productionPointRows = computed((): ProductionPointRow[] => {
       return prodId === p.id
     })
 
-    if (!si) continue
+    if (!si) {
+      continue
+    }
 
     const prod = si.product_id
     const pp = typeof prod === 'object' && prod ? prod.production_point_id : null
@@ -216,7 +218,7 @@ const productionPointRows = computed((): ProductionPointRow[] => {
         categories: [],
       })
     }
-    
+
     const row = pointMap.get(ppId)!
     row.qtd += p.qtd
     row.total += p.total
@@ -233,7 +235,9 @@ const productionPointRows = computed((): ProductionPointRow[] => {
         return prodId === p.id
       })
 
-      if (!si) continue
+      if (!si) {
+        continue
+      }
 
       const prod = si.product_id
       const pp = typeof prod === 'object' && prod ? prod.production_point_id : null
@@ -243,7 +247,9 @@ const productionPointRows = computed((): ProductionPointRow[] => {
       const pointObj = pp || catPoints
       const ppId: string = typeof pointObj === 'object' && pointObj ? pointObj.id : pointObj ?? 'sem-ponto'
 
-      if (ppId !== point.id) continue
+      if (ppId !== point.id) {
+        continue
+      }
 
       if (!catMap.has(p.categoryId)) {
         catMap.set(p.categoryId, {
@@ -254,7 +260,7 @@ const productionPointRows = computed((): ProductionPointRow[] => {
           products: [],
         })
       }
-      
+
       const cat = catMap.get(p.categoryId)!
       cat.qtd += p.qtd
       cat.total += p.total
