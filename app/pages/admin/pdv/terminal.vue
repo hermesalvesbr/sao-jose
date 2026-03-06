@@ -36,6 +36,7 @@ const productionPoints = ref<any[]>([])
 const operators = ref<any[]>([])
 const selectedOperator = ref<any>(null)
 const operatorComboValue = ref<any>(null)
+const operatorSearch = ref('')
 const creatingOperator = ref(false)
 const loading = ref(true)
 const processing = ref(false)
@@ -60,15 +61,19 @@ const paymentMethods = [
 // Operator selection
 const showOperatorDialog = computed(() => !selectedOperator.value)
 
-function onOperatorPicked(val: any) {
-  // Selecting an existing operator from the dropdown confirms immediately
-  if (val && typeof val === 'object') {
-    selectedOperator.value = val
-  }
-}
+// True when an existing item is picked from the list
+const operatorIsSelected = computed(() => operatorComboValue.value && typeof operatorComboValue.value === 'object')
+// True when user typed a name not in the list
+const operatorIsNew = computed(() => !operatorIsSelected.value && !!operatorSearch.value?.trim())
 
-async function confirmNewOperator() {
-  const name = typeof operatorComboValue.value === 'string' ? operatorComboValue.value.trim() : ''
+const canConfirmOperator = computed(() => operatorIsSelected.value || operatorIsNew.value)
+
+async function confirmOperator() {
+  if (operatorIsSelected.value) {
+    selectedOperator.value = operatorComboValue.value
+    return
+  }
+  const name = operatorSearch.value.trim()
   if (!name)
     return
   creatingOperator.value = true
@@ -758,6 +763,7 @@ function goBack() {
         <v-card-text class="px-5 pb-4">
           <v-combobox
             v-model="operatorComboValue"
+            v-model:search="operatorSearch"
             :items="operators"
             item-title="name"
             return-object
@@ -768,18 +774,15 @@ function goBack() {
             prepend-inner-icon="mdi-account-search"
             clearable
             auto-select-first="exact"
-            @update:model-value="onOperatorPicked"
           >
             <template #no-data>
               <v-list-item
-                v-if="typeof operatorComboValue === 'string' && operatorComboValue.trim()"
+                v-if="operatorSearch?.trim()"
                 prepend-icon="mdi-account-plus"
                 color="primary"
-                :loading="creatingOperator"
-                @click="confirmNewOperator"
               >
                 <template #title>
-                  Criar operador <strong>{{ operatorComboValue }}</strong>
+                  Pressione <strong>Confirmar</strong> para criar <strong>{{ operatorSearch }}</strong>
                 </template>
               </v-list-item>
             </template>
@@ -788,6 +791,17 @@ function goBack() {
         <v-card-actions class="px-5 pb-5">
           <v-btn variant="text" color="secondary" @click="goBack">
             Voltar
+          </v-btn>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="flat"
+            :disabled="!canConfirmOperator"
+            :loading="creatingOperator"
+            prepend-icon="mdi-check"
+            @click="confirmOperator"
+          >
+            {{ operatorIsNew ? 'Criar e Confirmar' : 'Confirmar' }}
           </v-btn>
         </v-card-actions>
       </v-card>
