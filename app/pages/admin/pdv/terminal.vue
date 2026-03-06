@@ -23,6 +23,7 @@ const {
   fetchCategories,
   fetchProductionPoints,
   fetchOperators,
+  createOperator,
   createSale,
   createSaleItem,
   updateProduct,
@@ -34,7 +35,8 @@ const categories = ref<any[]>([])
 const productionPoints = ref<any[]>([])
 const operators = ref<any[]>([])
 const selectedOperator = ref<any>(null)
-const operatorSearch = ref('')
+const operatorComboValue = ref<any>(null)
+const creatingOperator = ref(false)
 const loading = ref(true)
 const processing = ref(false)
 const selectedPoint = ref<string | null>(null)
@@ -57,12 +59,33 @@ const paymentMethods = [
 
 // Operator selection
 const showOperatorDialog = computed(() => !selectedOperator.value)
-const filteredOperators = computed(() => {
-  if (!operatorSearch.value)
-    return operators.value
-  const term = operatorSearch.value.toLowerCase()
-  return operators.value.filter((op: any) => op.name?.toLowerCase().includes(term))
-})
+
+function onOperatorPicked(val: any) {
+  // Selecting an existing operator from the dropdown confirms immediately
+  if (val && typeof val === 'object') {
+    selectedOperator.value = val
+  }
+}
+
+async function confirmNewOperator() {
+  const name = typeof operatorComboValue.value === 'string' ? operatorComboValue.value.trim() : ''
+  if (!name)
+    return
+  creatingOperator.value = true
+  try {
+    const newOp = await createOperator({ name: titleCase(name), active: true })
+    operators.value = [...operators.value, newOp].sort((a: any, b: any) =>
+      a.name.localeCompare(b.name, 'pt-BR'),
+    )
+    selectedOperator.value = newOp
+  }
+  catch (e) {
+    console.error('Failed to create operator', e)
+  }
+  finally {
+    creatingOperator.value = false
+  }
+}
 
 // Computed
 const filteredCategories = computed(() => {
@@ -730,37 +753,37 @@ function goBack() {
           Identificação do Operador
         </v-card-title>
         <v-card-subtitle class="px-5 pb-3">
-          Selecione quem está operando o caixa
+          Selecione ou cadastre quem está operando o caixa
         </v-card-subtitle>
-        <v-card-text class="px-5 pb-5">
-          <v-text-field
-            v-model="operatorSearch"
-            prepend-inner-icon="mdi-magnify"
-            placeholder="Buscar operador..."
+        <v-card-text class="px-5 pb-4">
+          <v-combobox
+            v-model="operatorComboValue"
+            :items="operators"
+            item-title="name"
+            return-object
+            autofocus
+            label="Nome do operador"
+            placeholder="Selecione ou digite um novo nome..."
             variant="outlined"
-            density="compact"
-            hide-details
+            prepend-inner-icon="mdi-account-search"
             clearable
-            class="mb-4"
-          />
-
-          <div v-if="operators.length === 0 && !loading" class="text-center pa-6">
-            <v-icon icon="mdi-account-alert" size="48" color="warning" class="mb-2" />
-            <p class="text-body-2 text-on-surface-variant">
-              Nenhum operador cadastrado. Cadastre operadores em PDV > Configurações.
-            </p>
-          </div>
-
-          <v-list v-else density="compact" class="rounded-lg border" style="max-height: 300px; overflow-y: auto;">
-            <v-list-item
-              v-for="op in filteredOperators"
-              :key="op.id"
-              :title="op.name"
-              prepend-icon="mdi-account-circle"
-              rounded="lg"
-              @click="selectedOperator = op"
-            />
-          </v-list>
+            auto-select-first="exact"
+            @update:model-value="onOperatorPicked"
+          >
+            <template #no-data>
+              <v-list-item
+                v-if="typeof operatorComboValue === 'string' && operatorComboValue.trim()"
+                prepend-icon="mdi-account-plus"
+                color="primary"
+                :loading="creatingOperator"
+                @click="confirmNewOperator"
+              >
+                <template #title>
+                  Criar operador <strong>{{ operatorComboValue }}</strong>
+                </template>
+              </v-list-item>
+            </template>
+          </v-combobox>
         </v-card-text>
         <v-card-actions class="px-5 pb-5">
           <v-btn variant="text" color="secondary" @click="goBack">

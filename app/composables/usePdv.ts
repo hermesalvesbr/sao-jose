@@ -2,6 +2,7 @@ import type {
   PdvCashWithdrawal,
   PdvCategory,
   PdvExpense,
+  PdvOperator,
   PdvProduct,
   PdvSale,
   PdvSaleItem,
@@ -255,6 +256,17 @@ export function usePdv() {
     }
   }
 
+  const createOperator = async (data: Partial<PdvOperator>) => {
+    loading.value = true
+    try {
+      const client = await getAuthClient()
+      return await client.request(createItem('pdv_operators', data as any))
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
   // EXPENSES
   const fetchExpenses = async (query: Record<string, unknown> = {}) => {
     loading.value = true
@@ -445,6 +457,7 @@ export function usePdv() {
     updateProductionPoint,
     deleteProductionPoint,
     fetchOperators,
+    createOperator,
     fetchExpenses,
     createExpense,
     updateExpense,
