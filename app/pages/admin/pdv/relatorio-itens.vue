@@ -57,7 +57,7 @@ async function loadReport() {
       ],
       filter: {
         _and: [
-          { sale_id: { sale_status: { _eq: 'finalizada' } } },
+          { sale_id: { sale_status: { _eq: 'completed' } } },
           { sale_id: { date_created: { _gte: `${dateFrom.value}T00:00:00` } } },
           { sale_id: { date_created: { _lte: `${dateTo.value}T23:59:59` } } },
         ],

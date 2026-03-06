@@ -63,7 +63,7 @@ async function loadReport() {
         fields: ['id', 'total_amount', 'payment_method', 'sale_status', 'date_created'],
         filter: {
           _and: [
-            { sale_status: { _eq: 'finalizada' } },
+            { sale_status: { _eq: 'completed' } },
             { date_created: { _gte: `${dateFrom.value}T00:00:00` } },
             { date_created: { _lte: `${dateTo.value}T23:59:59` } },
           ],

@@ -184,7 +184,7 @@ async function finishSale() {
   try {
     // Create sale
     const sale = await createSale({
-      sale_status: 'finalizada',
+      sale_status: 'completed',
       total_amount: cartTotal.value,
       payment_method: paymentMethod.value,
     })

@@ -50,7 +50,7 @@ async function loadData() {
     startOfMonth.setHours(0, 0, 0, 0)
 
     const salesRes = await fetchSales({
-      filter: { date_created: { _gte: startOfMonth.toISOString() }, sale_status: { _eq: 'finalizada' } },
+      filter: { date_created: { _gte: startOfMonth.toISOString() }, sale_status: { _eq: 'completed' } },
       aggregate: { count: '*', sum: 'total_amount' },
     })
     if (salesRes && salesRes.length > 0) {
@@ -94,17 +94,17 @@ function formatDate(dateStr: string) {
 }
 
 function getStatusColor(status: string) {
-  if (status === 'finalizada')
+  if (status === 'completed')
     return 'success'
-  if (status === 'cancelada')
+  if (status === 'cancelled')
     return 'error'
   return 'warning'
 }
 
 function getStatusLabel(status: string) {
-  if (status === 'finalizada')
-    return 'Finalizada'
-  if (status === 'cancelada')
+  if (status === 'completed')
+    return 'Concluída'
+  if (status === 'cancelled')
     return 'Cancelada'
   return 'Pendente'
 }

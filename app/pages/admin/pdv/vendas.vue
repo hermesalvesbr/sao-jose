@@ -153,7 +153,7 @@ async function finishSale() {
   loading.value = true
   try {
     const saleData = {
-      sale_status: 'finalizada',
+      sale_status: 'completed',
       total_amount: cartTotal.value,
       payment_method: paymentMethod.value,
     }
@@ -219,17 +219,17 @@ function formatCurrency(val: number) {
 }
 
 function getStatusColor(status: string) {
-  if (status === 'finalizada')
+  if (status === 'completed')
     return 'success'
-  if (status === 'cancelada')
+  if (status === 'cancelled')
     return 'error'
   return 'warning'
 }
 
 function getStatusLabel(status: string) {
-  if (status === 'finalizada')
-    return 'Finalizada'
-  if (status === 'cancelada')
+  if (status === 'completed')
+    return 'Concluída'
+  if (status === 'cancelled')
     return 'Cancelada'
   return 'Pendente'
 }
@@ -287,13 +287,13 @@ function getPaymentIcon(method: string) {
               <v-chip :value="null" variant="tonal" filter size="small">
                 Todas
               </v-chip>
-              <v-chip value="finalizada" variant="tonal" filter size="small" color="success">
-                Finalizadas
+              <v-chip value="completed" variant="tonal" filter size="small" color="success">
+                Concluídas
               </v-chip>
-              <v-chip value="pendente" variant="tonal" filter size="small" color="warning">
+              <v-chip value="pending_print" variant="tonal" filter size="small" color="warning">
                 Pendentes
               </v-chip>
-              <v-chip value="cancelada" variant="tonal" filter size="small" color="error">
+              <v-chip value="cancelled" variant="tonal" filter size="small" color="error">
                 Canceladas
               </v-chip>
             </v-chip-group>
@@ -331,7 +331,7 @@ function getPaymentIcon(method: string) {
             variant="tonal"
             label
           >
-            <v-icon start size="14" :icon="item.sale_status === 'finalizada' ? 'mdi-check' : item.sale_status === 'cancelada' ? 'mdi-close' : 'mdi-clock-outline'" />
+            <v-icon start size="14" :icon="item.sale_status === 'completed' ? 'mdi-check' : item.sale_status === 'cancelled' ? 'mdi-close' : 'mdi-clock-outline'" />
             {{ getStatusLabel(item.sale_status) }}
           </v-chip>
         </template>
@@ -349,11 +349,11 @@ function getPaymentIcon(method: string) {
 
         <template #[`item.actions`]="{ item }">
           <v-btn
-            v-if="item.sale_status !== 'cancelada'"
+            v-if="item.sale_status !== 'cancelled'"
             variant="text"
             size="small"
             color="error"
-            @click="updateSaleStatus(item, 'cancelada')"
+            @click="updateSaleStatus(item, 'cancelled')"
           >
             <v-icon icon="mdi-cancel" size="18" />
             <v-tooltip activator="parent" location="top">
