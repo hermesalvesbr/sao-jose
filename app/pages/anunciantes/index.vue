@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { AdsNovenario, AnuncianteResumo } from '~/types/schema'
+import type { AnuncianteResumo } from '~/types/api'
+import type { AdsNovenario } from '~/types/schema'
 
 type AnuncianteListItem = AnuncianteResumo & Pick<AdsNovenario, 'midia'>
 

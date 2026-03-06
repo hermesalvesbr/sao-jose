@@ -36,12 +36,12 @@ export interface AdsNovenario {
   duracao: number;
   /** Valor pago pelo anunciante em R$ */
   valor_pago: number;
-  /** Situação do pagamento: pendente | pago | permuta */
-  status_pagamento: 'pendente' | 'pago' | 'permuta';
-  /** Meio de pagamento: dinheiro | pix | cartao */
-  meio_pagamento: string | null;
   /** Data em que o pagamento foi recebido */
-  data_pagamento: string | null;
+  data_pagamento: 'datetime';
+  /** Situação do pagamento do anúncio */
+  status_pagamento: string;
+  /** Meio de pagamento utilizado */
+  meio_pagamento: string;
 }
 
 export interface Agenda {
@@ -225,9 +225,9 @@ export interface PdvProduct {
   stock_quantity: number;
   price: number;
   sort_order: number;
-  production_point_id: string;
   imagem: string | DirectusFile;
   category_id: string | PdvCategory;
+  production_point_id: string | PdvProductionPoint;
 }
 
 export interface PdvSaleItem {
@@ -238,13 +238,13 @@ export interface PdvSaleItem {
   date_created: 'datetime';
   user_updated: string | DirectusUser;
   date_updated: 'datetime';
-  sale_id: string;
-  product_id: string;
   quantity: number;
   total_price: number;
   unit_price: number;
   /** Quantidade devolvida/trocada deste item */
   returned_qty: number;
+  product_id: string | PdvProduct;
+  sale_id: string | PdvSale;
 }
 
 export interface PdvSale {
@@ -258,10 +258,10 @@ export interface PdvSale {
   sale_number: number;
   total_amount: number;
   payment_method: string;
-  operator_id: string;
   sale_status: string;
   printed: boolean;
   created_at: 'datetime';
+  operator_id: string | PdvOperator;
 }
 
 export interface PdvSchedule {
@@ -359,29 +359,6 @@ export interface DirectusRole {
   users: string;
   parent: string | DirectusRole;
   policies: string;
-}
-
-/** DTO retornado por /api/anunciantes — agrega dados de ads_log */
-export interface AnuncianteResumo {
-  id: string;
-  anunciante: string;
-  tipo_midia: string;
-  duracao: number;
-  valor_pago: number;
-  total_exibicoes: number;
-  /** Soma de duracao_exibida de todos os logs (segundos) */
-  total_duracao_exibida: number;
-  /** ISO string do log mais recente, ou null se nunca exibido */
-  ultima_exibicao: string | null;
-}
-
-/** Entrada de log simplificada, retornada por /api/anunciantes/[id] */
-export interface AdsLogEntry {
-  id: string;
-  exibido_em: string;
-  duracao_exibida: number;
-  anunciante: string;
-  tipo_midia: string;
 }
 
 export interface ApiCollections {

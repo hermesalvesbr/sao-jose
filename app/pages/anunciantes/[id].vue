@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AnuncianteDetalhe } from '~/composables/useAnunciantesPublico'
-import type { AdsLogEntry, AdsNovenario } from '~/types/schema'
+import type { AdsLogEntry } from '~/types/api'
+import type { AdsNovenario } from '~/types/schema'
 
 const route = useRoute()
 const id = route.params.id as string

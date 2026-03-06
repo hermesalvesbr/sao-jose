@@ -1,4 +1,5 @@
-import type { AdsLogEntry, AdsNovenario, AnuncianteResumo } from '~/types/schema'
+import type { AdsLogEntry, AnuncianteResumo } from '~/types/api'
+import type { AdsNovenario } from '~/types/schema'
 
 export interface AnuncianteDetalhe {
   ad: AdsNovenario
