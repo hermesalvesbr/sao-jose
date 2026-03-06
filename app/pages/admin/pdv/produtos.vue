@@ -138,6 +138,8 @@ async function saveItem() {
   loading.value = true
   try {
     const payload = { ...editedItem.value } as any
+    if (payload.name)
+      payload.name = titleCase(payload.name)
 
     // Upload image if selected
     if (imageFile.value) {

@@ -344,7 +344,13 @@ function getPaymentIcon(method: string) {
         </template>
 
         <template #[`item.total_amount`]="{ item }">
-          <span class="font-weight-bold text-body-2">{{ formatCurrency(item.total_amount) }}</span>
+          <div>
+            <span class="font-weight-bold text-body-2">{{ formatCurrency(item.total_amount) }}</span>
+            <div v-if="Number(item.discount_amount) > 0" class="text-caption text-error">
+              <v-icon icon="mdi-tag-minus-outline" size="12" class="me-1" />
+              {{ formatCurrency(item.discount_amount) }}
+            </div>
+          </div>
         </template>
 
         <template #[`item.actions`]="{ item }">

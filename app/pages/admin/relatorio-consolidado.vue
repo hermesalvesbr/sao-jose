@@ -15,7 +15,9 @@ import { formatCurrency, formatDate } from '~/composables/usePdvReport'
 
 definePageMeta({ layout: 'admin' })
 
-const { fetchSales, fetchExpenses, fetchCashWithdrawals } = usePdv()
+const { fetchSales, fetchSaleItems, fetchExpenses, fetchCashWithdrawals } = usePdv()
+
+const LOJINHA_POINT_ID = '771786ea-9431-411b-8274-28b224bfb5ad'
 const { user } = useAuth()
 const {
   dateFrom,
@@ -34,8 +36,9 @@ const directusClient = useDirectusClient()
 const loading = ref(false)
 const reportGenerated = ref(false)
 
-// Quermesse (PDV)
+// Quermesse + Lojinha (PDV)
 const pdvSales = ref<any[]>([])
+const pdvSaleItems = ref<any[]>([])
 const pdvExpenses = ref<any[]>([])
 const pdvWithdrawals = ref<any[]>([])
 
@@ -57,7 +60,7 @@ async function loadReport() {
   try {
     const client = await directusClient
 
-    const [salesRes, expensesRes, withdrawalsRes, ofertasRes, dizimosRes, adsRes] = await Promise.all([
+    const [salesRes, saleItemsRes, expensesRes, withdrawalsRes, ofertasRes, dizimosRes, adsRes] = await Promise.all([
       // Vendas PDV finalizadas
       fetchSales({
         fields: ['id', 'total_amount', 'payment_method', 'sale_status', 'date_created'],
@@ -66,6 +69,18 @@ async function loadReport() {
             { sale_status: { _eq: 'completed' } },
             { date_created: { _gte: `${dateFrom.value}T00:00:00` } },
             { date_created: { _lte: `${dateTo.value}T23:59:59` } },
+          ],
+        },
+        limit: -1,
+      }),
+      // Itens de venda com produto (para separar Lojinha x Quermesse)
+      fetchSaleItems({
+        fields: ['id', 'total_price', 'product_id.production_point_id', 'sale_id.id', 'sale_id.payment_method', 'sale_id.sale_status', 'sale_id.date_created', 'sale_id.total_amount'],
+        filter: {
+          _and: [
+            { sale_id: { sale_status: { _eq: 'completed' } } },
+            { sale_id: { date_created: { _gte: `${dateFrom.value}T00:00:00` } } },
+            { sale_id: { date_created: { _lte: `${dateTo.value}T23:59:59` } } },
           ],
         },
         limit: -1,
@@ -129,6 +144,7 @@ async function loadReport() {
     ])
 
     pdvSales.value = (salesRes as any[]) || []
+    pdvSaleItems.value = (saleItemsRes as any[]) || []
     pdvExpenses.value = (expensesRes as any[]) || []
     pdvWithdrawals.value = (withdrawalsRes as any[]) || []
     ofertaItems.value = (ofertasRes as any[]) || []
@@ -148,22 +164,61 @@ onMounted(loadReport)
 
 // ─── Aggregations ─────────────────────────────────────────────────────────────
 
-/** Soma de vendas PDV por meio de pagamento. */
-const pdvByMethod = computed(() => {
-  const acc = { dinheiro: 0, pix: 0, cartao: 0, total: 0 }
-  for (const s of pdvSales.value) {
-    const amt = Number(s.total_amount || 0)
-    const method: string = s.payment_method ?? 'dinheiro'
-    if (method === 'dinheiro')
-      acc.dinheiro += amt
-    else if (method === 'pix')
-      acc.pix += amt
-    else
-      acc.cartao += amt
-    acc.total += amt
+/**
+ * Agrega vendas PDV separando Lojinha de Quermesse.
+ * Distribui desconto proporcionalmente: se uma venda tem desconto,
+ * o valor de cada item é ajustado pela razão (total_amount / soma_itens).
+ */
+function aggregateByProductionPoint() {
+  const lojinha = { dinheiro: 0, pix: 0, cartao: 0, total: 0 }
+  const quermesse = { dinheiro: 0, pix: 0, cartao: 0, total: 0 }
+
+  // Agrupar itens por venda
+  const bySale = new Map<string, any[]>()
+  for (const item of pdvSaleItems.value) {
+    const saleId = typeof item.sale_id === 'object' ? item.sale_id?.id : item.sale_id
+    if (!saleId)
+      continue
+    if (!bySale.has(saleId))
+      bySale.set(saleId, [])
+    bySale.get(saleId)!.push(item)
   }
-  return acc
-})
+
+  for (const [, items] of bySale) {
+    const sale = typeof items[0].sale_id === 'object' ? items[0].sale_id : null
+    const saleTotalAmount = Number(sale?.total_amount || 0)
+    const method: string = (sale?.payment_method ?? 'dinheiro')
+    const itemsSum = items.reduce((s: number, i: any) => s + Number(i.total_price || 0), 0)
+    const ratio = itemsSum > 0 ? saleTotalAmount / itemsSum : 1
+
+    for (const item of items) {
+      const ppId = typeof item.product_id === 'object' ? item.product_id?.production_point_id : null
+      const amt = Number(item.total_price || 0) * ratio
+      const target = ppId === LOJINHA_POINT_ID ? lojinha : quermesse
+      if (method === 'dinheiro')
+        target.dinheiro += amt
+      else if (method === 'pix')
+        target.pix += amt
+      else
+        target.cartao += amt
+      target.total += amt
+    }
+  }
+
+  return { lojinha, quermesse }
+}
+
+const pdvAggregated = computed(() => aggregateByProductionPoint())
+const quermesseByMethod = computed(() => pdvAggregated.value.quermesse)
+const lojinhaByMethod = computed(() => pdvAggregated.value.lojinha)
+
+/** Soma total PDV (compatibilidade). */
+const pdvByMethod = computed(() => ({
+  dinheiro: quermesseByMethod.value.dinheiro + lojinhaByMethod.value.dinheiro,
+  pix: quermesseByMethod.value.pix + lojinhaByMethod.value.pix,
+  cartao: quermesseByMethod.value.cartao + lojinhaByMethod.value.cartao,
+  total: quermesseByMethod.value.total + lojinhaByMethod.value.total,
+}))
 
 /** Soma do ofertório por meio. */
 const ofertaByMethod = computed(() => {
@@ -385,19 +440,37 @@ function printPage() {
               <tr class="data-row">
                 <td class="font-weight-medium">
                   <v-icon size="16" icon="mdi-store-outline" class="me-1 no-print" />
-                  Quermesse (PDV)
+                  Quermesse (Comida / Bebida)
                 </td>
                 <td class="col-money text-end">
-                  {{ fmtOrDash(pdvByMethod.dinheiro) }}
+                  {{ fmtOrDash(quermesseByMethod.dinheiro) }}
                 </td>
                 <td class="col-money text-end">
-                  {{ fmtOrDash(pdvByMethod.pix) }}
+                  {{ fmtOrDash(quermesseByMethod.pix) }}
                 </td>
                 <td class="col-money text-end">
-                  {{ fmtOrDash(pdvByMethod.cartao) }}
+                  {{ fmtOrDash(quermesseByMethod.cartao) }}
                 </td>
                 <td class="col-money text-end font-weight-bold">
-                  {{ formatCurrency(pdvByMethod.total) }}
+                  {{ formatCurrency(quermesseByMethod.total) }}
+                </td>
+              </tr>
+              <tr class="data-row">
+                <td class="font-weight-medium">
+                  <v-icon size="16" icon="mdi-shopping-outline" class="me-1 no-print" />
+                  Lojinha (Artigos Religiosos)
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(lojinhaByMethod.dinheiro) }}
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(lojinhaByMethod.pix) }}
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(lojinhaByMethod.cartao) }}
+                </td>
+                <td class="col-money text-end font-weight-bold">
+                  {{ formatCurrency(lojinhaByMethod.total) }}
                 </td>
               </tr>
               <tr class="data-row">

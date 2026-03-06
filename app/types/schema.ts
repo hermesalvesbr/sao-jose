@@ -262,6 +262,8 @@ export interface PdvSale {
   printed: boolean;
   created_at: 'datetime';
   operator_id: string | PdvOperator;
+  /** Valor do desconto aplicado na venda (R$). O total_amount já reflete o desconto. */
+  discount_amount: number;
 }
 
 export interface PdvSchedule {

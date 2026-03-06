@@ -22,6 +22,7 @@ const {
   fetchProducts,
   fetchCategories,
   fetchProductionPoints,
+  fetchOperators,
   createSale,
   createSaleItem,
   updateProduct,
@@ -31,6 +32,9 @@ const {
 const products = ref<any[]>([])
 const categories = ref<any[]>([])
 const productionPoints = ref<any[]>([])
+const operators = ref<any[]>([])
+const selectedOperator = ref<any>(null)
+const operatorSearch = ref('')
 const loading = ref(true)
 const processing = ref(false)
 const selectedPoint = ref<string | null>(null)
@@ -41,14 +45,24 @@ const paymentMethod = ref('dinheiro')
 const showCartSheet = ref(false)
 const successDialog = ref(false)
 const lastSaleTotal = ref(0)
+const discountType = ref<'percent' | 'fixed'>('percent')
+const discountInput = ref<number | null>(null)
 
 // Payment methods
 const paymentMethods = [
   { value: 'dinheiro', title: 'Dinheiro', icon: 'mdi-cash', color: '#2E7D32' },
   { value: 'pix', title: 'PIX', icon: 'mdi-qrcode', color: '#1565C0' },
-  { value: 'cartao_credito', title: 'Crédito', icon: 'mdi-credit-card-outline', color: '#E65100' },
-  { value: 'cartao_debito', title: 'Débito', icon: 'mdi-credit-card-fast-outline', color: '#6A1B9A' },
+  { value: 'cartao', title: 'Cartão', icon: 'mdi-credit-card-outline', color: '#E65100' },
 ]
+
+// Operator selection
+const showOperatorDialog = computed(() => !selectedOperator.value)
+const filteredOperators = computed(() => {
+  if (!operatorSearch.value)
+    return operators.value
+  const term = operatorSearch.value.toLowerCase()
+  return operators.value.filter((op: any) => op.name?.toLowerCase().includes(term))
+})
 
 // Computed
 const filteredCategories = computed(() => {
@@ -91,6 +105,21 @@ const cartTotal = computed(() =>
   cart.value.reduce((sum, item) => sum + item.price * item.quantity, 0),
 )
 
+const discountValue = computed(() => {
+  const input = Number(discountInput.value) || 0
+  if (input <= 0)
+    return 0
+  if (discountType.value === 'percent')
+    return Math.min(cartTotal.value, cartTotal.value * Math.min(input, 100) / 100)
+  return Math.min(cartTotal.value, input)
+})
+
+const finalTotal = computed(() =>
+  Math.max(0, cartTotal.value - discountValue.value),
+)
+
+const hasDiscount = computed(() => discountValue.value > 0)
+
 const cartItemCount = computed(() =>
   cart.value.reduce((sum, item) => sum + item.quantity, 0),
 )
@@ -99,7 +128,7 @@ const cartItemCount = computed(() =>
 async function loadData() {
   loading.value = true
   try {
-    const [prodRes, catRes, pointsRes] = await Promise.all([
+    const [prodRes, catRes, pointsRes, opsRes] = await Promise.all([
       fetchProducts({
         limit: -1,
         fields: ['*', 'category_id.name', 'category_id.id', 'category_id.points_id.*', 'production_point_id.*'],
@@ -115,10 +144,16 @@ async function loadData() {
         filter: { active: { _eq: true } },
         sort: 'name',
       }),
+      fetchOperators({
+        limit: -1,
+        filter: { active: { _eq: true } },
+        sort: ['name'],
+      }),
     ])
     products.value = prodRes || []
     categories.value = catRes || []
     productionPoints.value = pointsRes || []
+    operators.value = (opsRes || []).filter((op: any) => op.name !== 'Caixa Principal')
   }
   catch (e) {
     console.error('Failed to load POS data', e)
@@ -185,8 +220,10 @@ async function finishSale() {
     // Create sale
     const sale = await createSale({
       sale_status: 'completed',
-      total_amount: cartTotal.value,
+      total_amount: finalTotal.value,
       payment_method: paymentMethod.value,
+      operator_id: selectedOperator.value.id,
+      discount_amount: discountValue.value,
     })
 
     // Create sale items + update stock
@@ -209,9 +246,10 @@ async function finishSale() {
       }
     }
 
-    lastSaleTotal.value = cartTotal.value
+    lastSaleTotal.value = finalTotal.value
     cart.value = []
     paymentMethod.value = 'dinheiro'
+    discountInput.value = null
     showCartSheet.value = false
     successDialog.value = true
 
@@ -247,6 +285,19 @@ function goBack() {
         <v-icon icon="mdi-point-of-sale" class="me-2" size="20" />
         PDV — Ponto de Venda
       </v-app-bar-title>
+
+      <!-- Operator badge -->
+      <v-chip
+        v-if="selectedOperator"
+        color="white"
+        variant="outlined"
+        size="small"
+        prepend-icon="mdi-account"
+        class="me-2"
+        @click="selectedOperator = null"
+      >
+        {{ selectedOperator.name }}
+      </v-chip>
 
       <v-spacer />
 
@@ -424,10 +475,46 @@ function goBack() {
 
             <!-- Payment + Total (sticky bottom) -->
             <div class="pa-4 border-t">
-              <!-- Total -->
-              <div class="d-flex justify-space-between align-center mb-4">
+              <!-- Subtotal -->
+              <div class="d-flex justify-space-between align-center" :class="hasDiscount ? 'mb-1' : 'mb-4'">
+                <span class="text-body-1 text-on-surface">{{ hasDiscount ? 'Subtotal' : 'Total' }}</span>
+                <span :class="hasDiscount ? 'text-body-1 text-decoration-line-through text-on-surface-variant' : 'text-h5 font-weight-bold text-success'">{{ formatCurrency(cartTotal) }}</span>
+              </div>
+
+              <!-- Discount section -->
+              <div class="mb-3">
+                <div class="d-flex align-center ga-2 mb-2">
+                  <v-btn-toggle v-model="discountType" density="compact" mandatory color="warning" variant="outlined" divided>
+                    <v-btn value="percent" size="x-small">
+                      %
+                    </v-btn>
+                    <v-btn value="fixed" size="x-small">
+                      R$
+                    </v-btn>
+                  </v-btn-toggle>
+                  <v-text-field
+                    v-model.number="discountInput"
+                    :label="discountType === 'percent' ? 'Desconto %' : 'Desconto R$'"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    :min="0"
+                    :max="discountType === 'percent' ? 100 : cartTotal"
+                    clearable
+                    style="max-width: 160px;"
+                  />
+                </div>
+              </div>
+
+              <!-- Total final com desconto -->
+              <div v-if="hasDiscount" class="d-flex justify-space-between align-center mb-1">
+                <span class="text-caption text-error">Desconto</span>
+                <span class="text-caption text-error font-weight-bold">- {{ formatCurrency(discountValue) }}</span>
+              </div>
+              <div v-if="hasDiscount" class="d-flex justify-space-between align-center mb-4">
                 <span class="text-h6 text-on-surface">Total</span>
-                <span class="text-h5 font-weight-bold text-success">{{ formatCurrency(cartTotal) }}</span>
+                <span class="text-h5 font-weight-bold text-success">{{ formatCurrency(finalTotal) }}</span>
               </div>
 
               <!-- Payment method buttons -->
@@ -525,9 +612,44 @@ function goBack() {
 
           <!-- Mobile Payment -->
           <div class="pa-4 border-t bg-surface">
+            <div class="d-flex justify-space-between align-center" :class="hasDiscount ? 'mb-1' : 'mb-3'">
+              <span class="text-body-1 text-on-surface">{{ hasDiscount ? 'Subtotal' : 'Total' }}</span>
+              <span :class="hasDiscount ? 'text-body-1 text-decoration-line-through text-on-surface-variant' : 'text-h5 font-weight-bold text-success'">{{ formatCurrency(cartTotal) }}</span>
+            </div>
+
+            <!-- Discount section (mobile) -->
+            <div class="mb-2">
+              <div class="d-flex align-center ga-2 mb-2">
+                <v-btn-toggle v-model="discountType" density="compact" mandatory color="warning" variant="outlined" divided>
+                  <v-btn value="percent" size="x-small">
+                    %
+                  </v-btn>
+                  <v-btn value="fixed" size="x-small">
+                    R$
+                  </v-btn>
+                </v-btn-toggle>
+                <v-text-field
+                  v-model.number="discountInput"
+                  :label="discountType === 'percent' ? 'Desconto %' : 'Desconto R$'"
+                  type="number"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  :min="0"
+                  :max="discountType === 'percent' ? 100 : cartTotal"
+                  clearable
+                  style="max-width: 160px;"
+                />
+              </div>
+            </div>
+
+            <div v-if="hasDiscount" class="d-flex justify-space-between align-center mb-1">
+              <span class="text-caption text-error">Desconto</span>
+              <span class="text-caption text-error font-weight-bold">- {{ formatCurrency(discountValue) }}</span>
+            </div>
             <div class="d-flex justify-space-between align-center mb-3">
               <span class="text-h6 text-on-surface">Total</span>
-              <span class="text-h5 font-weight-bold text-success">{{ formatCurrency(cartTotal) }}</span>
+              <span class="text-h5 font-weight-bold text-success">{{ formatCurrency(finalTotal) }}</span>
             </div>
 
             <div class="text-caption text-uppercase font-weight-bold text-on-surface-variant mb-2" style="letter-spacing: 1px;">
@@ -577,7 +699,7 @@ function goBack() {
         @click="showCartSheet = true"
       >
         <v-icon icon="mdi-cart" start />
-        {{ formatCurrency(cartTotal) }}
+        {{ formatCurrency(finalTotal) }}
         <v-badge :content="cartItemCount" color="error" floating />
       </v-btn>
     </v-main>
@@ -597,6 +719,54 @@ function goBack() {
         <v-btn color="primary" variant="tonal" block @click="successDialog = false">
           Nova Venda
         </v-btn>
+      </v-card>
+    </v-dialog>
+
+    <!-- Operator Selection Dialog (blocks terminal until operator is identified) -->
+    <v-dialog :model-value="showOperatorDialog" max-width="420" persistent>
+      <v-card rounded="xl">
+        <v-card-title class="d-flex align-center pa-5 pb-3">
+          <v-icon icon="mdi-account-check" color="primary" class="me-2" />
+          Identificação do Operador
+        </v-card-title>
+        <v-card-subtitle class="px-5 pb-3">
+          Selecione quem está operando o caixa
+        </v-card-subtitle>
+        <v-card-text class="px-5 pb-5">
+          <v-text-field
+            v-model="operatorSearch"
+            prepend-inner-icon="mdi-magnify"
+            placeholder="Buscar operador..."
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            class="mb-4"
+          />
+
+          <div v-if="operators.length === 0 && !loading" class="text-center pa-6">
+            <v-icon icon="mdi-account-alert" size="48" color="warning" class="mb-2" />
+            <p class="text-body-2 text-on-surface-variant">
+              Nenhum operador cadastrado. Cadastre operadores em PDV > Configurações.
+            </p>
+          </div>
+
+          <v-list v-else density="compact" class="rounded-lg border" style="max-height: 300px; overflow-y: auto;">
+            <v-list-item
+              v-for="op in filteredOperators"
+              :key="op.id"
+              :title="op.name"
+              prepend-icon="mdi-account-circle"
+              rounded="lg"
+              @click="selectedOperator = op"
+            />
+          </v-list>
+        </v-card-text>
+        <v-card-actions class="px-5 pb-5">
+          <v-btn variant="text" color="secondary" @click="goBack">
+            Voltar
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
   </v-app>
