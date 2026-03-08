@@ -92,14 +92,15 @@ const ultimosPagamentos = computed(() => {
         <v-btn
           variant="tonal"
           prepend-icon="mdi-account-plus"
+          size="large"
           to="/admin/dizimos/novo-dizimista"
         >
           Novo Dizimista
         </v-btn>
         <v-btn
-          variant="elevated"
-          color="success"
-          prepend-icon="mdi-cash-plus"
+          color="primary"
+          prepend-icon="mdi-plus"
+          size="large"
           to="/admin/dizimos/registrar-pagamento"
         >
           Registrar Pagamento

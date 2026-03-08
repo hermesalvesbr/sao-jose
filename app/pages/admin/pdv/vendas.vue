@@ -262,7 +262,12 @@ function getPaymentIcon(method: string) {
           Registre e acompanhe todas as vendas do PDV
         </p>
       </div>
-      <v-btn color="success" prepend-icon="mdi-cart-plus" size="large" @click="openNewSale">
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-cart-plus"
+        size="large"
+        @click="openNewSale"
+      >
         Nova Venda
       </v-btn>
     </div>

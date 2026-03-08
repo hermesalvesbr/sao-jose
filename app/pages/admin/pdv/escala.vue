@@ -206,7 +206,8 @@ function printPage() {
         </p>
       </div>
       <v-btn
-        color="primary"
+        variant="tonal"
+        color="info"
         prepend-icon="mdi-printer"
         size="large"
         @click="printPage"

@@ -166,6 +166,7 @@ async function performDelete() {
         color="primary"
         prepend-icon="mdi-plus"
         class="text-none"
+        size="large"
         @click="openNew"
       >
         Novo Ponto

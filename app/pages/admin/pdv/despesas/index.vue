@@ -1,0 +1,470 @@
+<script setup lang="ts">
+/**
+ * Página de listagem de Despesas do PDV
+ *
+ * Exibe despesas com filtros por data, categoria e texto.
+ * Edição e detalhes via rota /admin/pdv/despesas/:id.
+ * Arquivamento (soft-delete) via status = 'archived'.
+ */
+import { readItems, updateItem } from '@directus/sdk'
+import { brToIsoDate, formatCurrency, formatDate, isoToBrDate, usePdvReportPeriod } from '~/composables/usePdvReport'
+
+definePageMeta({ layout: 'admin' })
+
+const { fetchExpenses } = usePdv()
+const directusUrl = useRuntimeConfig().public.directus.url as string
+
+// ─── Categorias de despesa ────────────────────────────────────────────────────
+const CATEGORIA_LABELS: Record<string, string> = {
+  decoracao: 'Decoração e Estrutura',
+  alimentacao: 'Alimentação e Bebidas',
+  servicos: 'Serviços / Pessoal',
+  divulgacao: 'Impressão e Divulgação',
+  transporte: 'Transporte e Logística',
+  utilidades: 'Utilidades (Água/Luz)',
+  manutencao: 'Manutenção',
+  impostos: 'Impostos / Taxas Retidas',
+  repasse: 'Repasse Interno',
+  outro: 'Outro',
+}
+const categoriaOpcoes = Object.entries(CATEGORIA_LABELS).map(([value, title]) => ({ value, title }))
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const items = ref<any[]>([])
+const loading = ref(false)
+const snackbar = ref(false)
+const snackbarMsg = ref('')
+const snackbarColor = ref<'success' | 'error'>('success')
+
+// Filters
+const search = ref('')
+const { dateFrom, dateTo, setToday, setThisMonth, setNovena } = usePdvReportPeriod()
+const filterCategoria = ref<string | null>(null)
+const dateFromField = computed({
+  get: () => isoToBrDate(dateFrom.value),
+  set: (value: string) => {
+    dateFrom.value = brToIsoDate(value)
+  },
+})
+const dateToField = computed({
+  get: () => isoToBrDate(dateTo.value),
+  set: (value: string) => {
+    dateTo.value = brToIsoDate(value)
+  },
+})
+
+// ─── Arquivar ─────────────────────────────────────────────────────────────────
+const archiveDialog = ref(false)
+const archiving = ref(false)
+const itemToArchive = ref<any>(null)
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
+const filteredItems = computed(() => {
+  let result = items.value.filter(i => i.status !== 'archived')
+  if (search.value) {
+    const term = search.value.toLowerCase()
+    result = result.filter(i =>
+      i.descricao?.toLowerCase().includes(term)
+      || i.observacao?.toLowerCase().includes(term),
+    )
+  }
+  if (dateFrom.value)
+    result = result.filter(i => i.data_despesa >= dateFrom.value)
+  if (dateTo.value)
+    result = result.filter(i => i.data_despesa <= dateTo.value)
+  if (filterCategoria.value)
+    result = result.filter(i => i.categoria === filterCategoria.value)
+  return result
+})
+
+const totalFiltered = computed(() =>
+  filteredItems.value.reduce((sum, i) => sum + Number(i.valor || 0), 0),
+)
+
+// ─── Data loading ─────────────────────────────────────────────────────────────
+async function loadData() {
+  loading.value = true
+  try {
+    const expRes = await fetchExpenses({
+      fields: [
+        'id',
+        'status',
+        'descricao',
+        'valor',
+        'data_despesa',
+        'categoria',
+        'observacao',
+        'date_created',
+        'operator_id.id',
+        'operator_id.name',
+        'responsavel_id.id',
+        'responsavel_id.nome',
+      ],
+      sort: ['-data_despesa', '-date_created'],
+      limit: -1,
+    })
+    const expenses = (expRes as any[]) || []
+
+    // Fetch comprovantes via the actual junction table
+    const c = await useAuth().getAuthClient()
+    const compRes = await c.request(readItems('pdv_expenses_comprovantes', {
+      filter: { expense_id: { _in: expenses.map(e => e.id) } },
+      fields: ['id', 'expense_id', 'directus_files_id.id', 'directus_files_id.title', 'directus_files_id.type'],
+      limit: -1,
+    } as never)) as any[]
+
+    // Group comprovantes by expense_id
+    const compByExpense = new Map<number, any[]>()
+    for (const comp of compRes) {
+      const expId = typeof comp.expense_id === 'object' ? comp.expense_id?.id : comp.expense_id
+      if (!compByExpense.has(expId))
+        compByExpense.set(expId, [])
+      compByExpense.get(expId)!.push(comp)
+    }
+
+    // Attach to each expense
+    for (const exp of expenses)
+      exp._comprovantes = compByExpense.get(exp.id) || []
+
+    items.value = expenses
+  }
+  catch (e) {
+    console.error('Error loading expenses', e)
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadData)
+
+function confirmarArquivar(item: any) {
+  itemToArchive.value = item
+  archiveDialog.value = true
+}
+
+async function arquivarDespesa() {
+  if (!itemToArchive.value)
+    return
+  archiving.value = true
+  try {
+    const c = await useAuth().getAuthClient()
+    await c.request(updateItem('pdv_expenses', itemToArchive.value.id, { status: 'archived' } as never))
+    archiveDialog.value = false
+    itemToArchive.value = null
+    snackbarMsg.value = 'Despesa arquivada com sucesso!'
+    snackbarColor.value = 'success'
+    snackbar.value = true
+    await loadData()
+  }
+  catch (e) {
+    console.error('Error archiving expense', e)
+    snackbarMsg.value = 'Erro ao arquivar despesa.'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  }
+  finally {
+    archiving.value = false
+  }
+}
+
+function clearFilters() {
+  search.value = ''
+  dateFrom.value = ''
+  dateTo.value = ''
+  filterCategoria.value = null
+}
+
+function getComprovantes(item: any): { id: string, title: string, type: string }[] {
+  if (!Array.isArray(item._comprovantes))
+    return []
+  return item._comprovantes
+    .map((c: any) => {
+      const f = typeof c.directus_files_id === 'object' ? c.directus_files_id : null
+      if (!f?.id)
+        return null
+      return { id: f.id, title: f.title || 'Arquivo', type: f.type || '' }
+    })
+    .filter(Boolean) as { id: string, title: string, type: string }[]
+}
+
+function fileIcon(mime: string): string {
+  if (mime.startsWith('image/'))
+    return 'mdi-file-image-outline'
+  if (mime === 'application/pdf')
+    return 'mdi-file-pdf-box'
+  return 'mdi-file-document-outline'
+}
+
+function getResponsavelName(item: any): string {
+  if (item.responsavel_id) {
+    const r = item.responsavel_id
+    return typeof r === 'object' ? r.nome ?? '—' : '—'
+  }
+  if (item.operator_id) {
+    const op = item.operator_id
+    return `(op.) ${typeof op === 'object' ? op.name ?? '—' : '—'}`
+  }
+  return '—'
+}
+</script>
+
+<template>
+  <v-container fluid class="pa-2 pa-md-6">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
+      <div>
+        <div class="d-flex align-center mb-2">
+          <v-btn variant="text" icon="mdi-arrow-left" class="me-2" to="/admin/pdv" />
+          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
+            Despesas
+          </h1>
+        </div>
+        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
+          Total: {{ formatCurrency(totalFiltered) }} em {{ filteredItems.length }} {{ filteredItems.length === 1 ? 'despesa' : 'despesas' }}
+        </p>
+      </div>
+      <div class="d-flex gap-2 mt-3 mt-sm-0">
+        <v-btn color="primary" variant="elevated" size="large" prepend-icon="mdi-plus" to="/admin/pdv/despesas/nova">
+          Nova Despesa
+        </v-btn>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <v-card rounded="xl" :elevation="0" class="border mb-5">
+      <v-card-text class="py-3">
+        <v-row align="center">
+          <v-col cols="12" sm="4">
+            <v-text-field
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar descrição..."
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="6" sm="2">
+            <MaskedDateField
+              v-model="dateFromField"
+              label="De"
+              prepend-inner-icon="mdi-calendar-start"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="6" sm="2">
+            <MaskedDateField
+              v-model="dateToField"
+              label="Até"
+              prepend-inner-icon="mdi-calendar-end"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" sm="3">
+            <v-select
+              v-model="filterCategoria"
+              :items="categoriaOpcoes"
+              item-title="title"
+              item-value="value"
+              label="Categoria"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="12" class="d-flex flex-wrap ga-2">
+            <v-btn size="small" variant="tonal" color="secondary" @click="setToday">
+              Hoje
+            </v-btn>
+            <v-btn size="small" variant="tonal" color="secondary" @click="setThisMonth">
+              Este mês
+            </v-btn>
+            <v-btn size="small" variant="tonal" color="warning" @click="setNovena()">
+              Novena
+            </v-btn>
+            <v-btn size="small" variant="text" color="secondary" @click="clearFilters">
+              Limpar
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- Summary -->
+    <div class="d-flex justify-end mb-4">
+      <v-chip color="error" variant="tonal" prepend-icon="mdi-cash-minus" size="large">
+        Total: {{ formatCurrency(totalFiltered) }}
+      </v-chip>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="d-flex justify-center align-center pa-12">
+      <v-progress-circular indeterminate color="primary" size="40" width="4" />
+      <span class="ml-4 text-body-1">Carregando despesas...</span>
+    </div>
+
+    <!-- Empty state -->
+    <v-card v-else-if="filteredItems.length === 0" elevation="0" rounded="lg" class="border">
+      <div class="text-center pa-8">
+        <v-icon color="grey-lighten-1" size="64" class="mb-4">
+          mdi-database-off
+        </v-icon>
+        <h3 class="text-h6 text-medium-emphasis mb-2">
+          Nenhuma despesa encontrada
+        </h3>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          Não há registros de despesas no momento.
+        </p>
+        <v-btn
+          to="/admin/pdv/despesas/nova"
+          color="success"
+          variant="elevated"
+          prepend-icon="mdi-plus"
+        >
+          Registrar primeira despesa
+        </v-btn>
+      </div>
+    </v-card>
+
+    <!-- Expansion Panels -->
+    <v-expansion-panels v-else variant="accordion">
+      <v-expansion-panel
+        v-for="item in filteredItems"
+        :key="item.id"
+        rounded="lg"
+        class="mb-2"
+        elevation="1"
+      >
+        <v-expansion-panel-title>
+          <div class="d-flex flex-column flex-sm-row align-start align-sm-center w-100 ga-2 ga-sm-4 pe-2">
+            <span class="text-caption text-medium-emphasis text-no-wrap">{{ formatDate(item.data_despesa) }}</span>
+            <span class="text-body-2 font-weight-medium flex-grow-1">{{ item.descricao }}</span>
+            <span class="font-weight-bold text-error text-body-2 text-no-wrap">{{ formatCurrency(item.valor) }}</span>
+          </div>
+        </v-expansion-panel-title>
+
+        <v-expansion-panel-text>
+          <v-row class="mt-1">
+            <v-col cols="12" sm="6">
+              <div class="text-caption text-medium-emphasis">
+                Categoria
+              </div>
+              <v-chip v-if="item.categoria" size="small" variant="tonal" color="warning" label class="mt-1">
+                {{ CATEGORIA_LABELS[item.categoria] ?? item.categoria }}
+              </v-chip>
+              <span v-else class="text-disabled text-body-2">Sem categoria</span>
+            </v-col>
+
+            <v-col cols="12" sm="6">
+              <div class="text-caption text-medium-emphasis">
+                Responsável
+              </div>
+              <v-chip size="small" variant="tonal" color="secondary" label class="mt-1">
+                <v-icon start size="14" icon="mdi-account" />
+                {{ getResponsavelName(item) }}
+              </v-chip>
+            </v-col>
+
+            <v-col v-if="item.observacao" cols="12">
+              <div class="text-caption text-medium-emphasis">
+                Observação
+              </div>
+              <div class="text-body-2 mt-1">
+                {{ item.observacao }}
+              </div>
+            </v-col>
+
+            <v-col v-if="getComprovantes(item).length" cols="12">
+              <div class="text-caption text-medium-emphasis mb-1">
+                Anexos
+              </div>
+              <div class="d-flex flex-wrap ga-2">
+                <v-chip
+                  v-for="file in getComprovantes(item)"
+                  :key="file.id"
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  label
+                  :prepend-icon="fileIcon(file.type)"
+                  :href="`${directusUrl}/assets/${file.id}`"
+                  target="_blank"
+                >
+                  {{ file.title }}
+                </v-chip>
+              </div>
+            </v-col>
+          </v-row>
+
+          <v-divider class="my-3" />
+
+          <div class="d-flex justify-end ga-2">
+            <v-btn
+              variant="tonal"
+              color="primary"
+              size="small"
+              prepend-icon="mdi-pencil"
+              :to="`/admin/pdv/despesas/${item.id}`"
+            >
+              Editar
+            </v-btn>
+            <v-btn
+              variant="tonal"
+              color="error"
+              size="small"
+              prepend-icon="mdi-archive-arrow-down-outline"
+              @click.stop="confirmarArquivar(item)"
+            >
+              Arquivar
+            </v-btn>
+          </div>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+
+    <!-- Count -->
+    <div v-if="filteredItems.length > 0" class="d-flex justify-center pa-4">
+      <div class="text-body-2 text-medium-emphasis">
+        Total de {{ filteredItems.length }} {{ filteredItems.length === 1 ? 'despesa' : 'despesas' }}
+      </div>
+    </div>
+
+    <!-- Dialog: Confirmar arquivamento -->
+    <v-dialog v-model="archiveDialog" max-width="400">
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pa-4">
+          <v-icon color="error" class="me-2">
+            mdi-archive-arrow-down-outline
+          </v-icon>
+          <span class="text-h6">Arquivar Despesa</span>
+        </v-card-title>
+        <v-card-text class="pa-4">
+          A despesa <strong>"{{ itemToArchive?.descricao }}"</strong> será arquivada e não aparecerá mais na listagem.
+          A operação pode ser revertida pelo Directus.
+        </v-card-text>
+        <v-card-actions class="pa-3 justify-end ga-2">
+          <v-btn variant="text" @click="archiveDialog = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="tonal"
+            prepend-icon="mdi-archive-arrow-down-outline"
+            :loading="archiving"
+            @click="arquivarDespesa"
+          >
+            Arquivar
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="bottom end">
+      {{ snackbarMsg }}
+    </v-snackbar>
+  </v-container>
+</template>

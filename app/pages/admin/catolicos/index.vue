@@ -200,10 +200,11 @@ function formatPhone(phone: string | undefined | null): string {
         </p>
       </div>
       <v-btn
-        color="success"
+        color="primary"
         variant="elevated"
         prepend-icon="mdi-plus"
         class="mt-3 mt-sm-0"
+        size="large"
         @click="openNew"
       >
         Novo Cadastro

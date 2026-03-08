@@ -137,10 +137,20 @@ function tipoMeta(tipo: string): { icon: string, color: string } {
         </p>
       </div>
       <div class="d-flex ga-2 mt-3 mt-sm-0 d-print-none">
-        <v-btn variant="tonal" prepend-icon="mdi-printer" color="info" @click="printPage">
-          Imprimir
+        <v-btn
+          variant="tonal"
+          color="info"
+          prepend-icon="mdi-printer"
+          size="large" @click="printPage"
+        >
+          Imprimir / PDF
         </v-btn>
-        <v-btn variant="elevated" prepend-icon="mdi-plus" color="success" to="/admin/receitas/add">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          size="large"
+          to="/admin/receitas/add"
+        >
           Nova Receita
         </v-btn>
       </div>

@@ -192,13 +192,18 @@ export interface PdvExpense {
   categoria: string;
   /** Paroquiano responsável pela despesa */
   responsavel_id: string | Catolico;
-  /** Notas fiscais, recibos e contratos da despesa */
-  comprovantes: number[] | PdvExpensesComprovante[];
+  comprovantes: number[] | PdvExpensesFile[];
 }
 
 export interface PdvExpensesComprovante {
   id: number;
   expense_id: number | PdvExpense;
+  directus_files_id: string | DirectusFile;
+}
+
+export interface PdvExpensesFile {
+  id: number;
+  pdv_expenses_id: number | PdvExpense;
   directus_files_id: string | DirectusFile;
 }
 
@@ -418,6 +423,7 @@ export interface ApiCollections {
   pdv_categories: PdvCategory[];
   pdv_expenses: PdvExpense[];
   pdv_expenses_comprovantes: PdvExpensesComprovante[];
+  pdv_expenses_files: PdvExpensesFile[];
   pdv_operators: PdvOperator[];
   pdv_production_points: PdvProductionPoint[];
   pdv_products: PdvProduct[];

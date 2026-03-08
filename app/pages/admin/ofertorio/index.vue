@@ -268,10 +268,9 @@ function getValorColor(valor: number): string {
         </v-btn>
         <v-btn
           to="/admin/ofertorio/add"
-          color="success"
-          variant="elevated"
-          size="large"
+          color="primary"
           prepend-icon="mdi-plus"
+          size="large"
         >
           Nova Oferta
         </v-btn>

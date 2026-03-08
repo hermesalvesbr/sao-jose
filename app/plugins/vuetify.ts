@@ -1,5 +1,6 @@
 import type { ThemeDefinition } from 'vuetify'
 import { createVuetify } from 'vuetify'
+import { VFileUpload, VFileUploadDropzone, VFileUploadItem, VFileUploadList } from 'vuetify/labs/VFileUpload'
 import { VMaskInput } from 'vuetify/labs/VMaskInput'
 
 // import this after install `@mdi/font` package
@@ -88,6 +89,10 @@ const sidebarTheme: ThemeDefinition = {
 export default defineNuxtPlugin((app) => {
   const vuetify = createVuetify({
     components: {
+      VFileUpload,
+      VFileUploadDropzone,
+      VFileUploadItem,
+      VFileUploadList,
       VMaskInput,
     },
     theme: {
