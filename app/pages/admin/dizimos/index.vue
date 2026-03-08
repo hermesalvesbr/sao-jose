@@ -38,6 +38,23 @@ const estatisticasFormatadas = computed(() => {
   }
 })
 
+const labelMeio: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  pix: 'Pix',
+  credito: 'Crédito',
+  transferencia: 'Transferência',
+}
+
+function corMeioPagamento(meio: string) {
+  switch (meio) {
+    case 'dinheiro': return 'success'
+    case 'pix': return 'purple'
+    case 'credito': return 'blue'
+    case 'transferencia': return 'teal'
+    default: return 'grey'
+  }
+}
+
 // Últimos pagamentos para exibir no dashboard
 const ultimosPagamentos = computed(() => {
   return pagamentos.value.slice(0, 5).map((pagamento: any) => {
@@ -59,34 +76,31 @@ const ultimosPagamentos = computed(() => {
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
       <div>
-        <h1 class="text-h4 text-sm-h3 font-weight-bold text-primary mb-1">
+        <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1 mb-1">
           Gestão de Dízimos
         </h1>
-        <p class="text-body-1 text-medium-emphasis">
+        <p class="text-body-2 text-medium-emphasis">
           Gerencie dizimistas e acompanhe os pagamentos
         </p>
       </div>
 
-      <div class="d-flex flex-column flex-sm-row ga-2 mt-4 mt-sm-0">
+      <div class="d-flex flex-column flex-sm-row ga-2 mt-3 mt-sm-0 d-print-none">
         <v-btn
-          color="primary"
-          variant="elevated"
+          variant="tonal"
           prepend-icon="mdi-account-plus"
           to="/admin/dizimos/novo-dizimista"
-          class="text-none"
         >
           Novo Dizimista
         </v-btn>
         <v-btn
-          color="success"
           variant="elevated"
+          color="success"
           prepend-icon="mdi-cash-plus"
           to="/admin/dizimos/registrar-pagamento"
-          class="text-none"
         >
           Registrar Pagamento
         </v-btn>
@@ -347,12 +361,12 @@ const ultimosPagamentos = computed(() => {
 
                 <template #append>
                   <v-chip
-                    :color="pagamento.meio === 'Dinheiro' ? 'success' : 'primary'"
+                    :color="corMeioPagamento(pagamento.meio)"
                     variant="tonal"
                     size="small"
                     class="text-caption"
                   >
-                    {{ pagamento.meio }}
+                    {{ labelMeio[pagamento.meio] ?? pagamento.meio }}
                   </v-chip>
                 </template>
               </v-list-item>

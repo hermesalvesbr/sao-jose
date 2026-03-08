@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { VDataTable } from 'vuetify/components'
-import type { OfertaFinanceira, ValorDetalhado } from '~/types/schema'
+import type { ValorDetalhado } from '~/types/ofertorio'
+import type { OfertaFinanceira } from '~/types/schema'
 import { updateItem } from '@directus/sdk'
+import { brToIsoDate, isoToBrDate } from '~/composables/usePdvReport'
 
 definePageMeta({
   layout: 'admin',
@@ -51,6 +53,18 @@ function mesAtualUltimo(): string {
 
 const dataInicio = ref(mesAtualPrimeiro())
 const dataFim = ref(mesAtualUltimo())
+const dataInicioField = computed({
+  get: () => isoToBrDate(dataInicio.value),
+  set: (value: string) => {
+    dataInicio.value = brToIsoDate(value)
+  },
+})
+const dataFimField = computed({
+  get: () => isoToBrDate(dataFim.value),
+  set: (value: string) => {
+    dataFim.value = brToIsoDate(value)
+  },
+})
 
 const hojeIso = computed(() => {
   const now = new Date()
@@ -154,13 +168,21 @@ function getDateOnly(date: any): string | null {
   return `${yyyy}-${mm}-${dd}`
 }
 
-function detalhesFiltrados(detalhes: ValorDetalhado[] | null): ValorDetalhado[] {
-  if (!detalhes || !Array.isArray(detalhes))
+function detalhesFiltrados(detalhes: unknown): ValorDetalhado[] {
+  if (!Array.isArray(detalhes))
     return []
-  return detalhes.filter(d => d.quantidade > 0)
+  return detalhes.filter((item): item is ValorDetalhado => {
+    return typeof item === 'object'
+      && item !== null
+      && typeof item.quantidade === 'number'
+      && typeof item.label === 'string'
+      && typeof item.valor === 'number'
+      && typeof item.tipo === 'string'
+      && item.quantidade > 0
+  })
 }
 
-function formatarDetalhesTexto(detalhes: ValorDetalhado[] | null): string {
+function formatarDetalhesTexto(detalhes: unknown): string {
   return detalhesFiltrados(detalhes).map(d => `${d.quantidade}× ${d.label}`).join(', ')
 }
 
@@ -236,7 +258,7 @@ function getValorColor(valor: number): string {
       <div class="d-flex ga-2">
         <v-btn
           variant="tonal"
-          color="primary"
+          color="info"
           prepend-icon="mdi-printer"
           size="large"
           :disabled="ofertasFiltradas.length === 0"
@@ -246,7 +268,7 @@ function getValorColor(valor: number): string {
         </v-btn>
         <v-btn
           to="/admin/ofertorio/add"
-          color="primary"
+          color="success"
           variant="elevated"
           size="large"
           prepend-icon="mdi-plus"
@@ -262,23 +284,17 @@ function getValorColor(valor: number): string {
           <v-card-text>
             <v-row align="center">
               <v-col cols="12" sm="6" md="3">
-                <v-text-field
-                  v-model="dataInicio"
-                  type="date"
+                <MaskedDateField
+                  v-model="dataInicioField"
                   label="Data inicial"
-                  variant="outlined"
-                  density="compact"
                   hide-details
                   prepend-inner-icon="mdi-calendar-start"
                 />
               </v-col>
               <v-col cols="12" sm="6" md="3">
-                <v-text-field
-                  v-model="dataFim"
-                  type="date"
+                <MaskedDateField
+                  v-model="dataFimField"
                   label="Data final"
-                  variant="outlined"
-                  density="compact"
                   hide-details
                   prepend-inner-icon="mdi-calendar-end"
                 />
@@ -441,7 +457,7 @@ function getValorColor(valor: number): string {
           </v-btn>
           <v-btn
             color="error"
-            variant="elevated"
+            variant="tonal"
             prepend-icon="mdi-archive-arrow-down-outline"
             :loading="arquivando"
             @click="arquivarOferta"

@@ -47,7 +47,7 @@ export function useDizimos() {
     }
   }
 
-  // Buscar todos os católicos disponíveis (que ainda não são dizimistas)
+  // Buscar todos os católicos disponíveis (para filtragem client-side)
   const fetchCatolicosDisponiveis = async () => {
     loading.value = true
     error.value = null
@@ -58,7 +58,7 @@ export function useDizimos() {
         sort: ['nome'],
         limit: -1,
       }))
-      catolicos.value = response
+      catolicos.value = response as any[]
     }
     catch (err) {
       console.error('Erro ao buscar católicos:', err)
@@ -188,7 +188,7 @@ export function useDizimos() {
         dizimista: dados.dizimista,
         valor_pago: dados.valor_pago,
         meio: dados.meio,
-        data_pagamento: new Date(dados.data_pagamento).toISOString(),
+        data_pagamento: dados.data_pagamento,
         user_created: user.value?.id,
       } as any))
 
@@ -223,6 +223,12 @@ export function useDizimos() {
       loading.value = false
     }
   }
+
+  // Católicos que ainda não são dizimistas (filtragem client-side)
+  const catolicosDisponiveis = computed(() => {
+    const ids = new Set(dizimistas.value.map((d: any) => d.catolico?.id ?? d.catolico))
+    return catolicos.value.filter((c: any) => !ids.has(c.id))
+  })
 
   // Computed para estatísticas
   const estatisticas = computed(() => {
@@ -263,6 +269,7 @@ export function useDizimos() {
 
     // Computed
     estatisticas,
+    catolicosDisponiveis,
 
     // Métodos
     fetchDizimistas,

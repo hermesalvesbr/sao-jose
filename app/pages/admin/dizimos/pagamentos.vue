@@ -143,52 +143,65 @@ function formatarValor(valor: number | string | undefined) {
 // Função para cor do chip do meio de pagamento
 function corMeioPagamento(meio: string) {
   switch (meio) {
-    case 'Dinheiro': return 'success'
-    case 'Pix': return 'purple'
-    case 'Cartão de Crédito': return 'blue'
-    case 'Cartão de Débito': return 'indigo'
-    case 'Transferência Bancária': return 'teal'
-    case 'Cheque': return 'orange'
+    case 'dinheiro': return 'success'
+    case 'pix': return 'purple'
+    case 'credito': return 'blue'
+    case 'transferencia': return 'teal'
     default: return 'grey'
   }
 }
 
-// Navegar de volta
-function voltar() {
-  navigateTo('/admin/dizimos')
+const labelMeio: Record<string, string> = {
+  dinheiro: 'Dinheiro em espécie',
+  pix: 'Pix',
+  credito: 'Cartão de crédito',
+  transferencia: 'Transferência',
+}
+
+function printList() {
+  window.print()
 }
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
             variant="text"
             icon="mdi-arrow-left"
             class="me-2"
-            @click="voltar"
+            to="/admin/dizimos"
           />
-          <h1 class="text-h4 text-sm-h3 font-weight-bold text-primary">
+          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
             Histórico de Pagamentos
           </h1>
         </div>
-        <p class="text-body-1 text-medium-emphasis">
+        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
           Visualize todos os pagamentos de dízimos registrados
         </p>
       </div>
 
-      <v-btn
-        color="success"
-        variant="elevated"
-        prepend-icon="mdi-cash-plus"
-        to="/admin/dizimos/registrar-pagamento"
-        class="text-none mt-4 mt-sm-0"
-      >
-        Novo Pagamento
-      </v-btn>
+      <div class="d-flex ga-2 mt-3 mt-sm-0 d-print-none">
+        <v-btn
+          variant="tonal"
+          color="info"
+          prepend-icon="mdi-printer"
+          @click="printList"
+        >
+          Imprimir
+        </v-btn>
+        <v-btn
+          variant="elevated"
+          color="success"
+          prepend-icon="mdi-cash-plus"
+          to="/admin/dizimos/registrar-pagamento"
+        >
+          Novo Pagamento
+        </v-btn>
+      </div>
     </div>
 
     <!-- Alerta de Erro -->
@@ -366,7 +379,7 @@ function voltar() {
             variant="tonal"
             size="small"
           >
-            {{ item.meio }}
+            {{ labelMeio[item.meio] ?? item.meio }}
           </v-chip>
         </template>
 

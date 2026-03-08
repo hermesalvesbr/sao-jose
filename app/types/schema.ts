@@ -104,13 +104,6 @@ export interface Instituicao {
   catolico: string[] | Catolico[];
 }
 
-export interface ValorDetalhado {
-  valor: number;
-  tipo: 'moeda' | 'cedula';
-  label: string;
-  quantidade: number;
-}
-
 export interface OfertaFinanceira {
   id: string;
   status: string;
@@ -125,7 +118,7 @@ export interface OfertaFinanceira {
   meio: string;
   observacao: string;
   /** Detalhamento de cédulas e moedas contadas na oferta (JSON array) */
-  valores_detalhados: ValorDetalhado[] | null;
+  valores_detalhados: Record<string, unknown>;
 }
 
 export interface PagamentoDizimo {
@@ -195,6 +188,18 @@ export interface PdvExpense {
   operator_id: string | PdvOperator;
   /** Observações adicionais */
   observacao: string;
+  /** Categoria da despesa para relatório */
+  categoria: string;
+  /** Paroquiano responsável pela despesa */
+  responsavel_id: string | Catolico;
+  /** Notas fiscais, recibos e contratos da despesa */
+  comprovantes: number[] | PdvExpensesComprovante[];
+}
+
+export interface PdvExpensesComprovante {
+  id: number;
+  expense_id: number | PdvExpense;
+  directus_files_id: string | DirectusFile;
 }
 
 export interface PdvOperator {
@@ -293,6 +298,34 @@ export interface PdvSchedule {
   observacao: string;
 }
 
+export interface Receita {
+  id: string;
+  status: string;
+  sort: number;
+  user_created: string | DirectusUser;
+  date_created: 'datetime';
+  user_updated: string | DirectusUser;
+  date_updated: 'datetime';
+  /** Tipo de receita do novenário */
+  tipo: string;
+  /** Descrição da receita (ex: Rifa nº 42, Doação de José da Silva) */
+  descricao: string;
+  /** Valor arrecadado em R$ */
+  valor: number;
+  /** Data em que a receita foi recebida */
+  data: 'datetime';
+  /** Forma de recebimento */
+  meio_pagamento: string;
+  /** Informações adicionais, nome do doador, detalhes da campanha */
+  observacao: string;
+  /** Paroquiano responsável pelo recebimento */
+  responsavel_id: string | Catolico;
+}
+
+export interface ReceitasComprovante {
+  id: number;
+}
+
 export interface DirectusUser {
   id: string;
   instituicao: number | Instituicao;
@@ -384,12 +417,15 @@ export interface ApiCollections {
   pdv_cash_withdrawals: PdvCashWithdrawal[];
   pdv_categories: PdvCategory[];
   pdv_expenses: PdvExpense[];
+  pdv_expenses_comprovantes: PdvExpensesComprovante[];
   pdv_operators: PdvOperator[];
   pdv_production_points: PdvProductionPoint[];
   pdv_products: PdvProduct[];
   pdv_sale_items: PdvSaleItem[];
   pdv_sales: PdvSale[];
   pdv_schedules: PdvSchedule[];
+  receitas: Receita[];
+  receitas_comprovantes: ReceitasComprovante[];
   directus_users: DirectusUser[];
   directus_files: DirectusFile[];
 }

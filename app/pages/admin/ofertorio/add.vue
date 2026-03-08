@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { Agenda, OfertaFinanceira, ValorDetalhado } from '~/types/schema'
+import type { ValorDetalhado } from '~/types/ofertorio'
+import type { Agenda, OfertaFinanceira } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
+import { brToIsoDate, isoToBrDate, toLocalISO } from '~/composables/usePdvReport'
 
 definePageMeta({
   layout: 'admin',
@@ -97,7 +99,7 @@ const oferta = ref<Partial<OfertaFinanceira>>({
 })
 
 const mostrarObservacao = ref(false)
-const dataEntradaString = ref(new Date().toISOString().split('T')[0])
+const dataEntradaString = ref(isoToBrDate(toLocalISO(new Date())))
 
 // Seta evento padrão quando carregado
 watch(eventoDefault, (id) => {
@@ -125,7 +127,7 @@ async function registrarOferta(): Promise<void> {
     const directus = await useDirectusClient()
     const ofertaData = {
       ...oferta.value,
-      data_entrada: new Date(`${dataEntradaString.value}T12:00:00`).toISOString(),
+      data_entrada: new Date(`${brToIsoDate(dataEntradaString.value)}T12:00:00`).toISOString(),
       valor: Number(oferta.value.valor),
       valores_detalhados: detalhesOferta.value,
       user_created: user.value?.id,
@@ -187,7 +189,7 @@ async function registrarOferta(): Promise<void> {
 
           <v-card-text class="pa-4">
             <v-form @submit.prevent="registrarOferta">
-              <v-row dense>
+              <v-row>
                 <v-col cols="12">
                   <MaskedCurrencyField
                     v-model="oferta.valor"
@@ -205,10 +207,9 @@ async function registrarOferta(): Promise<void> {
                   />
                 </v-col>
                 <v-col cols="12">
-                  <v-text-field
+                  <MaskedDateField
                     v-model="dataEntradaString"
                     label="Data da Entrada"
-                    type="date"
                     required
                   />
                 </v-col>

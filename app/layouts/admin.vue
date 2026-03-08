@@ -13,30 +13,37 @@ const drawer = ref(true)
 const rail = ref(false)
 const { mobile } = useDisplay()
 
-// Navigation items grouped
-const generalItems = [
+const painelItems = [
   { title: 'Resumo', icon: 'mdi-view-dashboard-outline', to: '/admin/resumo' },
-  { title: 'Ofertório', icon: 'mdi-cash-multiple', to: '/admin/ofertorio/' },
-  { title: 'Dízimos', icon: 'mdi-account-cash-outline', to: '/admin/dizimos' },
-  { title: 'Anúncios', icon: 'mdi-bullhorn-outline', to: '/admin/anuncios' },
   { title: 'Consolidado', icon: 'mdi-finance', to: '/admin/relatorio-consolidado' },
+]
+
+const financeiroItems = [
+  { title: 'Ofertório', icon: 'mdi-cash-multiple', to: '/admin/ofertorio/' },
+  { title: 'Receitas', icon: 'mdi-cash-plus', to: '/admin/receitas' },
+  { title: 'Despesas', icon: 'mdi-cash-minus', to: '/admin/pdv/despesas' },
+  { title: 'Sangria de Caixa', icon: 'mdi-cash-register', to: '/admin/pdv/sangria' },
+  { title: 'Dízimos', icon: 'mdi-account-cash-outline', to: '/admin/dizimos' },
+  { title: 'Relatório Diário', icon: 'mdi-file-chart-outline', to: '/admin/pdv/relatorio' },
+  { title: 'Vendas por Item', icon: 'mdi-chart-bar', to: '/admin/pdv/relatorio-itens' },
+]
+
+const conteudoItems = [
+  { title: 'Anúncios', icon: 'mdi-bullhorn-outline', to: '/admin/anuncios' },
+]
+
+const cadastrosItems = [
+  { title: 'Católicos', icon: 'mdi-account-group-outline', to: '/admin/catolicos' },
 ]
 
 const pdvItems = [
   { title: 'Dashboard', icon: 'mdi-monitor-dashboard', to: '/admin/pdv' },
   { title: 'Terminal PDV', icon: 'mdi-point-of-sale', to: '/admin/pdv/terminal' },
+  { title: 'Vendas', icon: 'mdi-receipt-text-outline', to: '/admin/pdv/vendas' },
+  { title: 'Escala', icon: 'mdi-calendar-account-outline', to: '/admin/pdv/escala' },
   { title: 'Produtos', icon: 'mdi-package-variant-closed', to: '/admin/pdv/produtos' },
   { title: 'Categorias', icon: 'mdi-tag-multiple-outline', to: '/admin/pdv/categorias' },
   { title: 'Pontos', icon: 'mdi-store-outline', to: '/admin/pdv/pontos' },
-  { title: 'Vendas', icon: 'mdi-receipt-text-outline', to: '/admin/pdv/vendas' },
-  { title: 'Escala', icon: 'mdi-calendar-account-outline', to: '/admin/pdv/escala' },
-]
-
-const financeiroItems = [
-  { title: 'Relatório Diário', icon: 'mdi-file-chart-outline', to: '/admin/pdv/relatorio' },
-  { title: 'Vendas por Item', icon: 'mdi-chart-bar', to: '/admin/pdv/relatorio-itens' },
-  { title: 'Despesas', icon: 'mdi-cash-minus', to: '/admin/pdv/despesas' },
-  { title: 'Sangria de Caixa', icon: 'mdi-cash-register', to: '/admin/pdv/sangria' },
 ]
 
 // Page title from route (reserved for future use in app-bar)
@@ -81,6 +88,12 @@ const breadcrumbs = computed(() => {
     'relatorio-itens': 'Vendas por Item',
     'despesas': 'Despesas',
     'sangria': 'Sangria',
+    'receitas': 'Receitas',
+    'catolicos': 'Católicos',
+    'novo': 'Novo',
+    'lista': 'Lista',
+    'pagamentos': 'Pagamentos',
+    'relatorios': 'Relatórios',
   }
   segments.forEach((seg, i) => {
     path += `/${seg}`
@@ -133,42 +146,15 @@ onMounted(() => {
 
       <v-divider class="mx-3 mb-2" />
 
-      <!-- General Section -->
+      <!-- Painel Section -->
       <div v-if="!rail" class="px-4 pt-3 pb-1">
         <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
-          Geral
+          Painel
         </div>
       </div>
       <v-list density="compact" nav class="px-2">
         <v-list-item
-          v-for="item in generalItems"
-          :key="item.to"
-          :to="item.to"
-          :active="isActive(item.to)"
-          color="primary"
-          rounded="lg"
-          class="mb-1"
-        >
-          <template #prepend>
-            <v-icon :icon="item.icon" />
-          </template>
-          <v-list-item-title class="text-body-2">
-            {{ item.title }}
-          </v-list-item-title>
-        </v-list-item>
-      </v-list>
-
-      <v-divider class="mx-3 my-2" />
-
-      <!-- PDV Section -->
-      <div v-if="!rail" class="px-4 pt-2 pb-1">
-        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
-          Ponto de Venda
-        </div>
-      </div>
-      <v-list density="compact" nav class="px-2">
-        <v-list-item
-          v-for="item in pdvItems"
+          v-for="item in painelItems"
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"
@@ -196,6 +182,87 @@ onMounted(() => {
       <v-list density="compact" nav class="px-2">
         <v-list-item
           v-for="item in financeiroItems"
+          :key="item.to"
+          :to="item.to"
+          :active="isActive(item.to)"
+          color="primary"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" />
+          </template>
+          <v-list-item-title class="text-body-2">
+            {{ item.title }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+
+      <v-divider class="mx-3 my-2" />
+
+      <!-- PDV Section -->
+      <div v-if="!rail" class="px-4 pt-2 pb-1">
+        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
+          Operação PDV
+        </div>
+      </div>
+      <v-list density="compact" nav class="px-2">
+        <v-list-item
+          v-for="item in pdvItems"
+          :key="item.to"
+          :to="item.to"
+          :active="isActive(item.to)"
+          color="primary"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" />
+          </template>
+          <v-list-item-title class="text-body-2">
+            {{ item.title }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+
+      <v-divider class="mx-3 my-2" />
+
+      <!-- Conteúdo Section -->
+      <div v-if="!rail" class="px-4 pt-2 pb-1">
+        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
+          Conteúdo
+        </div>
+      </div>
+      <v-list density="compact" nav class="px-2">
+        <v-list-item
+          v-for="item in conteudoItems"
+          :key="item.to"
+          :to="item.to"
+          :active="isActive(item.to)"
+          color="primary"
+          rounded="lg"
+          class="mb-1"
+        >
+          <template #prepend>
+            <v-icon :icon="item.icon" />
+          </template>
+          <v-list-item-title class="text-body-2">
+            {{ item.title }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-list>
+
+      <v-divider class="mx-3 my-2" />
+
+      <!-- Cadastros Section -->
+      <div v-if="!rail" class="px-4 pt-2 pb-1">
+        <div class="text-overline font-weight-bold" style="opacity: 0.5; letter-spacing: 1.5px; font-size: 0.65rem;">
+          Cadastros
+        </div>
+      </div>
+      <v-list density="compact" nav class="px-2">
+        <v-list-item
+          v-for="item in cadastrosItems"
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"

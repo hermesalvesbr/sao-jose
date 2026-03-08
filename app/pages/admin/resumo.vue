@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDisplay } from 'vuetify'
+import { formatCurrency, toLocalISO } from '~/composables/usePdvReport'
 
 definePageMeta({
   layout: 'admin',
@@ -9,8 +10,19 @@ const { mobile } = useDisplay()
 const { user } = useAuth()
 const { ofertas, loading: ofertasLoading, fetchOfertas } = useOfertas()
 const { estatisticas, loading: dizimosLoading, fetchDizimistas, fetchPagamentos } = useDizimos()
+const { fetchReceitas } = useReceitas()
+const { fetchExpenses } = usePdv()
 
-// Computed values para estatísticas
+// ─── Receitas e despesas do mês ───────────────────────────────────────────────
+const receitasItems = ref<any[]>([])
+const despesasItems = ref<any[]>([])
+
+// Período: mês atual
+const now = new Date()
+const mesFrom = toLocalISO(new Date(now.getFullYear(), now.getMonth(), 1))
+const mesTo = toLocalISO(now)
+
+// ─── Computed para KPIs ───────────────────────────────────────────────────────
 const ofertasHoje = computed(() => {
   const hoje = new Date().toDateString()
   return ofertas.value.filter(oferta =>
@@ -25,6 +37,22 @@ const ofertasEsteAno = computed(() => {
   ).reduce((total, oferta) => total + (Number(oferta.valor) || 0), 0)
 })
 
+const totalReceitasMes = computed(() =>
+  receitasItems.value.reduce((sum, r) => sum + Number(r.valor || 0), 0),
+)
+
+const totalDespesasMes = computed(() =>
+  despesasItems.value.reduce((sum, d) => sum + Number(d.valor || 0), 0),
+)
+
+/** Saldo estimado do mês: ofertas + dízimos recebidos + receitas − despesas */
+const saldoMes = computed(() => {
+  const ofertasMes = ofertas.value
+    .filter(o => o.data_entrada >= mesFrom)
+    .reduce((sum, o) => sum + Number(o.valor || 0), 0)
+  return ofertasMes + totalReceitasMes.value - totalDespesasMes.value
+})
+
 const saudacao = computed(() => {
   const hora = new Date().getHours()
   if (hora < 12)
@@ -36,21 +64,17 @@ const saudacao = computed(() => {
 
 const loading = computed(() => ofertasLoading.value || dizimosLoading.value)
 
-// Função para formatar valores em reais
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value)
-}
-
-// Buscar dados ao montar o componente
+// ─── Buscar dados ao montar ────────────────────────────────────────────────────
 onMounted(async () => {
-  await Promise.all([
+  const [, , , receitasRes, despesasRes] = await Promise.all([
     fetchOfertas(),
     fetchDizimistas(),
     fetchPagamentos(),
+    fetchReceitas({ filter: { _and: [{ status: { _eq: 'published' } }, { data: { _gte: mesFrom } }, { data: { _lte: mesTo } }] }, fields: ['id', 'valor'], limit: -1 } as any),
+    fetchExpenses({ filter: { _and: [{ status: { _eq: 'published' } }, { data_despesa: { _gte: mesFrom } }, { data_despesa: { _lte: mesTo } }] }, fields: ['id', 'valor'], limit: -1 }),
   ])
+  receitasItems.value = (receitasRes as any[]) ?? []
+  despesasItems.value = (despesasRes as any[]) ?? []
 })
 </script>
 
@@ -165,6 +189,87 @@ onMounted(async () => {
               </div>
               <div class="text-h6 font-weight-bold">
                 {{ formatCurrency(ofertasEsteAno) }}
+              </div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Novos KPIs: Receitas / Despesas / Saldo do mês -->
+    <v-row class="mt-3">
+      <!-- Receitas do Novenário -->
+      <v-col cols="12" sm="4">
+        <v-card variant="elevated" :loading="loading" class="pa-4" color="success" theme="dark">
+          <div class="d-flex align-center">
+            <v-avatar size="48" color="success-lighten-2" class="me-4">
+              <v-icon size="28">
+                mdi-cash-plus
+              </v-icon>
+            </v-avatar>
+            <div class="flex-grow-1">
+              <div class="text-body-2 text-success-lighten-3">
+                Receitas (mês)
+              </div>
+              <div class="text-h6 font-weight-bold">
+                {{ formatCurrency(totalReceitasMes) }}
+              </div>
+              <div class="text-caption" style="opacity:0.7">
+                {{ receitasItems.length }} lançamento(s)
+              </div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+
+      <!-- Despesas do PDV -->
+      <v-col cols="12" sm="4">
+        <v-card variant="elevated" :loading="loading" class="pa-4" color="error" theme="dark">
+          <div class="d-flex align-center">
+            <v-avatar size="48" color="error-lighten-2" class="me-4">
+              <v-icon size="28">
+                mdi-cash-minus
+              </v-icon>
+            </v-avatar>
+            <div class="flex-grow-1">
+              <div class="text-body-2 text-error-lighten-3">
+                Despesas (mês)
+              </div>
+              <div class="text-h6 font-weight-bold">
+                {{ formatCurrency(totalDespesasMes) }}
+              </div>
+              <div class="text-caption" style="opacity:0.7">
+                {{ despesasItems.length }} lançamento(s)
+              </div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+
+      <!-- Saldo estimado -->
+      <v-col cols="12" sm="4">
+        <v-card
+          variant="elevated"
+          :loading="loading"
+          class="pa-4"
+          :color="saldoMes >= 0 ? 'teal-darken-2' : 'deep-orange-darken-2'"
+          theme="dark"
+        >
+          <div class="d-flex align-center">
+            <v-avatar size="48" class="me-4" :color="saldoMes >= 0 ? 'teal-lighten-2' : 'deep-orange-lighten-2'">
+              <v-icon size="28">
+                {{ saldoMes >= 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}
+              </v-icon>
+            </v-avatar>
+            <div class="flex-grow-1">
+              <div class="text-body-2" style="opacity:0.75">
+                Saldo estimado (mês)
+              </div>
+              <div class="text-h6 font-weight-bold">
+                {{ formatCurrency(saldoMes) }}
+              </div>
+              <div class="text-caption" style="opacity:0.7">
+                Ofertas + Receitas − Despesas
               </div>
             </div>
           </div>
@@ -340,7 +445,7 @@ onMounted(async () => {
 
           <v-card-text>
             <v-row>
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="2">
                 <v-btn
                   block
                   variant="outlined"
@@ -353,7 +458,20 @@ onMounted(async () => {
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="2">
+                <v-btn
+                  block
+                  variant="outlined"
+                  color="success"
+                  size="large"
+                  to="/admin/receitas/add"
+                  prepend-icon="mdi-cash-plus"
+                >
+                  Nova Receita
+                </v-btn>
+              </v-col>
+
+              <v-col cols="12" sm="6" md="2">
                 <v-btn
                   block
                   variant="outlined"
@@ -366,21 +484,20 @@ onMounted(async () => {
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="2">
                 <v-btn
                   block
                   variant="outlined"
-                  color="success"
+                  color="warning"
                   size="large"
-                  prepend-icon="mdi-refresh"
-                  :loading="loading"
-                  @click="() => { fetchOfertas(); fetchDizimistas(); fetchPagamentos(); }"
+                  to="/admin/relatorio-consolidado"
+                  prepend-icon="mdi-finance"
                 >
-                  Atualizar Dados
+                  Consolidado
                 </v-btn>
               </v-col>
 
-              <v-col cols="12" sm="6" md="3">
+              <v-col cols="12" sm="6" md="2">
                 <v-btn
                   block
                   variant="outlined"
@@ -390,6 +507,20 @@ onMounted(async () => {
                   prepend-icon="mdi-cake"
                 >
                   Aniversariantes
+                </v-btn>
+              </v-col>
+
+              <v-col cols="12" sm="6" md="2">
+                <v-btn
+                  block
+                  variant="outlined"
+                  color="error"
+                  size="large"
+                  prepend-icon="mdi-refresh"
+                  :loading="loading"
+                  @click="() => { fetchOfertas(); fetchDizimistas(); fetchPagamentos(); }"
+                >
+                  Atualizar
                 </v-btn>
               </v-col>
             </v-row>

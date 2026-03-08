@@ -2,9 +2,8 @@
 import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { Catolico } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { VMaskInput } from 'vuetify/labs/VMaskInput'
+import { titleCase } from '~/utils/normalize-text'
 
 const phone = ref('')
 const phoneExists = ref<null | boolean>(null)
@@ -14,7 +13,6 @@ const gender = ref('')
 const birthDate = ref('')
 const submitting = ref(false)
 const formRef = ref()
-const router = useRouter()
 const snackbar = ref(false)
 const snackbarText = ref('')
 
@@ -96,47 +94,10 @@ async function checkPhone() {
 }
 
 /**
- * Normaliza o nome do fiel para padronização de dados
+ * Normaliza o nome do fiel – reutiliza titleCase de normalize-text.ts
  */
-/** Preposições e artigos que permanecem minúsculos na capitalização */
-const PREPOSICOES = new Set([
-  'da',
-  'de',
-  'do',
-  'das',
-  'dos',
-  'e',
-  'em',
-  'na',
-  'no',
-  'nas',
-  'nos',
-  'por',
-  'para',
-  'com',
-  'sem',
-  'sob',
-  'sobre',
-  'entre',
-  'até',
-  'após',
-  'ante',
-  'contra',
-  'desde',
-  'perante',
-  'trás',
-])
-
 function normalizeNomeFiel(nome: string): string {
-  let normalized = nome.replace(/[^a-zA-Z\u00C0-\u00FF\s-]/g, '')
-  normalized = normalized.toLowerCase()
-  normalized = normalized.replace(/\s+/g, ' ').trim()
-  normalized = normalized.split(' ').map((word, index) => {
-    if (index > 0 && PREPOSICOES.has(word))
-      return word
-    return word.charAt(0).toUpperCase() + word.slice(1)
-  }).join(' ')
-  return normalized
+  return titleCase(nome.replace(/[^a-zA-Z\u00C0-\u00FF\s-]/g, '').trim())
 }
 
 const confirmDialog = ref(false)
@@ -441,7 +402,7 @@ function formatPhoneBR(phone: string): string {
         <v-btn color="primary" block rounded="lg" class="mb-2" @click="resetForm">
           Novo cadastro
         </v-btn>
-        <v-btn variant="text" block @click="router.push('/')">
+        <v-btn variant="text" block @click="navigateTo('/')">
           Voltar ao início
         </v-btn>
       </v-card>

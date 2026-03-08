@@ -6,16 +6,17 @@ definePageMeta({
 })
 
 const {
-  catolicos,
+  catolicosDisponiveis,
   loading,
   error,
+  fetchDizimistas,
   fetchCatolicosDisponiveis,
   criarDizimista,
 } = useDizimos()
 
-// Carrega os católicos disponíveis
-onMounted(() => {
-  fetchCatolicosDisponiveis()
+// Carrega dizimistas + católicos em paralelo para filtragem client-side
+onMounted(async () => {
+  await Promise.all([fetchDizimistas(), fetchCatolicosDisponiveis()])
 })
 
 // Formulário
@@ -26,7 +27,6 @@ const form = ref({
 
 // Estados do formulário
 const isSubmitting = ref(false)
-const showSuccess = ref(false)
 
 // Validação simples
 const isFormValid = computed(() => {
@@ -35,9 +35,9 @@ const isFormValid = computed(() => {
     && form.value.valor_mensal > 0
 })
 
-// Lista de católicos formatada para o select
+// Lista de católicos formatada para o select (já filtrada pelo computed)
 const catolicosOptions = computed(() => {
-  return catolicos.value.map((catolico: any) => {
+  return catolicosDisponiveis.value.map((catolico: any) => {
     let dataFormatada = 'N/A'
     if (catolico.nascimento) {
       const [y, m, d] = catolico.nascimento.substring(0, 10).split('-')
@@ -62,21 +62,7 @@ async function submeterFormulario() {
       catolico: form.value.catolico,
       valor_mensal: form.value.valor_mensal!,
     })
-
-    // Mostra sucesso e limpa o formulário
-    showSuccess.value = true
-    form.value = {
-      catolico: '',
-      valor_mensal: undefined,
-    }
-
-    // Recarrega a lista de católicos disponíveis
-    await fetchCatolicosDisponiveis()
-
-    // Esconde mensagem de sucesso após 3 segundos
-    setTimeout(() => {
-      showSuccess.value = false
-    }, 3000)
+    await navigateTo('/admin/dizimos')
   }
   catch (err) {
     console.error('Erro ao criar dizimista:', err)
@@ -85,47 +71,29 @@ async function submeterFormulario() {
     isSubmitting.value = false
   }
 }
-
-// Navegar de volta
-function voltar() {
-  navigateTo('/admin/dizimos')
-}
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
             variant="text"
             icon="mdi-arrow-left"
             class="me-2"
-            @click="voltar"
+            to="/admin/dizimos"
           />
-          <h1 class="text-h4 text-sm-h3 font-weight-bold text-primary">
+          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
             Novo Dizimista
           </h1>
         </div>
-        <p class="text-body-1 text-medium-emphasis">
+        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
           Converta um católico em dizimista
         </p>
       </div>
     </div>
-
-    <!-- Alerta de Sucesso -->
-    <v-alert
-      v-if="showSuccess"
-      type="success"
-      variant="tonal"
-      closable
-      class="mb-4"
-      @click:close="showSuccess = false"
-    >
-      <v-alert-title>Sucesso!</v-alert-title>
-      Dizimista cadastrado com sucesso.
-    </v-alert>
 
     <!-- Alerta de Erro -->
     <v-alert
@@ -179,7 +147,7 @@ function voltar() {
                     :loading="loading"
                     :disabled="isSubmitting"
                     clearable
-                    :no-data-text="catolicos.length === 0 ? 'Nenhum católico disponível' : 'Nenhum resultado encontrado'"
+                    :no-data-text="catolicosDisponiveis.length === 0 ? 'Nenhum católico disponível' : 'Nenhum resultado encontrado'"
                     class="mb-2"
                   />
 
@@ -209,23 +177,23 @@ function voltar() {
               <div class="d-flex flex-column flex-sm-row ga-2 mt-6">
                 <v-btn
                   type="submit"
-                  color="primary"
+                  color="success"
                   variant="elevated"
                   size="large"
                   :loading="isSubmitting"
                   :disabled="!isFormValid || loading"
-                  prepend-icon="mdi-content-save"
+                  prepend-icon="mdi-account-plus"
                   class="text-none flex-grow-1 flex-sm-grow-0"
                 >
                   Cadastrar Dizimista
                 </v-btn>
 
                 <v-btn
-                  variant="outlined"
+                  variant="text"
                   size="large"
                   :disabled="isSubmitting"
                   class="text-none flex-grow-1 flex-sm-grow-0"
-                  @click="voltar"
+                  to="/admin/dizimos"
                 >
                   Cancelar
                 </v-btn>

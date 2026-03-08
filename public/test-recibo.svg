@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="220" viewBox="0 0 400 220">
+  <rect width="400" height="220" fill="#ffffff" stroke="#5d4037" stroke-width="2"/>
+  <text x="24" y="44" font-family="Arial, sans-serif" font-size="20" fill="#5d4037">Recibo de Teste</text>
+  <text x="24" y="84" font-family="Arial, sans-serif" font-size="16" fill="#333333">Valor: R$ 100,00</text>
+  <text x="24" y="112" font-family="Arial, sans-serif" font-size="16" fill="#333333">Data: 08/03/2026</text>
+  <text x="24" y="140" font-family="Arial, sans-serif" font-size="16" fill="#333333">Responsável: Copilot Teste</text>
+  <text x="24" y="176" font-family="Arial, sans-serif" font-size="14" fill="#666666">Arquivo usado para validar upload de comprovante.</text>
+</svg>

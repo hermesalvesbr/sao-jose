@@ -51,6 +51,9 @@ const dizimoItems = ref<any[]>([])
 // Anúncios
 const adsItems = ref<any[]>([])
 
+// Receitas avulsas do novenário
+const receitasItems = ref<any[]>([])
+
 // ─── Load data ───────────────────────────────────────────────────────────────
 async function loadReport() {
   if (!dateFrom.value || !dateTo.value)
@@ -60,7 +63,7 @@ async function loadReport() {
   try {
     const client = await directusClient
 
-    const [salesRes, saleItemsRes, expensesRes, withdrawalsRes, ofertasRes, dizimosRes, adsRes] = await Promise.all([
+    const [salesRes, saleItemsRes, expensesRes, withdrawalsRes, ofertasRes, dizimosRes, adsRes, receitasRes] = await Promise.all([
       // Vendas PDV finalizadas
       fetchSales({
         fields: ['id', 'total_amount', 'payment_method', 'sale_status', 'date_created'],
@@ -141,6 +144,18 @@ async function loadReport() {
         },
         limit: -1,
       } as any)),
+      // Receitas avulsas do novenário
+      client.request(readItems('receitas', {
+        fields: ['id', 'tipo', 'descricao', 'valor', 'data', 'meio_pagamento'],
+        filter: {
+          _and: [
+            { status: { _eq: 'published' } },
+            { data: { _gte: dateFrom.value } },
+            { data: { _lte: dateTo.value } },
+          ],
+        },
+        limit: -1,
+      } as any)),
     ])
 
     pdvSales.value = (salesRes as any[]) || []
@@ -150,6 +165,7 @@ async function loadReport() {
     ofertaItems.value = (ofertasRes as any[]) || []
     dizimoItems.value = (dizimosRes as any[]) || []
     adsItems.value = (adsRes as any[]) || []
+    receitasItems.value = (receitasRes as any[]) || []
     reportGenerated.value = true
   }
   catch (e) {
@@ -280,12 +296,48 @@ const adsByMethod = computed(() => {
   return acc
 })
 
+const TIPO_RECEITA_LABELS: Record<string, string> = {
+  doacao: 'Doação / Contribuição',
+  campanha: 'Campanha / Rifa / Bingo / Leilão',
+  taxa: 'Taxa / Ingresso',
+  subsidio: 'Subsídio / Repasse',
+  reembolso: 'Reembolso',
+  outro: 'Outro',
+}
+
+/** Receitas agrupadas por tipo. */
+const receitasByTipo = computed(() => {
+  const map = new Map<string, number>()
+  for (const r of receitasItems.value) {
+    const tipo = r.tipo ?? 'outro'
+    map.set(tipo, (map.get(tipo) ?? 0) + Number(r.valor || 0))
+  }
+  return map
+})
+
+/** Receitas por meio de pagamento (para colunas). */
+const receitasByMethod = computed(() => {
+  const acc = { dinheiro: 0, pix: 0, cartao: 0, total: 0 }
+  for (const r of receitasItems.value) {
+    const amt = Number(r.valor || 0)
+    const meio: string = (r.meio_pagamento ?? 'dinheiro').toLowerCase()
+    if (meio === 'pix')
+      acc.pix += amt
+    else if (meio === 'cartao')
+      acc.cartao += amt
+    else
+      acc.dinheiro += amt
+    acc.total += amt
+  }
+  return acc
+})
+
 /** Totais por coluna de pagamento. */
 const grandByMethod = computed(() => ({
-  dinheiro: pdvByMethod.value.dinheiro + ofertaByMethod.value.dinheiro + dizimoByMethod.value.dinheiro + adsByMethod.value.dinheiro,
-  pix: pdvByMethod.value.pix + ofertaByMethod.value.pix + dizimoByMethod.value.pix + adsByMethod.value.pix,
-  cartao: pdvByMethod.value.cartao + ofertaByMethod.value.cartao + dizimoByMethod.value.cartao + adsByMethod.value.cartao,
-  total: pdvByMethod.value.total + ofertaByMethod.value.total + dizimoByMethod.value.total + adsByMethod.value.total,
+  dinheiro: pdvByMethod.value.dinheiro + ofertaByMethod.value.dinheiro + dizimoByMethod.value.dinheiro + adsByMethod.value.dinheiro + receitasByMethod.value.dinheiro,
+  pix: pdvByMethod.value.pix + ofertaByMethod.value.pix + dizimoByMethod.value.pix + adsByMethod.value.pix + receitasByMethod.value.pix,
+  cartao: pdvByMethod.value.cartao + ofertaByMethod.value.cartao + dizimoByMethod.value.cartao + adsByMethod.value.cartao + receitasByMethod.value.cartao,
+  total: pdvByMethod.value.total + ofertaByMethod.value.total + dizimoByMethod.value.total + adsByMethod.value.total + receitasByMethod.value.total,
 }))
 
 const totalExpenses = computed(() =>
@@ -528,6 +580,29 @@ function printPage() {
                 </td>
                 <td class="col-money text-end font-weight-bold">
                   {{ formatCurrency(adsByMethod.total) }}
+                </td>
+              </tr>
+              <tr v-if="receitasItems.length > 0" class="data-row">
+                <td class="font-weight-medium">
+                  <v-icon size="16" icon="mdi-cash-plus" class="me-1 no-print" />
+                  Receitas ({{ receitasItems.length }}×)
+                  <template v-if="receitasByTipo.size > 0">
+                    <span class="text-caption text-medium-emphasis ms-1">
+                      ({{ Array.from(receitasByTipo.keys()).map(t => TIPO_RECEITA_LABELS[t] ?? t).join(', ') }})
+                    </span>
+                  </template>
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(receitasByMethod.dinheiro) }}
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(receitasByMethod.pix) }}
+                </td>
+                <td class="col-money text-end">
+                  {{ fmtOrDash(receitasByMethod.cartao) }}
+                </td>
+                <td class="col-money text-end font-weight-bold">
+                  {{ formatCurrency(receitasByMethod.total) }}
                 </td>
               </tr>
             </tbody>

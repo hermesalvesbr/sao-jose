@@ -3,6 +3,7 @@
  * Campo de moeda brasileira — formata como R$ XX,XX ao sair do campo.
  * Enquanto focado, aceita digitação natural (ex: "20" ou "20,50").
  */
+import { formatCurrency, parseCurrencyInput } from '~/composables/usePdvReport'
 
 interface Props {
   modelValue?: string | number
@@ -29,38 +30,18 @@ const emit = defineEmits<{
   'blur': [event: FocusEvent]
 }>()
 
-function formatBRL(num: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num)
-}
-
-// Strips currency formatting and parses as a decimal number.
-// "R$ 1.500,50" → 1500.50 | "20" → 20 | "20,50" → 20.50 | "313.75" → 313.75
-function parseBRL(raw: string): number {
-  const s = String(raw).trim()
-  // US decimal format (only dot, no comma) — e.g. values coming from API as strings
-  if (!s.includes(',') && /\d\.\d/.test(s))
-    return Number.parseFloat(s.replace(/[^\d.]/g, '')) || 0
-  const cleaned = s.replace(/[^\d,]/g, '').replace(',', '.')
-  return Number.parseFloat(cleaned) || 0
-}
-
 function toNumeric(val: string | number | undefined): number {
   if (val === undefined || val === null || val === '')
     return 0
-  return typeof val === 'number' ? val : parseBRL(String(val))
+  return parseCurrencyInput(val)
 }
 
 const isFocused = ref(false)
-const displayValue = ref(formatBRL(toNumeric(props.modelValue)))
+const displayValue = ref(formatCurrency(toNumeric(props.modelValue)))
 
-watch(() => props.modelValue, (val) => {
+watch(() => props.modelValue, (newVal) => {
   if (!isFocused.value) {
-    displayValue.value = formatBRL(toNumeric(val))
+    displayValue.value = formatCurrency(toNumeric(newVal))
   }
 })
 
@@ -74,30 +55,32 @@ function handleFocus() {
 function handleInput(event: Event) {
   const raw = (event.target as HTMLInputElement).value
   displayValue.value = raw
-  emit('update:modelValue', parseBRL(raw))
+  emit('update:modelValue', parseCurrencyInput(raw))
 }
 
 function handleBlur(event: FocusEvent) {
   isFocused.value = false
   const num = toNumeric(props.modelValue)
-  displayValue.value = formatBRL(num)
+  displayValue.value = formatCurrency(num)
   emit('blur', event)
 }
 
 const currencyRules = computed(() => {
-  const rules = [...(props.rules || [])]
+  const rules = (props.rules || []).map(rule => typeof rule === 'function'
+    ? (value: string | number) => rule(toNumeric(value as string | number | undefined))
+    : rule)
 
   if (props.maxValue !== undefined) {
-    rules.push((value: string) => {
-      const numValue = parseBRL(value)
-      return numValue <= props.maxValue! || `Valor não pode ser maior que ${formatBRL(props.maxValue!)}`
+    rules.push((value: string | number) => {
+      const numValue = toNumeric(value as string | number | undefined)
+      return numValue <= props.maxValue! || `Valor não pode ser maior que ${formatCurrency(props.maxValue!)}`
     })
   }
 
   if (props.minValue !== undefined) {
-    rules.push((value: string) => {
-      const numValue = parseBRL(value)
-      return numValue >= props.minValue! || `Valor não pode ser menor que ${formatBRL(props.minValue!)}`
+    rules.push((value: string | number) => {
+      const numValue = toNumeric(value as string | number | undefined)
+      return numValue >= props.minValue! || `Valor não pode ser menor que ${formatCurrency(props.minValue!)}`
     })
   }
 

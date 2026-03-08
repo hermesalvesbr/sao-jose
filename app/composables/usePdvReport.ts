@@ -8,6 +8,9 @@
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const BR_DATE_RE = /^\d{2}\/\d{2}\/\d{4}$/
+
 /**
  * Converte um objeto Date para string ISO local (YYYY-MM-DD) sem conversão UTC.
  */
@@ -16,13 +19,49 @@ export function toLocalISO(d: Date): string {
 }
 
 /**
+ * Converte YYYY-MM-DD para DD/MM/YYYY.
+ * Aceita ISO com horário e retorna vazio para valores inválidos.
+ */
+export function isoToBrDate(dateStr: string | null | undefined): string {
+  if (!dateStr)
+    return ''
+
+  const trimmed = dateStr.trim()
+  if (BR_DATE_RE.test(trimmed))
+    return trimmed
+
+  const isoDate = trimmed.substring(0, 10)
+  if (!ISO_DATE_RE.test(isoDate))
+    return ''
+
+  const [year, month, day] = isoDate.split('-')
+  return `${day}/${month}/${year}`
+}
+
+/**
+ * Converte DD/MM/YYYY para YYYY-MM-DD.
+ * Mantém ISO já válido e retorna vazio para valores inválidos.
+ */
+export function brToIsoDate(dateStr: string | null | undefined): string {
+  if (!dateStr)
+    return ''
+
+  const trimmed = dateStr.trim()
+  const isoDate = trimmed.substring(0, 10)
+  if (ISO_DATE_RE.test(isoDate))
+    return isoDate
+  if (!BR_DATE_RE.test(trimmed))
+    return ''
+
+  const [day, month, year] = trimmed.split('/')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Formata string YYYY-MM-DD para DD/MM/YYYY.
  */
 export function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr)
-    return ''
-  const [year, month, day] = dateStr.split('-')
-  return `${day}/${month}/${year}`
+  return isoToBrDate(dateStr)
 }
 
 /**
@@ -33,6 +72,28 @@ export function formatCurrency(val: number | null | undefined): string {
     style: 'currency',
     currency: 'BRL',
   }).format(val ?? 0)
+}
+
+/**
+ * Converte texto monetário BR em número decimal.
+ * Aceita valores como "R$ 100,00", "100,00" ou "100.50".
+ */
+export function parseCurrencyInput(raw: string | number | null | undefined): number {
+  if (raw === undefined || raw === null || raw === '')
+    return 0
+
+  if (typeof raw === 'number')
+    return raw
+
+  const normalized = String(raw).trim()
+  if (!normalized)
+    return 0
+
+  if (!normalized.includes(',') && /\d\.\d/.test(normalized))
+    return Number.parseFloat(normalized.replace(/[^\d.]/g, '')) || 0
+
+  const cleaned = normalized.replace(/[^\d,]/g, '').replace(',', '.')
+  return Number.parseFloat(cleaned) || 0
 }
 
 /**

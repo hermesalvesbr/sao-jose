@@ -152,14 +152,23 @@ function formatarValor(valor: number | string | undefined) {
 // Função para cor do chip do meio de pagamento
 function corMeioPagamento(meio: string) {
   switch (meio) {
-    case 'Dinheiro': return 'success'
-    case 'Pix': return 'purple'
-    case 'Cartão de Crédito': return 'blue'
-    case 'Cartão de Débito': return 'indigo'
-    case 'Transferência Bancária': return 'teal'
-    case 'Cheque': return 'orange'
+    case 'dinheiro': return 'success'
+    case 'pix': return 'purple'
+    case 'credito': return 'blue'
+    case 'transferencia': return 'teal'
     default: return 'grey'
   }
+}
+
+const labelMeio: Record<string, string> = {
+  dinheiro: 'Dinheiro em espécie',
+  pix: 'Pix',
+  credito: 'Cartão de crédito',
+  transferencia: 'Transferência',
+}
+
+function printRelatorio() {
+  window.print()
 }
 
 // Nome do período selecionado
@@ -183,32 +192,38 @@ const nomePeriodo = computed(() => {
   }
   return `Ano de ${anoSelecionado.value}`
 })
-
-// Navegar de volta
-function voltar() {
-  navigateTo('/admin/dizimos')
-}
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
             variant="text"
             icon="mdi-arrow-left"
             class="me-2"
-            @click="voltar"
+            to="/admin/dizimos"
           />
-          <h1 class="text-h4 text-sm-h3 font-weight-bold text-primary">
+          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
             Relatórios de Dízimos
           </h1>
         </div>
-        <p class="text-body-1 text-medium-emphasis">
+        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
           Visualize estatísticas e relatórios dos dízimos
         </p>
+      </div>
+
+      <div class="d-flex ga-2 mt-3 mt-sm-0 d-print-none">
+        <v-btn
+          variant="tonal"
+          color="info"
+          prepend-icon="mdi-printer"
+          @click="printRelatorio"
+        >
+          Imprimir
+        </v-btn>
       </div>
     </div>
 
@@ -441,7 +456,7 @@ function voltar() {
                         variant="elevated"
                         size="small"
                       >
-                        {{ meio }}
+                        {{ labelMeio[String(meio)] ?? meio }}
                       </v-chip>
                       <span class="text-h6 font-weight-bold">
                         {{ dados.quantidade }}

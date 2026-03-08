@@ -294,7 +294,7 @@ export function usePdv() {
     }
   }
 
-  const updateExpense = async (id: string, data: Partial<PdvExpense>) => {
+  const updateExpense = async (id: string | number, data: Partial<PdvExpense>) => {
     loading.value = true
     try {
       const client = await getAuthClient()
@@ -305,7 +305,7 @@ export function usePdv() {
     }
   }
 
-  const deleteExpense = async (id: string) => {
+  const deleteExpense = async (id: string | number) => {
     loading.value = true
     try {
       const client = await getAuthClient()

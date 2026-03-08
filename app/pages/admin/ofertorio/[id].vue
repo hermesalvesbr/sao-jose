@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { Agenda, OfertaFinanceira, ValorDetalhado } from '~/types/schema'
+import type { ValorDetalhado } from '~/types/ofertorio'
+import type { Agenda, OfertaFinanceira } from '~/types/schema'
 import { readItem, readItems, updateItem } from '@directus/sdk'
+import { brToIsoDate, isoToBrDate, toLocalISO } from '~/composables/usePdvReport'
 
 definePageMeta({
   layout: 'admin',
@@ -21,7 +23,7 @@ const calculadoraRef = ref<{ limparDadosArmazenados: () => void, carregarDados: 
 const detalhesOferta = ref<ValorDetalhado[] | null>(null)
 
 const oferta = ref<Partial<OfertaFinanceira>>({ meio: 'Dinheiro' })
-const dataEntradaString = ref(new Date().toISOString().split('T')[0])
+const dataEntradaString = ref(isoToBrDate(toLocalISO(new Date())))
 const mostrarObservacao = ref(false)
 
 const meiosDePagamento = ['Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito']
@@ -51,8 +53,8 @@ onMounted(async () => {
       evento: eventoId as any,
     }
     dataEntradaString.value = item.data_entrada
-      ? String(item.data_entrada).substring(0, 10)
-      : new Date().toISOString().substring(0, 10)
+      ? isoToBrDate(String(item.data_entrada).substring(0, 10))
+      : isoToBrDate(toLocalISO(new Date()))
 
     mostrarObservacao.value = !!item.observacao
 
@@ -90,7 +92,7 @@ async function salvarOferta(): Promise<void> {
       meio: oferta.value.meio,
       observacao: oferta.value.observacao,
       evento: oferta.value.evento as any,
-      data_entrada: new Date(`${dataEntradaString.value}T12:00:00`).toISOString(),
+      data_entrada: new Date(`${brToIsoDate(dataEntradaString.value)}T12:00:00`).toISOString(),
       valores_detalhados: detalhesOferta.value,
     }))
     await fetchOfertas()
@@ -145,7 +147,7 @@ async function salvarOferta(): Promise<void> {
 
           <v-card-text class="pa-4">
             <v-form @submit.prevent="salvarOferta">
-              <v-row dense>
+              <v-row>
                 <v-col cols="12">
                   <MaskedCurrencyField
                     v-model="oferta.valor"
@@ -162,10 +164,9 @@ async function salvarOferta(): Promise<void> {
                   />
                 </v-col>
                 <v-col cols="12">
-                  <v-text-field
+                  <MaskedDateField
                     v-model="dataEntradaString"
                     label="Data da Entrada"
-                    type="date"
                     required
                   />
                 </v-col>

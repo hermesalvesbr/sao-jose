@@ -17,23 +17,29 @@ onMounted(() => {
 })
 
 // Formulário
+const hoje = new Date()
 const form = ref({
   dizimista: '',
   valor_pago: undefined as number | undefined,
-  meio: 'Dinheiro',
-  data_pagamento: new Date().toISOString().split('T')[0],
+  meio: 'dinheiro',
+  data_pagamento: `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`,
 })
+
+// Converte DD/MM/YYYY → YYYY-MM-DD para o Directus
+function dataParaISO(ddmmyyyy: string): string {
+  const [d, m, y] = ddmmyyyy.split('/')
+  return `${y}-${m}-${d}`
+}
 
 // Estados do formulário
 const isSubmitting = ref(false)
-const showSuccess = ref(false)
 
 // Validação simples
 const isFormValid = computed(() => {
   return form.value.dizimista
     && form.value.valor_pago
     && form.value.valor_pago > 0
-    && form.value.data_pagamento
+    && form.value.data_pagamento.length === 10
 })
 
 // Lista de dizimistas formatada para o select
@@ -45,19 +51,17 @@ const dizimistasOptions = computed(() => {
   }))
 })
 
-// Opções de meio de pagamento
+// Opções de meio de pagamento (valores conforme schema Directus)
 const meiosPagamento = [
-  'Dinheiro',
-  'Pix',
-  'Cartão de Crédito',
-  'Cartão de Débito',
-  'Transferência Bancária',
-  'Cheque',
+  { title: 'Dinheiro em espécie', value: 'dinheiro' },
+  { title: 'Pix', value: 'pix' },
+  { title: 'Cartão de crédito', value: 'credito' },
+  { title: 'Transferência', value: 'transferencia' },
 ]
 
 // Função para submeter o formulário
 async function submeterFormulario() {
-  if (!isFormValid.value || !form.value.data_pagamento)
+  if (!isFormValid.value)
     return
 
   isSubmitting.value = true
@@ -66,17 +70,9 @@ async function submeterFormulario() {
       dizimista: form.value.dizimista,
       valor_pago: form.value.valor_pago!,
       meio: form.value.meio,
-      data_pagamento: form.value.data_pagamento,
+      data_pagamento: dataParaISO(form.value.data_pagamento),
     })
-
-    // Mostra sucesso e limpa alguns campos
-    showSuccess.value = true
-    form.value.valor_pago = undefined
-
-    // Esconde mensagem de sucesso após 3 segundos
-    setTimeout(() => {
-      showSuccess.value = false
-    }, 3000)
+    await navigateTo('/admin/dizimos/pagamentos')
   }
   catch (err) {
     console.error('Erro ao registrar pagamento:', err)
@@ -100,47 +96,29 @@ watch(() => form.value.dizimista, () => {
     preencherValorMensal()
   }
 })
-
-// Navegar de volta
-function voltar() {
-  navigateTo('/admin/dizimos')
-}
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
             variant="text"
             icon="mdi-arrow-left"
             class="me-2"
-            @click="voltar"
+            to="/admin/dizimos"
           />
-          <h1 class="text-h4 text-sm-h3 font-weight-bold text-primary">
+          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
             Registrar Pagamento
           </h1>
         </div>
-        <p class="text-body-1 text-medium-emphasis">
+        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
           Registre um pagamento de dízimo
         </p>
       </div>
     </div>
-
-    <!-- Alerta de Sucesso -->
-    <v-alert
-      v-if="showSuccess"
-      type="success"
-      variant="tonal"
-      closable
-      class="mb-4"
-      @click:close="showSuccess = false"
-    >
-      <v-alert-title>Sucesso!</v-alert-title>
-      Pagamento registrado com sucesso.
-    </v-alert>
 
     <!-- Alerta de Erro -->
     <v-alert
@@ -230,20 +208,19 @@ function voltar() {
                   <v-select
                     v-model="form.meio"
                     :items="meiosPagamento"
+                    item-title="title"
+                    item-value="value"
                     label="Meio de Pagamento"
                     prepend-inner-icon="mdi-credit-card"
-                    variant="outlined"
                     :disabled="isSubmitting"
                   />
                 </v-col>
 
                 <v-col cols="12">
-                  <v-text-field
+                  <MaskedDateField
                     v-model="form.data_pagamento"
                     label="Data do Pagamento"
-                    type="date"
                     prepend-inner-icon="mdi-calendar"
-                    variant="outlined"
                     :disabled="isSubmitting"
                   />
                 </v-col>
@@ -265,11 +242,11 @@ function voltar() {
                 </v-btn>
 
                 <v-btn
-                  variant="outlined"
+                  variant="text"
                   size="large"
                   :disabled="isSubmitting"
                   class="text-none flex-grow-1 flex-sm-grow-0"
-                  @click="voltar"
+                  to="/admin/dizimos"
                 >
                   Cancelar
                 </v-btn>

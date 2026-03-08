@@ -101,49 +101,57 @@ function formatarData(data: string) {
 }
 
 // Função para formatar valor
+function printList() {
+  window.print()
+}
+
 function formatarValor(valor: number) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   }).format(valor)
 }
-
-// Navegar de volta
-function voltar() {
-  navigateTo('/admin/dizimos')
-}
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
             variant="text"
             icon="mdi-arrow-left"
             class="me-2"
-            @click="voltar"
+            to="/admin/dizimos"
           />
-          <h1 class="text-h4 text-sm-h3 font-weight-bold text-primary">
+          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
             Lista de Dizimistas
           </h1>
         </div>
-        <p class="text-body-1 text-medium-emphasis">
+        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
           Gerencie todos os dizimistas cadastrados
         </p>
       </div>
 
-      <v-btn
-        color="primary"
-        variant="elevated"
-        prepend-icon="mdi-account-plus"
-        to="/admin/dizimos/novo-dizimista"
-        class="text-none mt-4 mt-sm-0"
-      >
-        Novo Dizimista
-      </v-btn>
+      <div class="d-flex ga-2 mt-3 mt-sm-0 d-print-none">
+        <v-btn
+          variant="tonal"
+          color="info"
+          prepend-icon="mdi-printer"
+          @click="printList"
+        >
+          Imprimir
+        </v-btn>
+        <v-btn
+          variant="elevated"
+          color="success"
+          prepend-icon="mdi-account-plus"
+          to="/admin/dizimos/novo-dizimista"
+        >
+          Novo Dizimista
+        </v-btn>
+      </div>
     </div>
 
     <!-- Alerta de Erro -->
@@ -387,7 +395,7 @@ function voltar() {
           </v-btn>
           <v-btn
             color="error"
-            variant="elevated"
+            variant="tonal"
             @click="remover"
           >
             Remover
