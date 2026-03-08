@@ -39,9 +39,13 @@ function formatBRL(num: number): string {
 }
 
 // Strips currency formatting and parses as a decimal number.
-// "R$ 1.500,50" → 1500.50 | "20" → 20 | "20,50" → 20.50
+// "R$ 1.500,50" → 1500.50 | "20" → 20 | "20,50" → 20.50 | "313.75" → 313.75
 function parseBRL(raw: string): number {
-  const cleaned = raw.replace(/[^\d,]/g, '').replace(',', '.')
+  const s = String(raw).trim()
+  // US decimal format (only dot, no comma) — e.g. values coming from API as strings
+  if (!s.includes(',') && /\d\.\d/.test(s))
+    return Number.parseFloat(s.replace(/[^\d.]/g, '')) || 0
+  const cleaned = s.replace(/[^\d,]/g, '').replace(',', '.')
   return Number.parseFloat(cleaned) || 0
 }
 

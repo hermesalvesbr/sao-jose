@@ -104,6 +104,13 @@ export interface Instituicao {
   catolico: string[] | Catolico[];
 }
 
+export interface ValorDetalhado {
+  valor: number;
+  tipo: 'moeda' | 'cedula';
+  label: string;
+  quantidade: number;
+}
+
 export interface OfertaFinanceira {
   id: string;
   status: string;
@@ -117,6 +124,8 @@ export interface OfertaFinanceira {
   data_entrada: 'datetime';
   meio: string;
   observacao: string;
+  /** Detalhamento de cédulas e moedas contadas na oferta (JSON array) */
+  valores_detalhados: ValorDetalhado[] | null;
 }
 
 export interface PagamentoDizimo {

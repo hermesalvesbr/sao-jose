@@ -34,6 +34,7 @@ defineProps({
  */
 const emit = defineEmits<{
   (e: 'update:valor', valor: number): void
+  (e: 'update:detalhes', detalhes: any[]): void
   (e: 'reset'): void
   (e: 'close'): void
   (e: 'update:modelValue', value: boolean): void
@@ -123,17 +124,36 @@ function resetar() {
  * Esta função pode ser chamada externamente após salvamento bem-sucedido
  */
 function limparDadosArmazenados() {
-  resetar() // Zera todas as quantidades
-  // O localStorage ainda mantém a estrutura, mas com quantidades zeradas
+  resetar()
 }
 
-// Expõe a função para ser usada externamente
+function carregarDados(detalhes: Array<{ valor: number, tipo: string, quantidade: number }>) {
+  denominacoes.value.forEach((item) => {
+    item.quantidade = 0
+  })
+  detalhes.forEach((detalhe) => {
+    const item = denominacoes.value.find(d => d.valor === detalhe.valor && d.tipo === detalhe.tipo)
+    if (item)
+      item.quantidade = detalhe.quantidade
+  })
+}
+
 defineExpose({
   limparDadosArmazenados,
+  carregarDados,
 })
 
 function salvarValor() {
   emit('update:valor', valorTotal.value)
+  const detalhesLimpos = denominacoes.value
+    .filter(d => d.quantidade > 0)
+    .map(d => ({
+      valor: d.valor,
+      tipo: d.tipo,
+      label: d.label,
+      quantidade: d.quantidade,
+    }))
+  emit('update:detalhes', detalhesLimpos)
 }
 
 /**
@@ -150,9 +170,10 @@ function fecharModal() {
 </script>
 
 <template>
-  <v-card elevation="2" rounded="lg" class="calculadora-ofertorio position-relative">
-    <!-- Botão X para fechar (posicionado fora do card) -->
+  <v-card elevation="2" rounded="lg" class="calculadora-ofertorio">
+    <!-- Botão X para fechar (só quando em modal) -->
     <v-btn
+      v-if="modelValue !== undefined"
       icon
       variant="elevated"
       color="error"
@@ -163,7 +184,7 @@ function fecharModal() {
       <v-icon>mdi-close</v-icon>
     </v-btn>
 
-    <v-card-title class="d-flex align-center justify-space-between pa-4 pr-12">
+    <v-card-title class="d-flex align-center justify-space-between pa-4" :class="{ 'pr-12': modelValue !== undefined }">
       <h2 class="text-h6">
         {{ titulo }}
       </h2>
@@ -213,41 +234,41 @@ function fecharModal() {
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row>
-              <v-col
-                v-for="moeda in denominacoes.filter(d => d.tipo === 'moeda')"
-                :key="`moeda-${moeda.valor}`"
-                cols="12"
-                sm="6"
-                md="4"
-              >
-                <v-card variant="outlined" class="pa-2">
-                  <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center gap-2">
-                      <v-avatar
-                        :color="moeda.corPrimaria || 'grey'"
-                        size="32"
-                        class="border"
-                      >
-                        <span class="text-caption font-weight-bold">{{ moeda.valor < 1 ? (moeda.valor * 100) : moeda.valor }}</span>
-                      </v-avatar>
-                      <span>{{ moeda.label }}</span>
-                    </div>
-                    <div>
-                      <v-number-input
-                        v-model="moeda.quantidade"
-                        control-variant="split"
-                        :min="0"
-                        density="compact"
+            <v-list lines="one" density="compact">
+              <template v-for="(moeda, idx) in denominacoes.filter(d => d.tipo === 'moeda')" :key="moeda.valor">
+                <v-divider v-if="idx > 0" />
+                <v-list-item>
+                  <template #prepend>
+                    <v-avatar :color="moeda.corPrimaria || 'grey'" size="28" class="me-3" />
+                  </template>
+                  <v-list-item-title class="text-body-2">
+                    {{ moeda.label }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ formatCurrency(moeda.valor * moeda.quantidade) }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <div class="d-flex align-center ga-1">
+                      <v-btn
+                        icon="mdi-minus"
+                        size="x-small"
+                        variant="tonal"
+                        :disabled="moeda.quantidade <= 0"
+                        @click="moeda.quantidade = Math.max(0, moeda.quantidade - 1)"
+                      />
+                      <span class="text-body-1 font-weight-bold text-center px-2">{{ moeda.quantidade }}</span>
+                      <v-btn
+                        icon="mdi-plus"
+                        size="x-small"
+                        variant="tonal"
+                        color="primary"
+                        @click="moeda.quantidade++"
                       />
                     </div>
-                  </div>
-                  <div class="text-right text-caption mt-1">
-                    Total: {{ formatCurrency(moeda.valor * moeda.quantidade) }}
-                  </div>
-                </v-card>
-              </v-col>
-            </v-row>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-list>
           </v-expansion-panel-text>
         </v-expansion-panel>
 
@@ -260,41 +281,48 @@ function fecharModal() {
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <v-row>
-              <v-col
-                v-for="cedula in denominacoes.filter(d => d.tipo === 'cedula')"
-                :key="`cedula-${cedula.valor}`"
-                cols="12"
-                sm="6"
-                md="4"
-              >
-                <v-card variant="outlined" class="pa-2">
-                  <div class="d-flex align-center justify-space-between">
-                    <div class="d-flex align-center gap-2">
-                      <v-chip
-                        :color="cedula.corPrimaria || 'grey'"
-                        size="small"
-                        class="font-weight-bold"
-                      >
-                        {{ formatCurrency(cedula.valor) }}
-                      </v-chip>
-                      <span>{{ cedula.label }}</span>
-                    </div>
-                    <div class="d-flex align-center" style="width: 140px">
-                      <v-number-input
-                        v-model="cedula.quantidade"
-                        control-variant="split"
-                        :min="0"
-                        density="compact"
+            <v-list lines="one" density="compact">
+              <template v-for="(cedula, idx) in denominacoes.filter(d => d.tipo === 'cedula')" :key="cedula.valor">
+                <v-divider v-if="idx > 0" />
+                <v-list-item>
+                  <template #prepend>
+                    <v-chip
+                      :color="cedula.corPrimaria || 'grey'"
+                      size="small"
+                      label
+                      class="font-weight-bold me-3"
+                    >
+                      R${{ cedula.valor }}
+                    </v-chip>
+                  </template>
+                  <v-list-item-title class="text-body-2">
+                    {{ cedula.valor === 1 ? 'real' : 'reais' }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ formatCurrency(cedula.valor * cedula.quantidade) }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <div class="d-flex align-center ga-1">
+                      <v-btn
+                        icon="mdi-minus"
+                        size="x-small"
+                        variant="tonal"
+                        :disabled="cedula.quantidade <= 0"
+                        @click="cedula.quantidade = Math.max(0, cedula.quantidade - 1)"
+                      />
+                      <span class="text-body-1 font-weight-bold text-center px-2">{{ cedula.quantidade }}</span>
+                      <v-btn
+                        icon="mdi-plus"
+                        size="x-small"
+                        variant="tonal"
+                        color="primary"
+                        @click="cedula.quantidade++"
                       />
                     </div>
-                  </div>
-                  <div class="text-right text-caption mt-1">
-                    Total: {{ formatCurrency(cedula.valor * cedula.quantidade) }}
-                  </div>
-                </v-card>
-              </v-col>
-            </v-row>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-list>
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
@@ -317,7 +345,6 @@ function fecharModal() {
 </template>
 
 <style scoped>
-/* Estilo para o botão de fechar */
 .calculadora-ofertorio {
   position: relative;
   overflow: visible !important;
@@ -328,8 +355,8 @@ function fecharModal() {
   position: absolute;
   top: -20px;
   right: -20px;
-  z-index: 999; /* Valor alto para garantir que esteja acima de qualquer outro elemento */
+  z-index: 999;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 0, 0, 0.12); /* Adiciona uma borda sutil */
+  border: 1px solid rgba(0, 0, 0, 0.12);
 }
 </style>

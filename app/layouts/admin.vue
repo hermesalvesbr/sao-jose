@@ -145,7 +145,7 @@ onMounted(() => {
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"
-          active-color="primary"
+          color="primary"
           rounded="lg"
           class="mb-1"
         >
@@ -172,7 +172,7 @@ onMounted(() => {
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"
-          active-color="primary"
+          color="primary"
           rounded="lg"
           class="mb-1"
         >
@@ -199,7 +199,7 @@ onMounted(() => {
           :key="item.to"
           :to="item.to"
           :active="isActive(item.to)"
-          active-color="primary"
+          color="primary"
           rounded="lg"
           class="mb-1"
         >
