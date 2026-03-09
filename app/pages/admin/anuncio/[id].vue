@@ -5,7 +5,12 @@ definePageMeta({ layout: 'admin' })
 
 const route = useRoute()
 const paramId = computed(() => route.params.id as string)
+const breadcrumbOverride = useState<string | null>('breadcrumb-override', () => null)
 const isNew = computed(() => paramId.value === 'novo')
+
+onUnmounted(() => {
+  breadcrumbOverride.value = null
+})
 
 const { loading, fetchAnuncioById, salvarAnuncio, atualizarAnuncio, uploadMidia, getAssetUrl } = useAdsNovenario()
 
@@ -27,6 +32,7 @@ const defaultItem = {
   status_pagamento: 'pendente' as 'pendente' | 'pago' | 'permuta',
   meio_pagamento: null as string | null,
   data_pagamento: null as string | null,
+  permuta_descricao: null as string | null,
 }
 const editedItem = ref({ ...defaultItem })
 
@@ -42,7 +48,10 @@ function formatCurrency(val: number): string {
 }
 
 onMounted(async () => {
-  if (!isNew.value) {
+  if (isNew.value) {
+    breadcrumbOverride.value = 'Novo'
+  }
+  else {
     const ad = await fetchAnuncioById(paramId.value)
     if (ad) {
       const midiaId = typeof ad.midia === 'object' && ad.midia
@@ -58,12 +67,14 @@ onMounted(async () => {
         status_pagamento: (ad.status_pagamento ?? 'pendente') as 'pendente' | 'pago' | 'permuta',
         meio_pagamento: ad.meio_pagamento ?? null,
         data_pagamento: ad.data_pagamento ?? null,
+        permuta_descricao: ad.permuta_descricao ?? null,
       }
+      breadcrumbOverride.value = ad.anunciante
       midiaPreview.value = midiaId ? await getAssetUrl(midiaId) : null
       midiaPreviewOriginal.value = midiaPreview.value
     }
     else {
-      await navigateTo('/admin/anuncios')
+      await navigateTo('/admin/anuncio')
     }
   }
 })
@@ -88,6 +99,12 @@ async function saveItem(): Promise<void> {
     snackbar.value = true
     return
   }
+  if (editedItem.value.status_pagamento === 'permuta' && !editedItem.value.permuta_descricao?.trim()) {
+    snackbarText.value = 'Informe a descrição da permuta.'
+    snackbarColor.value = 'warning'
+    snackbar.value = true
+    return
+  }
 
   loading.value = true
   try {
@@ -100,6 +117,9 @@ async function saveItem(): Promise<void> {
       status_pagamento: editedItem.value.status_pagamento,
       meio_pagamento: editedItem.value.meio_pagamento || null,
       data_pagamento: editedItem.value.data_pagamento || null,
+      permuta_descricao: editedItem.value.status_pagamento === 'permuta'
+        ? (editedItem.value.permuta_descricao || null)
+        : null,
     }
 
     if (midiaFile.value) {
@@ -118,7 +138,7 @@ async function saveItem(): Promise<void> {
         payload.midia = editedItem.value.midia
       await salvarAnuncio(payload as Partial<AdsNovenario>)
     }
-    await navigateTo('/admin/anuncios')
+    await navigateTo('/admin/anuncio')
   }
   catch (err) {
     console.error('Erro ao salvar anúncio:', err)
@@ -137,7 +157,7 @@ async function saveItem(): Promise<void> {
   <v-container fluid class="pa-4 pa-md-6" style="max-width: 800px;">
     <!-- Header -->
     <div class="d-flex align-center mb-6 ga-3">
-      <v-btn icon variant="text" @click="navigateTo('/admin/anuncios')">
+      <v-btn icon variant="text" @click="navigateTo('/admin/anuncio')">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>
@@ -349,13 +369,26 @@ async function saveItem(): Promise<void> {
                 clearable
               />
             </v-col>
+
+            <v-col v-if="editedItem.status_pagamento === 'permuta'" cols="12">
+              <v-textarea
+                v-model="editedItem.permuta_descricao"
+                label="Descrição da Permuta *"
+                placeholder="Descreva como foi feita a permuta (ex: troca de serviços, fornecimento de materiais...)"
+                prepend-inner-icon="mdi-swap-horizontal"
+                variant="outlined"
+                rows="3"
+                :rules="[v => !!v?.trim() || 'Obrigatório informar a descrição da permuta']"
+                required
+              />
+            </v-col>
           </v-row>
         </v-form>
       </v-card-text>
 
       <v-card-actions class="pa-6 pt-2">
         <v-spacer />
-        <v-btn variant="text" @click="navigateTo('/admin/anuncios')">
+        <v-btn variant="text" @click="navigateTo('/admin/anuncio')">
           Cancelar
         </v-btn>
         <v-btn color="primary" variant="elevated" :loading="loading || uploading" @click="saveItem">

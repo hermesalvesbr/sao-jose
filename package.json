@@ -30,8 +30,8 @@
   "devDependencies": {
     "@antfu/eslint-config": "^7.7.0",
     "@directus/types": "^14.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
     "directus-typeforge": "^0.19.2",
     "eslint": "^10.0.3",
     "eslint-import-resolver-node": "^0.3.9",

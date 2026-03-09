@@ -11,8 +11,8 @@ const itemToDelete = ref<string | null>(null)
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
-const search = ref('')
-const filterPagamento = ref<string | null>(null)
+const search = useState<string>('anuncios-search', () => '')
+const filterPagamento = useState<string | null>('anuncios-pagamento', () => null)
 
 const STATUS_PAGAMENTO_LABELS: Record<string, string> = {
   pago: 'Pago',
@@ -23,14 +23,12 @@ const pagamentoOpcoes = Object.entries(STATUS_PAGAMENTO_LABELS).map(([value, tit
 
 const headers = [
   { title: 'Anunciante', key: 'anunciante' },
-  { title: 'Tipo', key: 'tipo_midia', align: 'center' as const },
   { title: 'Duração', key: 'duracao', align: 'center' as const },
   { title: 'Valor Pago', key: 'valor_pago', align: 'end' as const },
-  { title: 'R$/seg', key: 'custo_segundo', align: 'end' as const, sortable: false },
   { title: 'Pagamento', key: 'status_pagamento', align: 'center' as const },
   { title: 'Meio', key: 'meio_pagamento', align: 'center' as const },
   { title: 'Status', key: 'status', align: 'center' as const },
-  { title: 'Ações', key: 'actions', sortable: false, align: 'end' as const },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '100px' },
 ]
 
 const filteredAnuncios = computed(() => {
@@ -48,7 +46,6 @@ const filteredAnuncios = computed(() => {
 const totalAnuncios = computed(() => filteredAnuncios.value.length)
 const totalArrecadado = computed(() => filteredAnuncios.value.reduce((acc, a) => acc + Number(a.valor_pago || 0), 0))
 const totalSegundos = computed(() => filteredAnuncios.value.reduce((acc, a) => acc + Number(a.duracao || 0), 0))
-const custoMedioPorSegundo = computed(() => totalSegundos.value > 0 ? totalArrecadado.value / totalSegundos.value : 0)
 const generatedAtLabel = computed(() => `Gerado em ${new Date().toLocaleDateString('pt-BR')}`)
 const responsavelNome = computed(() => `${user.value?.first_name ?? ''} ${user.value?.last_name ?? ''}`.trim() || 'Responsável')
 
@@ -56,12 +53,6 @@ onMounted(() => fetchAnuncios())
 
 function formatCurrency(val: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0)
-}
-
-function custoSegundo(item: AdsNovenario): number {
-  const duracao = Number(item.duracao) || 0
-  const valor = Number(item.valor_pago) || 0
-  return duracao > 0 ? valor / duracao : 0
 }
 
 function openDelete(item: AdsNovenario): void {
@@ -209,21 +200,6 @@ function printList() {
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" md="3">
-        <v-card rounded="xl" :elevation="0" class="border">
-          <v-card-text class="text-center">
-            <v-icon color="warning" size="32" class="mb-2">
-              mdi-currency-brl
-            </v-icon>
-            <div class="text-h5 font-weight-bold">
-              {{ formatCurrency(custoMedioPorSegundo) }}
-            </div>
-            <div class="text-caption text-medium-emphasis">
-              Média R$/seg
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
     </v-row>
 
     <!-- Data Table -->
@@ -239,22 +215,14 @@ function printList() {
       >
         <template #[`item.anunciante`]="{ item }">
           <div class="d-flex align-center py-2">
-            <v-avatar color="primary" variant="tonal" size="36" class="me-3">
-              <v-icon icon="mdi-bullhorn-outline" size="18" />
-            </v-avatar>
+            <v-icon
+              :icon="item.tipo_midia === 'video' ? 'mdi-video-outline' : 'mdi-image-outline'"
+              :color="item.tipo_midia === 'video' ? 'purple' : 'blue'"
+              size="20"
+              class="me-2"
+            />
             <span class="font-weight-medium text-body-2">{{ item.anunciante }}</span>
           </div>
-        </template>
-
-        <template #[`item.tipo_midia`]="{ item }">
-          <v-chip
-            :color="item.tipo_midia === 'video' ? 'purple' : 'blue'"
-            size="small"
-            variant="tonal"
-          >
-            <v-icon :icon="item.tipo_midia === 'video' ? 'mdi-video-outline' : 'mdi-image-outline'" start size="14" />
-            {{ item.tipo_midia === 'video' ? 'Vídeo' : 'Imagem' }}
-          </v-chip>
         </template>
 
         <template #[`item.duracao`]="{ item }">
@@ -266,12 +234,6 @@ function printList() {
 
         <template #[`item.valor_pago`]="{ item }">
           <span class="font-weight-bold text-body-2">{{ formatCurrency(Number(item.valor_pago)) }}</span>
-        </template>
-
-        <template #[`item.custo_segundo`]="{ item }">
-          <v-chip size="small" variant="tonal" color="warning">
-            {{ formatCurrency(custoSegundo(item)) }}/s
-          </v-chip>
         </template>
 
         <template #[`item.status_pagamento`]="{ item }">
@@ -387,6 +349,9 @@ function printList() {
                 <th class="text-start">
                   Pagamento
                 </th>
+                <th class="text-start">
+                  Obs. Permuta
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -402,11 +367,14 @@ function printList() {
                   {{ formatCurrency(Number(item.valor_pago)) }}
                 </td>
                 <td>{{ STATUS_PAGAMENTO_LABELS[item.status_pagamento] ?? item.status_pagamento }}</td>
+                <td class="text-caption">
+                  {{ item.status_pagamento === 'permuta' && item.permuta_descricao ? item.permuta_descricao : '—' }}
+                </td>
               </tr>
             </tbody>
             <tfoot>
               <tr class="total-row">
-                <td colspan="3" class="text-end font-weight-bold">
+                <td colspan="4" class="text-end font-weight-bold">
                   Total arrecadado
                 </td>
                 <td class="text-end font-weight-black">

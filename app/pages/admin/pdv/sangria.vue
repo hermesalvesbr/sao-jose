@@ -25,9 +25,9 @@ const operators = ref<any[]>([])
 const loading = ref(false)
 const snackbar = ref({ show: false, text: '', color: 'success' })
 
-const filterDateFrom = ref<string | null>(null)
-const filterDateTo = ref<string | null>(null)
-const filterOperator = ref<string | null>(null)
+const filterDateFrom = useState<string | null>('pdv-sangria-from', () => null)
+const filterDateTo = useState<string | null>('pdv-sangria-to', () => null)
+const filterOperator = useState<string | null>('pdv-sangria-operador', () => null)
 
 // Dialog
 const dialog = ref(false)

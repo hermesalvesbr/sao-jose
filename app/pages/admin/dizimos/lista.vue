@@ -15,7 +15,7 @@ const {
 } = useDizimos()
 
 // Estados
-const search = ref('')
+const search = useState<string>('dizimos-lista-search', () => '')
 const dialogEdit = ref(false)
 const dialogDelete = ref(false)
 const selectedDizimista = ref<any>(null)

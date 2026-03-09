@@ -228,7 +228,7 @@ const printShopSection = computed(() =>
                 </div>
 
                 <!-- Grid de produtos -->
-                <v-row dense>
+                <v-row density="comfortable">
                   <v-col
                     v-for="product in group.products"
                     :key="product.id"
