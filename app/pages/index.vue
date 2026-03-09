@@ -82,7 +82,7 @@ const filteredEvents = computed(() => {
 /** Agrupa eventos da semana por dia (domingo a sábado) */
 const weekEvents = computed(() => {
   // Array de 7 arrays, um para cada dia da semana
-  const grouped: Agenda[][] = Array.from({ length: 7 }).fill([])
+  const grouped: Agenda[][] = Array.from<Agenda[]>({ length: 7 }).fill([])
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const diff = today.getDate() - today.getDay()
