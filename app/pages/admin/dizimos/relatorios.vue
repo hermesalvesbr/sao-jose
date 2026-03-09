@@ -55,7 +55,7 @@ const anos = computed(() => {
   // Adiciona o ano atual se não existir
   anosDisponiveis.add(new Date().getFullYear().toString())
 
-  return Array.from(anosDisponiveis).sort().reverse().map(ano => ({
+  return [...anosDisponiveis].toSorted().reverse().map((ano: string) => ({
     value: ano,
     title: ano,
   }))
@@ -171,6 +171,10 @@ function printRelatorio() {
   window.print()
 }
 
+const generatedAtLabel = computed(() => {
+  return `Gerado em ${new Date().toLocaleDateString('pt-BR')}`
+})
+
 // Nome do período selecionado
 const nomePeriodo = computed(() => {
   if (mesSelecionado.value) {
@@ -197,7 +201,7 @@ const nomePeriodo = computed(() => {
 <template>
   <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
@@ -233,7 +237,7 @@ const nomePeriodo = computed(() => {
       type="error"
       variant="tonal"
       closable
-      class="mb-4"
+      class="mb-4 no-print"
     >
       {{ error }}
     </v-alert>
@@ -243,7 +247,7 @@ const nomePeriodo = computed(() => {
       v-if="loading"
       indeterminate
       color="primary"
-      class="mb-4"
+      class="mb-4 no-print"
     />
 
     <!-- Filtros de Período -->
@@ -251,7 +255,7 @@ const nomePeriodo = computed(() => {
       variant="elevated"
       elevation="2"
       rounded="lg"
-      class="mb-6"
+      class="mb-6 no-print"
     >
       <v-card-title class="d-flex align-center pa-4">
         <v-icon class="me-2" color="primary">
@@ -289,7 +293,7 @@ const nomePeriodo = computed(() => {
     </v-card>
 
     <!-- Estatísticas Gerais -->
-    <v-row class="mb-6">
+    <v-row class="mb-6 no-print">
       <v-col cols="12">
         <h2 class="text-h5 font-weight-bold text-primary mb-4">
           Estatísticas Gerais
@@ -410,7 +414,7 @@ const nomePeriodo = computed(() => {
     </v-row>
 
     <!-- Relatório por Meio de Pagamento -->
-    <v-row>
+    <v-row class="no-print">
       <v-col cols="12">
         <v-card
           variant="elevated"
@@ -479,5 +483,92 @@ const nomePeriodo = computed(() => {
         </v-card>
       </v-col>
     </v-row>
+
+    <PrintReportLayout
+      class="d-none d-print-block mt-8"
+      title="Relatório Geral de Dízimos"
+      subtitle="Consolidado de dizimistas e pagamentos"
+      :period-label="nomePeriodo"
+      :generated-at-label="generatedAtLabel"
+    >
+      <section>
+        <PrintReportSectionTitle title="Resumo do período" />
+        <div class="pa-4">
+          <table class="report-table">
+            <tbody>
+              <tr class="data-row">
+                <td class="font-weight-medium">
+                  Total de dizimistas
+                </td>
+                <td class="text-end">
+                  {{ estatisticasDizimistas.totalDizimistas }}
+                </td>
+              </tr>
+              <tr class="data-row">
+                <td class="font-weight-medium">
+                  Valor mensal total
+                </td>
+                <td class="text-end">
+                  {{ estatisticasDizimistas.valorMensalTotalFormatado }}
+                </td>
+              </tr>
+              <tr class="data-row">
+                <td class="font-weight-medium">
+                  Pagamentos no período
+                </td>
+                <td class="text-end">
+                  {{ estatisticasPeriodo.totalPagamentos }}
+                </td>
+              </tr>
+              <tr class="total-row">
+                <td class="font-weight-bold">
+                  Valor recebido no período
+                </td>
+                <td class="text-end font-weight-bold">
+                  {{ estatisticasPeriodo.valorTotalFormatado }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <PrintReportSectionTitle title="Pagamentos por meio" />
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Meio
+                </th>
+                <th class="text-end">
+                  Quantidade
+                </th>
+                <th class="text-end">
+                  Valor total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(dados, meio) in estatisticasPeriodo.porMeio" :key="String(meio)" class="data-row">
+                <td>{{ labelMeio[String(meio)] ?? meio }}</td>
+                <td class="text-end">
+                  {{ dados.quantidade }}
+                </td>
+                <td class="text-end">
+                  {{ formatarValor(dados.valor) }}
+                </td>
+              </tr>
+              <tr v-if="Object.keys(estatisticasPeriodo.porMeio).length === 0" class="data-row">
+                <td colspan="3" class="text-center">
+                  Nenhum pagamento encontrado no período selecionado
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
   </v-container>
 </template>

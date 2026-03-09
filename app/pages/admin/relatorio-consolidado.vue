@@ -356,6 +356,10 @@ const responsavelNome = computed(() =>
   `${user.value?.first_name ?? ''} ${user.value?.last_name ?? ''}`.trim() || 'Responsável',
 )
 
+const generatedAtLabel = computed(() =>
+  `Gerado em ${formatDate(new Date().toISOString().substring(0, 10))}`,
+)
+
 function fmtOrDash(val: number) {
   return val > 0 ? formatCurrency(val) : '—'
 }
@@ -378,7 +382,8 @@ function printPage() {
         </p>
       </div>
       <v-btn
-        color="primary"
+        variant="tonal"
+        color="info"
         prepend-icon="mdi-printer"
         size="large"
         :disabled="!reportGenerated"
@@ -391,7 +396,7 @@ function printPage() {
     <!-- ─── Filters ───────────────────────────────────────────────────── -->
     <v-card rounded="xl" :elevation="0" class="border mb-5 no-print">
       <v-card-text>
-        <v-row align="center" dense>
+        <v-row align="center">
           <v-col cols="12" sm="3">
             <v-text-field
               v-model="dateFrom"
@@ -445,27 +450,22 @@ function printPage() {
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4 no-print" />
 
     <!-- ─── Report area ───────────────────────────────────────────────── -->
-    <div v-if="reportGenerated" class="report-area">
-      <!-- Print-only header -->
-      <div class="print-header">
-        <strong>Paróquia — Novenário de São José</strong>
-        <h2 class="print-title">
-          PRESTAÇÃO DE CONTAS — FINANCEIRO CONSOLIDADO
-        </h2>
-        <p class="print-date">
-          PERÍODO: {{ periodLabel }}
-        </p>
-      </div>
-
+    <PrintReportLayout
+      v-if="reportGenerated"
+      class="report-area"
+      title="Prestação de Contas — Financeiro Consolidado"
+      subtitle="Receitas e saídas consolidadas do período"
+      :period-label="periodLabel"
+      :generated-at-label="generatedAtLabel"
+      :left-signature-name="responsavelNome"
+    >
       <!-- ─── Receitas por Fonte ─────────────────────────────────────── -->
       <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
           <v-icon icon="mdi-cash-multiple" color="success" class="me-2" />
           <span class="text-subtitle-1 font-weight-bold">Receitas por Fonte</span>
         </v-card-title>
-        <div class="print-section-title print-only">
-          RECEITAS POR FONTE
-        </div>
+        <PrintReportSectionTitle title="Receitas por fonte" />
 
         <div class="pa-4">
           <table class="report-table">
@@ -635,9 +635,7 @@ function printPage() {
           <v-icon icon="mdi-cash-minus" color="error" class="me-2" />
           <span class="text-subtitle-1 font-weight-bold">Saídas Financeiras</span>
         </v-card-title>
-        <div class="print-section-title print-only">
-          SAÍDAS FINANCEIRAS
-        </div>
+        <PrintReportSectionTitle title="Saídas financeiras" />
 
         <div class="pa-4">
           <table class="report-table">
@@ -722,25 +720,7 @@ function printPage() {
           </table>
         </div>
       </v-card>
-
-      <!-- ─── Signature ─────────────────────────────────────────────── -->
-      <div class="signature-area">
-        <div>
-          <p class="mb-2">
-            RESPONSÁVEL: <strong>{{ responsavelNome }}</strong>
-          </p>
-          <p class="text-caption text-medium-emphasis">
-            Relatório gerado em {{ formatDate(new Date().toISOString().substring(0, 10)) }}
-          </p>
-        </div>
-        <div class="signature-line">
-          <div class="line" />
-          <p class="mt-1 text-caption">
-            ASSINATURA (COORDENAÇÃO FINANCEIRA)
-          </p>
-        </div>
-      </div>
-    </div>
+    </PrintReportLayout>
 
     <!-- Empty state -->
     <div v-if="!reportGenerated && !loading" class="text-center pa-12 no-print">
@@ -753,44 +733,6 @@ function printPage() {
 </template>
 
 <style scoped>
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.report-table thead tr {
-  background-color: rgb(var(--v-theme-surface-variant));
-}
-
-.report-table th {
-  padding: 10px 12px;
-  font-weight: 700;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.report-table td {
-  padding: 9px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.report-table .data-row:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.report-table tfoot .total-row {
-  background-color: rgba(var(--v-theme-secondary), 0.08);
-  border-top: 2px solid rgba(0, 0, 0, 0.18);
-}
-
-.report-table tfoot .total-row td {
-  padding: 12px;
-  border-color: rgba(0, 0, 0, 0.12);
-}
-
 .report-table .saldo-row {
   background-color: rgba(var(--v-theme-primary), 0.1) !important;
 }
@@ -810,124 +752,5 @@ function printPage() {
 
 .resumo-table .total-row td {
   font-size: 1rem;
-}
-
-.text-success-print {
-  color: rgb(var(--v-theme-success));
-}
-.text-error-print {
-  color: rgb(var(--v-theme-error));
-}
-
-.print-header,
-.print-only,
-.print-section-title {
-  display: none;
-}
-
-.signature-area {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.signature-line .line {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
-  max-width: 320px;
-  margin-bottom: 4px;
-}
-
-@media print {
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .print-header {
-    display: block !important;
-    text-align: center;
-    margin-bottom: 16px;
-  }
-
-  .print-title {
-    font-size: 14px;
-    font-weight: 800;
-    text-transform: uppercase;
-    margin: 0 0 4px;
-  }
-
-  .print-date {
-    font-size: 11px;
-    margin: 0 0 12px;
-  }
-
-  .print-only,
-  .print-section-title {
-    display: block !important;
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    background-color: #ecdbc8 !important;
-    padding: 6px 12px;
-    margin: 0;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 16mm 12mm 16mm 12mm;
-  }
-
-  body {
-    font-size: 11px;
-  }
-
-  .report-card {
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    border: 1px solid #ccc !important;
-    break-inside: avoid;
-    margin-bottom: 8px !important;
-  }
-
-  .v-container {
-    padding: 0 !important;
-  }
-
-  .report-table {
-    font-size: 10px;
-  }
-  .report-table th,
-  .report-table td {
-    padding: 5px 7px;
-    border: 1px solid #999;
-  }
-  .report-table thead tr {
-    background-color: #d0c9c0 !important;
-  }
-  .report-table tfoot .total-row {
-    background-color: #ecdbc8 !important;
-  }
-
-  .resumo-header {
-    background-color: #ecdbc8 !important;
-  }
-
-  .text-success-print {
-    color: #1b5e20 !important;
-  }
-  .text-error-print {
-    color: #b71c1c !important;
-  }
-
-  .signature-line .line {
-    border-bottom: 1px solid #333;
-    max-width: 280px;
-  }
 }
 </style>

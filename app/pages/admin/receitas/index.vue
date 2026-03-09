@@ -110,6 +110,16 @@ function printPage() {
   window.print()
 }
 
+const periodLabel = computed(() => {
+  if (dateFrom.value && dateTo.value)
+    return `${formatDate(dateFrom.value)} – ${formatDate(dateTo.value)}`
+  if (dateFrom.value)
+    return `A partir de ${formatDate(dateFrom.value)}`
+  if (dateTo.value)
+    return `Até ${formatDate(dateTo.value)}`
+  return 'Todos os registros'
+})
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function tipoLabel(tipo: string) {
   return TIPO_RECEITA_LABELS[tipo] ?? tipo
@@ -127,7 +137,7 @@ function tipoMeta(tipo: string): { icon: string, color: string } {
 <template>
   <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
       <div>
         <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
           Receitas
@@ -231,14 +241,14 @@ function tipoMeta(tipo: string): { icon: string, color: string } {
     </v-card>
 
     <!-- Total -->
-    <div class="d-flex justify-end mb-4">
+    <div class="d-flex justify-end mb-4 no-print">
       <v-chip color="success" variant="tonal" prepend-icon="mdi-cash-plus" size="large">
         Total: {{ formatCurrency(totalFiltrado) }}
       </v-chip>
     </div>
 
     <!-- Tabela -->
-    <v-card :elevation="0" class="border" rounded="xl">
+    <v-card :elevation="0" class="border no-print" rounded="xl">
       <v-data-table
         :headers="headers"
         :items="filteredItems"
@@ -317,59 +327,60 @@ function tipoMeta(tipo: string): { icon: string, color: string } {
     </v-card>
 
     <!-- Print layout -->
-    <div class="d-none d-print-block mt-4">
-      <h2 class="text-h6 mb-2">
-        RECEITAS DO NOVENÁRIO
-      </h2>
-      <table style="width:100%; border-collapse:collapse; font-size:12px;">
-        <thead>
-          <tr style="border-bottom:2px solid #000;">
-            <th style="text-align:left; padding:4px;">
-              Data
-            </th>
-            <th style="text-align:left; padding:4px;">
-              Tipo
-            </th>
-            <th style="text-align:left; padding:4px;">
-              Descrição
-            </th>
-            <th style="text-align:left; padding:4px;">
-              Meio
-            </th>
-            <th style="text-align:right; padding:4px;">
-              Valor
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in filteredItems" :key="item.id" style="border-bottom:1px solid #ddd;">
-            <td style="padding:4px;">
-              {{ formatDate(item.data) }}
-            </td>
-            <td style="padding:4px;">
-              {{ tipoLabel(item.tipo) }}
-            </td>
-            <td style="padding:4px;">
-              {{ item.descricao }}
-            </td>
-            <td style="padding:4px;">
-              {{ meioLabel(item.meio_pagamento) }}
-            </td>
-            <td style="text-align:right; padding:4px; font-weight:bold;">
-              {{ formatCurrency(item.valor) }}
-            </td>
-          </tr>
-          <tr style="border-top:2px solid #000; font-weight:bold;">
-            <td colspan="4" style="padding:4px; text-align:right;">
-              Total
-            </td>
-            <td style="padding:4px; text-align:right;">
-              {{ formatCurrency(totalFiltrado) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <PrintReportLayout
+      class="d-none d-print-block mt-8"
+      title="Relatório de Receitas"
+      subtitle="Doações, campanhas, rifas, taxas e subsídios"
+      :period-label="periodLabel"
+    >
+      <section>
+        <PrintReportSectionTitle title="Lançamentos do período" />
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Data
+                </th>
+                <th class="text-start">
+                  Tipo
+                </th>
+                <th class="text-start">
+                  Descrição
+                </th>
+                <th class="text-start">
+                  Meio
+                </th>
+                <th class="text-end">
+                  Valor
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredItems" :key="item.id" class="data-row">
+                <td>{{ formatDate(item.data) }}</td>
+                <td>{{ tipoLabel(item.tipo) }}</td>
+                <td>{{ item.descricao }}</td>
+                <td>{{ meioLabel(item.meio_pagamento) }}</td>
+                <td class="text-end font-weight-bold">
+                  {{ formatCurrency(item.valor) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="4" class="text-end font-weight-bold">
+                  Total
+                </td>
+                <td class="text-end font-weight-black">
+                  {{ formatCurrency(totalFiltrado) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
 
     <!-- Dialog: Confirmar arquivamento -->
     <v-dialog v-model="confirmDialog" max-width="420">

@@ -198,7 +198,7 @@ async function saveForm() {
       valor: Number(form.value.valor),
       data_despesa: brToIsoDate(form.value.data_despesa),
       operator_id: operatorId,
-      categoria: typeof form.value.categoria === 'string' ? titleCase(form.value.categoria) : form.value.categoria,
+      categoria: form.value.categoria,
       responsavel_id: form.value.responsavel_id || null,
       observacao: form.value.observacao || null,
       status: 'published',
@@ -272,7 +272,7 @@ onMounted(async () => {
             </v-col>
 
             <v-col cols="12" md="6">
-              <v-combobox
+              <v-select
                 v-model="form.categoria"
                 :items="categoriaOpcoes"
                 item-title="title"
@@ -367,7 +367,6 @@ onMounted(async () => {
               color="primary"
               variant="elevated"
               :loading="loading"
-              :disabled="!formValid"
               prepend-icon="mdi-content-save"
               type="submit"
             >

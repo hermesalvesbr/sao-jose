@@ -40,6 +40,22 @@ const snackbarColor = ref<'success' | 'error'>('success')
 const search = ref('')
 const { dateFrom, dateTo, setToday, setThisMonth, setNovena } = usePdvReportPeriod()
 const filterCategoria = ref<string | null>(null)
+const activeQuickFilter = ref<'hoje' | 'mes' | 'novena' | null>(null)
+
+function applyToday() {
+  setToday()
+  activeQuickFilter.value = 'hoje'
+}
+
+function applyThisMonth() {
+  setThisMonth()
+  activeQuickFilter.value = 'mes'
+}
+
+function applyNovena() {
+  setNovena()
+  activeQuickFilter.value = 'novena'
+}
 const dateFromField = computed({
   get: () => isoToBrDate(dateFrom.value),
   set: (value: string) => {
@@ -173,7 +189,22 @@ function clearFilters() {
   dateFrom.value = ''
   dateTo.value = ''
   filterCategoria.value = null
+  activeQuickFilter.value = null
 }
+
+function printList() {
+  window.print()
+}
+
+const periodLabel = computed(() => {
+  if (dateFrom.value && dateTo.value)
+    return `${formatDate(dateFrom.value)} – ${formatDate(dateTo.value)}`
+  if (dateFrom.value)
+    return `A partir de ${formatDate(dateFrom.value)}`
+  if (dateTo.value)
+    return `Até ${formatDate(dateTo.value)}`
+  return 'Todos os registros'
+})
 
 function getComprovantes(item: any): { id: string, title: string, type: string }[] {
   if (!Array.isArray(item._comprovantes))
@@ -212,7 +243,7 @@ function getResponsavelName(item: any): string {
 <template>
   <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn variant="text" icon="mdi-arrow-left" class="me-2" to="/admin/pdv" />
@@ -224,7 +255,10 @@ function getResponsavelName(item: any): string {
           Total: {{ formatCurrency(totalFiltered) }} em {{ filteredItems.length }} {{ filteredItems.length === 1 ? 'despesa' : 'despesas' }}
         </p>
       </div>
-      <div class="d-flex gap-2 mt-3 mt-sm-0">
+      <div class="d-flex ga-3 mt-3 mt-sm-0 d-print-none">
+        <v-btn variant="tonal" color="info" size="large" prepend-icon="mdi-printer" @click="printList">
+          Imprimir / PDF
+        </v-btn>
         <v-btn color="primary" variant="elevated" size="large" prepend-icon="mdi-plus" to="/admin/pdv/despesas/nova">
           Nova Despesa
         </v-btn>
@@ -232,7 +266,7 @@ function getResponsavelName(item: any): string {
     </div>
 
     <!-- Filters -->
-    <v-card rounded="xl" :elevation="0" class="border mb-5">
+    <v-card rounded="xl" :elevation="0" class="border mb-5 d-print-none">
       <v-card-text class="py-3">
         <v-row align="center">
           <v-col cols="12" sm="4">
@@ -276,13 +310,28 @@ function getResponsavelName(item: any): string {
             />
           </v-col>
           <v-col cols="12" sm="12" class="d-flex flex-wrap ga-2">
-            <v-btn size="small" variant="tonal" color="secondary" @click="setToday">
+            <v-btn
+              size="small"
+              :variant="activeQuickFilter === 'hoje' ? 'elevated' : 'tonal'"
+              color="secondary"
+              @click="applyToday"
+            >
               Hoje
             </v-btn>
-            <v-btn size="small" variant="tonal" color="secondary" @click="setThisMonth">
+            <v-btn
+              size="small"
+              :variant="activeQuickFilter === 'mes' ? 'elevated' : 'tonal'"
+              color="secondary"
+              @click="applyThisMonth"
+            >
               Este mês
             </v-btn>
-            <v-btn size="small" variant="tonal" color="warning" @click="setNovena()">
+            <v-btn
+              size="small"
+              :variant="activeQuickFilter === 'novena' ? 'elevated' : 'tonal'"
+              color="warning"
+              @click="applyNovena"
+            >
               Novena
             </v-btn>
             <v-btn size="small" variant="text" color="secondary" @click="clearFilters">
@@ -294,20 +343,20 @@ function getResponsavelName(item: any): string {
     </v-card>
 
     <!-- Summary -->
-    <div class="d-flex justify-end mb-4">
+    <div class="d-flex justify-end mb-4 no-print">
       <v-chip color="error" variant="tonal" prepend-icon="mdi-cash-minus" size="large">
         Total: {{ formatCurrency(totalFiltered) }}
       </v-chip>
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="d-flex justify-center align-center pa-12">
+    <div v-if="loading" class="d-flex justify-center align-center pa-12 no-print">
       <v-progress-circular indeterminate color="primary" size="40" width="4" />
       <span class="ml-4 text-body-1">Carregando despesas...</span>
     </div>
 
     <!-- Empty state -->
-    <v-card v-else-if="filteredItems.length === 0" elevation="0" rounded="lg" class="border">
+    <v-card v-else-if="filteredItems.length === 0" elevation="0" rounded="lg" class="border no-print">
       <div class="text-center pa-8">
         <v-icon color="grey-lighten-1" size="64" class="mb-4">
           mdi-database-off
@@ -330,7 +379,7 @@ function getResponsavelName(item: any): string {
     </v-card>
 
     <!-- Expansion Panels -->
-    <v-expansion-panels v-else variant="accordion">
+    <v-expansion-panels v-else variant="accordion" class="no-print">
       <v-expansion-panel
         v-for="item in filteredItems"
         :key="item.id"
@@ -426,11 +475,67 @@ function getResponsavelName(item: any): string {
     </v-expansion-panels>
 
     <!-- Count -->
-    <div v-if="filteredItems.length > 0" class="d-flex justify-center pa-4">
+    <div v-if="filteredItems.length > 0" class="d-flex justify-center pa-4 no-print">
       <div class="text-body-2 text-medium-emphasis">
         Total de {{ filteredItems.length }} {{ filteredItems.length === 1 ? 'despesa' : 'despesas' }}
       </div>
     </div>
+
+    <!-- Print layout -->
+    <PrintReportLayout
+      class="d-none d-print-block mt-8"
+      title="Relatório de Despesas"
+      subtitle="Listagem de despesas do PDV"
+      :period-label="periodLabel"
+    >
+      <section>
+        <PrintReportSectionTitle title="Despesas do período" />
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Data
+                </th>
+                <th class="text-start">
+                  Categoria
+                </th>
+                <th class="text-start">
+                  Descrição
+                </th>
+                <th class="text-start">
+                  Responsável
+                </th>
+                <th class="text-end">
+                  Valor
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredItems" :key="item.id" class="data-row">
+                <td>{{ formatDate(item.data_despesa) }}</td>
+                <td>{{ CATEGORIA_LABELS[item.categoria] ?? item.categoria }}</td>
+                <td>{{ item.descricao }}</td>
+                <td>{{ getResponsavelName(item) }}</td>
+                <td class="text-end font-weight-bold">
+                  {{ formatCurrency(item.valor) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="4" class="text-end font-weight-bold">
+                  Total
+                </td>
+                <td class="text-end font-weight-black">
+                  {{ formatCurrency(totalFiltered) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
 
     <!-- Dialog: Confirmar arquivamento -->
     <v-dialog v-model="archiveDialog" max-width="400">

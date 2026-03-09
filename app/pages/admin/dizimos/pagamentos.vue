@@ -98,7 +98,7 @@ const anos = computed(() => {
       }
     }
   })
-  return Array.from(anosDisponiveis).sort().reverse().map(ano => ({
+  return [...anosDisponiveis].toSorted().reverse().map((ano: string) => ({
     value: ano,
     title: ano,
   }))
@@ -161,12 +161,25 @@ const labelMeio: Record<string, string> = {
 function printList() {
   window.print()
 }
+
+const periodLabel = computed(() => {
+  const mes = meses.find(item => item.value === filtroMes.value)?.title
+  if (filtroMes.value && filtroAno.value && mes)
+    return `${mes} de ${filtroAno.value}`
+  if (filtroAno.value)
+    return `Ano de ${filtroAno.value}`
+  return 'Todos os registros'
+})
+
+const generatedAtLabel = computed(() => {
+  return `Gerado em ${new Date().toLocaleDateString('pt-BR')}`
+})
 </script>
 
 <template>
   <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
@@ -210,13 +223,13 @@ function printList() {
       type="error"
       variant="tonal"
       closable
-      class="mb-4"
+      class="mb-4 no-print"
     >
       {{ error }}
     </v-alert>
 
     <!-- Cards de Estatísticas -->
-    <v-row class="mb-6">
+    <v-row class="mb-6 no-print">
       <v-col cols="12" md="6">
         <v-card
           variant="elevated"
@@ -279,6 +292,7 @@ function printList() {
       variant="elevated"
       elevation="2"
       rounded="lg"
+      class="no-print"
     >
       <v-card-title class="d-flex align-center justify-space-between pa-4">
         <div class="d-flex align-center">
@@ -391,5 +405,59 @@ function printList() {
         </template>
       </v-data-table>
     </v-card>
+
+    <PrintReportLayout
+      class="d-none d-print-block mt-8"
+      title="Relatório de Pagamentos de Dízimos"
+      subtitle="Histórico de pagamentos registrados"
+      :period-label="periodLabel"
+      :generated-at-label="generatedAtLabel"
+    >
+      <section>
+        <PrintReportSectionTitle title="Pagamentos do período" />
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Dizimista
+                </th>
+                <th class="text-end">
+                  Valor pago
+                </th>
+                <th class="text-start">
+                  Meio
+                </th>
+                <th class="text-center">
+                  Data
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in pagamentosFiltrados" :key="item.id" class="data-row">
+                <td>{{ item.dizimista?.catolico?.nome || 'Nome não disponível' }}</td>
+                <td class="text-end">
+                  {{ formatarValor(item.valor_pago) }}
+                </td>
+                <td>{{ labelMeio[item.meio] ?? item.meio }}</td>
+                <td class="text-center">
+                  {{ formatarData(item.data_pagamento) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td class="text-end font-weight-bold" colspan="3">
+                  Total
+                </td>
+                <td class="text-center font-weight-bold">
+                  {{ estatisticas.valorTotal }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
   </v-container>
 </template>

@@ -9,6 +9,8 @@ definePageMeta({
   layout: 'admin',
 })
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
 const { ofertas, loading, fetchOfertas } = useOfertas()
 const sortBy = ref<VDataTable['sortBy']>([{ key: 'data_entrada', order: 'desc' }])
 
@@ -130,6 +132,22 @@ const totalValorOfertas = computed(() => {
   return ofertasFiltradas.value.reduce((total, item) => total + (Number(item.valor) || 0), 0)
 })
 
+const periodoFiltroLabel = computed(() => {
+  if (dataInicio.value && dataFim.value)
+    return `${formatDate(dataInicio.value)} – ${formatDate(dataFim.value)}`
+  if (dataInicio.value)
+    return `A partir de ${formatDate(dataInicio.value)}`
+  if (dataFim.value)
+    return `Até ${formatDate(dataFim.value)}`
+  return 'Todos os registros'
+})
+
+const generatedAtLabel = computed(() => `Gerado em ${formatDate(new Date())}`)
+
+function printList(): void {
+  window.print()
+}
+
 function aplicarHoje(): void {
   dataInicio.value = hojeIso.value
   dataFim.value = hojeIso.value
@@ -149,7 +167,7 @@ function getDateOnly(date: any): string | null {
   if (!date)
     return null
   if (typeof date === 'string') {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date))
+    if (ISO_DATE_RE.test(date))
       return date
     const parsed = new Date(date)
     if (Number.isNaN(parsed.getTime()))
@@ -186,10 +204,6 @@ function formatarDetalhesTexto(detalhes: unknown): string {
   return detalhesFiltrados(detalhes).map(d => `${d.quantidade}× ${d.label}`).join(', ')
 }
 
-function printList(): void {
-  window.print()
-}
-
 function getEventoNome(evento: any): string {
   if (!evento)
     return 'Sem evento especificado'
@@ -217,7 +231,7 @@ function formatDate(date: any): string {
     return 'Data não informada'
   let d: Date
   if (typeof date === 'string') {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date))
+    if (ISO_DATE_RE.test(date))
       d = new Date(`${date}T12:00:00`)
     else
       d = new Date(date)
@@ -468,144 +482,92 @@ function getValorColor(valor: number): string {
     </v-dialog>
 
     <!-- Versão de impressão -->
-    <div class="d-none d-print-block print-root mt-8">
-      <div class="print-header">
-        <div class="print-header-title">
-          Relatório de Ofertório
-        </div>
-        <div class="print-header-sub">
-          Gerado em {{ formatDate(new Date()) }}
-        </div>
-      </div>
+    <PrintReportLayout
+      v-if="ofertasFiltradas.length > 0"
+      class="d-none d-print-block mt-8"
+      title="Relatório de Ofertório"
+      subtitle="Conferência dos lançamentos financeiros do ofertório"
+      :period-label="periodoFiltroLabel"
+      :generated-at-label="generatedAtLabel"
+      footer-note="São José, rogai por nós."
+    >
+      <section class="report-card ofertorio-print-card">
+        <PrintReportSectionTitle title="Lançamentos do período" />
 
-      <table class="print-table mt-4 w-100">
-        <thead>
-          <tr>
-            <th class="text-left font-weight-bold pb-2" style="border-bottom: 2px solid #5d4037">
-              Evento
-            </th>
-            <th class="text-center font-weight-bold pb-2" style="border-bottom: 2px solid #5d4037">
-              Data
-            </th>
-            <th class="text-left font-weight-bold pb-2" style="border-bottom: 2px solid #5d4037">
-              Moedas / Cédulas
-            </th>
-            <th class="text-left font-weight-bold pb-2" style="border-bottom: 2px solid #5d4037">
-              Observação
-            </th>
-            <th class="text-right font-weight-bold pb-2" style="border-bottom: 2px solid #5d4037">
-              Valor
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, i) in ofertasFiltradas" :key="`print-${item.id}`" :class="i % 2 === 0 ? 'print-row-even' : 'print-row-odd'">
-            <td class="print-td py-1">
-              {{ getEventoNome(item.evento) }}
-            </td>
-            <td class="print-td py-1 text-center">
-              {{ formatDate(item.data_entrada) }}
-            </td>
-            <td class="print-td py-1 text-caption">
-              {{ formatarDetalhesTexto(item.valores_detalhados) }}
-            </td>
-            <td class="print-td py-1 text-caption">
-              {{ item.observacao || '' }}
-            </td>
-            <td class="print-td py-1 text-right font-weight-bold">
-              {{ formatCurrency(item.valor) }}
-            </td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="4" class="text-right font-weight-bold pt-2 print-td">
-              TOTAL GERAL:
-            </td>
-            <td class="text-right font-weight-bold pt-2 print-td" style="border-top: 1px solid #5d4037">
-              {{ formatCurrency(totalValorOfertas) }}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-
-      <div class="print-footer text-center mt-8 text-caption text-grey">
-        "São José, rogais por nós." &mdash; Capela São José
-      </div>
-    </div>
+        <div class="pa-4">
+          <table class="report-table ofertorio-print-table mt-2 w-100">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Evento
+                </th>
+                <th class="text-center">
+                  Data
+                </th>
+                <th class="text-start">
+                  Moedas / Cédulas
+                </th>
+                <th class="text-start">
+                  Observação
+                </th>
+                <th class="text-end">
+                  Valor
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, i) in ofertasFiltradas"
+                :key="`print-${item.id}`"
+                class="data-row"
+                :class="i % 2 === 0 ? 'ofertorio-print-row-even' : 'ofertorio-print-row-odd'"
+              >
+                <td class="py-1">
+                  {{ getEventoNome(item.evento) }}
+                </td>
+                <td class="py-1 text-center">
+                  {{ formatDate(item.data_entrada) }}
+                </td>
+                <td class="py-1 text-caption">
+                  {{ formatarDetalhesTexto(item.valores_detalhados) }}
+                </td>
+                <td class="py-1 text-caption">
+                  {{ item.observacao || '' }}
+                </td>
+                <td class="py-1 text-end font-weight-bold">
+                  {{ formatCurrency(item.valor) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="4" class="text-end font-weight-bold">
+                  Total geral
+                </td>
+                <td class="text-end font-weight-black text-success-print">
+                  {{ formatCurrency(totalValorOfertas) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
   </v-container>
 </template>
 
 <style scoped>
-/* ── Estilos de impressão ── */
 @media print {
-  .print-root {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    color: #1a1a1a;
-  }
-
-  .print-header {
-    text-align: center;
-    padding-bottom: 5px;
-    margin-bottom: 10px;
-    border-bottom: 2px solid #5d4037;
-  }
-
-  .print-header-title {
-    font-size: 18pt;
-    font-weight: 700;
-    color: #5d4037;
-    letter-spacing: 0.3px;
-  }
-
-  .print-header-sub {
-    font-size: 9pt;
-    color: #999;
-    margin-top: 2px;
-  }
-
-  .print-table {
-    border-collapse: collapse;
-    font-size: 10pt;
-  }
-
-  .print-td {
-    padding: 4px 8px;
-    color: #1a1a1a;
-  }
-
-  .print-row-even {
+  .ofertorio-print-row-even {
     background-color: #fdf6ec !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  .print-row-odd {
+  .ofertorio-print-row-odd {
     background-color: #fff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-  }
-}
-</style>
-
-<style>
-@media print {
-  header.v-app-bar,
-  .v-app-bar,
-  nav.v-navigation-drawer,
-  footer.v-footer,
-  .v-footer {
-    display: none !important;
-  }
-  .v-main {
-    padding: 0 !important;
-  }
-  .v-card {
-    box-shadow: none !important;
-  }
-  /* Oculta os slots de controle da tabela caso sejam renderizados e a paginação */
-  .v-data-table-footer {
-    display: none !important;
   }
 }
 </style>

@@ -4,12 +4,22 @@ import type { AdsNovenario } from '~/types/schema'
 definePageMeta({ layout: 'admin' })
 
 const { anuncios, loading, fetchAnuncios, removerAnuncio } = useAdsNovenario()
+const { user } = useAuth()
 
 const deleteDialog = ref(false)
 const itemToDelete = ref<string | null>(null)
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
+const search = ref('')
+const filterPagamento = ref<string | null>(null)
+
+const STATUS_PAGAMENTO_LABELS: Record<string, string> = {
+  pago: 'Pago',
+  permuta: 'Permuta',
+  pendente: 'Pendente',
+}
+const pagamentoOpcoes = Object.entries(STATUS_PAGAMENTO_LABELS).map(([value, title]) => ({ value, title }))
 
 const headers = [
   { title: 'Anunciante', key: 'anunciante' },
@@ -23,11 +33,24 @@ const headers = [
   { title: 'Ações', key: 'actions', sortable: false, align: 'end' as const },
 ]
 
+const filteredAnuncios = computed(() => {
+  let result = anuncios.value
+  if (search.value) {
+    const term = search.value.toLowerCase()
+    result = result.filter(a => a.anunciante?.toLowerCase().includes(term))
+  }
+  if (filterPagamento.value)
+    result = result.filter(a => a.status_pagamento === filterPagamento.value)
+  return result
+})
+
 // KPIs
-const totalAnuncios = computed(() => anuncios.value.length)
-const totalArrecadado = computed(() => anuncios.value.reduce((acc, a) => acc + Number(a.valor_pago || 0), 0))
-const totalSegundos = computed(() => anuncios.value.reduce((acc, a) => acc + Number(a.duracao || 0), 0))
+const totalAnuncios = computed(() => filteredAnuncios.value.length)
+const totalArrecadado = computed(() => filteredAnuncios.value.reduce((acc, a) => acc + Number(a.valor_pago || 0), 0))
+const totalSegundos = computed(() => filteredAnuncios.value.reduce((acc, a) => acc + Number(a.duracao || 0), 0))
 const custoMedioPorSegundo = computed(() => totalSegundos.value > 0 ? totalArrecadado.value / totalSegundos.value : 0)
+const generatedAtLabel = computed(() => `Gerado em ${new Date().toLocaleDateString('pt-BR')}`)
+const responsavelNome = computed(() => `${user.value?.first_name ?? ''} ${user.value?.last_name ?? ''}`.trim() || 'Responsável')
 
 onMounted(() => fetchAnuncios())
 
@@ -68,12 +91,16 @@ async function confirmDelete(): Promise<void> {
     loading.value = false
   }
 }
+
+function printList() {
+  window.print()
+}
 </script>
 
 <template>
   <v-container fluid class="pa-4 pa-md-6">
     <!-- Page Header -->
-    <div class="d-flex flex-wrap justify-space-between align-center mb-5 ga-3">
+    <div class="d-flex flex-wrap justify-space-between align-center mb-5 ga-3 no-print">
       <div>
         <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
           Anúncios do Novenário
@@ -82,13 +109,61 @@ async function confirmDelete(): Promise<void> {
           Gestão de anúncios para o telão de LED
         </p>
       </div>
-      <v-btn color="primary" prepend-icon="mdi-plus" size="large" @click="navigateTo('/admin/anuncio/novo')">
-        Novo Anúncio
-      </v-btn>
+      <div class="d-flex ga-3 d-print-none">
+        <v-btn variant="tonal" color="info" size="large" prepend-icon="mdi-printer" @click="printList">
+          Imprimir
+        </v-btn>
+        <v-btn color="primary" variant="elevated" prepend-icon="mdi-plus" size="large" @click="navigateTo('/admin/anuncio/novo')">
+          Novo Anúncio
+        </v-btn>
+      </div>
     </div>
 
+    <!-- Filtros -->
+    <v-card rounded="xl" :elevation="0" class="border mb-5 d-print-none">
+      <v-card-text class="py-3">
+        <v-row align="center">
+          <v-col cols="12" sm="5">
+            <v-text-field
+              v-model="search"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar anunciante..."
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-select
+              v-model="filterPagamento"
+              :items="pagamentoOpcoes"
+              item-title="title"
+              item-value="value"
+              label="Status de pagamento"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              prepend-inner-icon="mdi-cash-check"
+            />
+          </v-col>
+          <v-col cols="12" sm="3">
+            <v-btn
+              size="small"
+              variant="text"
+              color="secondary"
+              @click="search = ''; filterPagamento = null"
+            >
+              Limpar filtros
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
     <!-- KPI Cards -->
-    <v-row class="mb-5">
+    <v-row class="mb-5 no-print">
       <v-col cols="6" md="3">
         <v-card rounded="xl" :elevation="0" class="border">
           <v-card-text class="text-center">
@@ -152,10 +227,10 @@ async function confirmDelete(): Promise<void> {
     </v-row>
 
     <!-- Data Table -->
-    <v-card rounded="xl" :elevation="0" class="border">
+    <v-card rounded="xl" :elevation="0" class="border no-print">
       <v-data-table
         :headers="headers"
-        :items="anuncios"
+        :items="filteredAnuncios"
         :loading="loading"
         hover
         items-per-page="15"
@@ -263,7 +338,7 @@ async function confirmDelete(): Promise<void> {
     </v-card>
 
     <!-- Delete Confirmation -->
-    <v-dialog v-model="deleteDialog" max-width="400px">
+    <v-dialog v-model="deleteDialog" max-width="400px" class="no-print">
       <v-card rounded="xl">
         <v-card-title class="text-h6 pa-5">
           Confirmar exclusão
@@ -283,8 +358,70 @@ async function confirmDelete(): Promise<void> {
       </v-card>
     </v-dialog>
 
+    <!-- Print layout -->
+    <PrintReportLayout
+      class="d-none d-print-block mt-8"
+      title="Anúncios do Novenário"
+      subtitle="Gestão de anúncios para o telão de LED"
+      :generated-at-label="generatedAtLabel"
+      :left-signature-name="responsavelNome"
+    >
+      <section>
+        <PrintReportSectionTitle title="Lista de anúncios" />
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Anunciante
+                </th>
+                <th class="text-start">
+                  Tipo
+                </th>
+                <th class="text-end">
+                  Duração
+                </th>
+                <th class="text-end">
+                  Valor Pago
+                </th>
+                <th class="text-start">
+                  Pagamento
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredAnuncios" :key="item.id" class="data-row">
+                <td class="font-weight-medium">
+                  {{ item.anunciante }}
+                </td>
+                <td>{{ item.tipo_midia === 'video' ? 'Vídeo' : 'Imagem' }}</td>
+                <td class="text-end">
+                  {{ item.duracao }}s
+                </td>
+                <td class="text-end font-weight-bold">
+                  {{ formatCurrency(Number(item.valor_pago)) }}
+                </td>
+                <td>{{ STATUS_PAGAMENTO_LABELS[item.status_pagamento] ?? item.status_pagamento }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="3" class="text-end font-weight-bold">
+                  Total arrecadado
+                </td>
+                <td class="text-end font-weight-black">
+                  {{ formatCurrency(totalArrecadado) }}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
+
     <!-- Snackbar -->
-    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="top right">
+    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="top right" class="no-print">
       {{ snackbarText }}
     </v-snackbar>
   </v-container>

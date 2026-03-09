@@ -105,6 +105,10 @@ function printList() {
   window.print()
 }
 
+const generatedAtLabel = computed(() => {
+  return `Gerado em ${new Date().toLocaleDateString('pt-BR')}`
+})
+
 function formatarValor(valor: number) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -116,7 +120,7 @@ function formatarValor(valor: number) {
 <template>
   <v-container fluid class="pa-2 pa-md-6">
     <!-- Header -->
-    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
       <div>
         <div class="d-flex align-center mb-2">
           <v-btn
@@ -160,7 +164,7 @@ function formatarValor(valor: number) {
       type="error"
       variant="tonal"
       closable
-      class="mb-4"
+      class="mb-4 no-print"
     >
       {{ error }}
     </v-alert>
@@ -170,6 +174,7 @@ function formatarValor(valor: number) {
       variant="elevated"
       elevation="2"
       rounded="lg"
+      class="no-print"
     >
       <v-card-title class="d-flex align-center justify-space-between pa-4">
         <div class="d-flex align-center">
@@ -305,11 +310,56 @@ function formatarValor(valor: number) {
       </v-data-table>
     </v-card>
 
+    <PrintReportLayout
+      class="d-none d-print-block mt-8"
+      title="Relatório de Dizimistas"
+      subtitle="Lista de dizimistas cadastrados"
+      period-label="Todos os registros"
+      :generated-at-label="generatedAtLabel"
+    >
+      <section>
+        <PrintReportSectionTitle title="Dizimistas" />
+        <div class="pa-4">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Nome
+                </th>
+                <th class="text-start">
+                  Telefone
+                </th>
+                <th class="text-end">
+                  Valor mensal
+                </th>
+                <th class="text-center">
+                  Cadastro
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in dizimistasFiltrados" :key="item.id" class="data-row">
+                <td>{{ item.catolico?.nome || 'Nome não disponível' }}</td>
+                <td>{{ item.catolico?.telefone || 'Não informado' }}</td>
+                <td class="text-end">
+                  {{ formatarValor(item.valor_mensal || 0) }}
+                </td>
+                <td class="text-center">
+                  {{ formatarData(item.date_created) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </PrintReportLayout>
+
     <!-- Dialog de Edição -->
     <v-dialog
       v-model="dialogEdit"
       max-width="400"
       persistent
+      class="no-print"
     >
       <v-card rounded="lg">
         <v-card-title class="d-flex align-center pa-4">
@@ -363,6 +413,7 @@ function formatarValor(valor: number) {
       v-model="dialogDelete"
       max-width="400"
       persistent
+      class="no-print"
     >
       <v-card rounded="lg">
         <v-card-title class="d-flex align-center pa-4">

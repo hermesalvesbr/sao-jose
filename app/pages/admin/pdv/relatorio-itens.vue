@@ -7,7 +7,7 @@
  *
  * DRY: formatação e seleção de período via usePdvReport.
  */
-import { formatCurrency } from '~/composables/usePdvReport'
+import { formatCurrency, formatDate } from '~/composables/usePdvReport'
 
 definePageMeta({ layout: 'admin' })
 
@@ -138,7 +138,7 @@ const productRows = computed((): ProductRow[] => {
     row.qtd += Number(si.quantity || 0)
     row.total += Number(si.total_price || 0)
   }
-  return Array.from(map.values()).sort((a, b) => b.total - a.total)
+  return [...map.values()].toSorted((a, b) => b.total - a.total)
 })
 
 /** Agrupa produtos por categoria. */
@@ -159,7 +159,7 @@ const categoryRows = computed((): CategoryRow[] => {
     cat.total += p.total
     cat.products.push(p)
   }
-  return Array.from(map.values()).sort((a, b) => b.total - a.total)
+  return [...map.values()].toSorted((a, b) => b.total - a.total)
 })
 
 /** Agrupa por operador. */
@@ -178,7 +178,7 @@ const operatorRows = computed((): OperatorRow[] => {
     row.qtd += Number(si.quantity || 0)
     row.total += Number(si.total_price || 0)
   }
-  return Array.from(map.values()).sort((a, b) => b.total - a.total)
+  return [...map.values()].toSorted((a, b) => b.total - a.total)
 })
 
 /** Agrupa por ponto de produção (com subcategorias). */
@@ -267,10 +267,10 @@ const productionPointRows = computed((): ProductionPointRow[] => {
       cat.products.push(p)
     }
 
-    point.categories = Array.from(catMap.values()).sort((a, b) => b.total - a.total)
+    point.categories = [...catMap.values()].toSorted((a, b) => b.total - a.total)
   }
 
-  return Array.from(pointMap.values()).sort((a, b) => b.total - a.total)
+  return [...pointMap.values()].toSorted((a, b) => b.total - a.total)
 })
 
 const grandTotalQtd = computed(() => productRows.value.reduce((s, r) => s + r.qtd, 0))
@@ -278,6 +278,10 @@ const grandTotalValue = computed(() => productRows.value.reduce((s, r) => s + r.
 
 const responsavelNome = computed(() =>
   `${user.value?.first_name ?? ''} ${user.value?.last_name ?? ''}`.trim() || 'Responsável',
+)
+
+const generatedAtLabel = computed(() =>
+  `Gerado em ${formatDate(new Date().toISOString().substring(0, 10))}`,
 )
 
 // ─── Categoria expandida  ─────────────────────────────────────────────────────
@@ -335,7 +339,7 @@ function printPage() {
     <!-- ─── Filters ───────────────────────────────────────────────────── -->
     <v-card rounded="xl" :elevation="0" class="border mb-5 no-print">
       <v-card-text>
-        <v-row align="center" dense>
+        <v-row align="center">
           <v-col cols="12" sm="3">
             <v-text-field
               v-model="dateFrom"
@@ -386,18 +390,15 @@ function printPage() {
     <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4 no-print" />
 
     <!-- ─── Report area ───────────────────────────────────────────────── -->
-    <div v-if="reportGenerated" class="report-area">
-      <!-- Print-only header -->
-      <div class="print-header">
-        <strong>Paróquia — Novenário de São José</strong>
-        <h2 class="print-title">
-          CONTROLE DIÁRIO DE VENDAS POR ITEM — QUERMESSE
-        </h2>
-        <p class="print-date">
-          DATA: {{ periodLabel }}
-        </p>
-      </div>
-
+    <PrintReportLayout
+      v-if="reportGenerated"
+      class="report-area"
+      title="Controle Diário de Vendas por Item — Quermesse"
+      subtitle="Detalhamento de itens, categorias e operadores"
+      :period-label="periodLabel"
+      :generated-at-label="generatedAtLabel"
+      :left-signature-name="responsavelNome"
+    >
       <!-- ─── Vendas por Ponto de Produção ──────────────────────────────────── -->
       <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
@@ -407,9 +408,7 @@ function printPage() {
             {{ productionPointRows.length }} ponto(s)
           </v-chip>
         </v-card-title>
-        <div class="print-section-title print-only">
-          VENDAS POR PONTO DE PRODUÇÃO
-        </div>
+        <PrintReportSectionTitle title="Vendas por ponto de produção" />
 
         <div class="pa-4">
           <table class="report-table">
@@ -504,9 +503,7 @@ function printPage() {
             {{ categoryRows.length }} categoria(s)
           </v-chip>
         </v-card-title>
-        <div class="print-section-title print-only">
-          VENDAS POR CATEGORIA
-        </div>
+        <PrintReportSectionTitle title="Vendas por categoria" />
 
         <div class="pa-4">
           <table class="report-table">
@@ -597,9 +594,7 @@ function printPage() {
           <v-icon icon="mdi-chart-bar" color="primary" class="me-2" />
           <span class="text-subtitle-1 font-weight-bold">Ranking de Produtos</span>
         </v-card-title>
-        <div class="print-section-title print-only">
-          RANKING DE PRODUTOS (MAIS VENDIDOS)
-        </div>
+        <PrintReportSectionTitle title="Ranking de produtos" />
 
         <div class="pa-4">
           <table class="report-table">
@@ -680,9 +675,7 @@ function printPage() {
           <v-icon icon="mdi-account-group-outline" color="secondary" class="me-2" />
           <span class="text-subtitle-1 font-weight-bold">Resumo por Operador</span>
         </v-card-title>
-        <div class="print-section-title print-only">
-          RESUMO POR OPERADOR
-        </div>
+        <PrintReportSectionTitle title="Resumo por operador" />
 
         <div class="pa-4">
           <table class="report-table">
@@ -728,22 +721,7 @@ function printPage() {
           </table>
         </div>
       </v-card>
-
-      <!-- ─── Signature ─────────────────────────────────────────────── -->
-      <div class="signature-area">
-        <div>
-          <p class="mb-2">
-            RESPONSÁVEL: <strong>{{ responsavelNome }}</strong>
-          </p>
-        </div>
-        <div class="signature-line">
-          <div class="line" />
-          <p class="mt-1 text-caption">
-            ASSINATURA (EQUIPE TESOURARIA)
-          </p>
-        </div>
-      </div>
-    </div>
+    </PrintReportLayout>
 
     <!-- Empty state -->
     <div v-if="!reportGenerated && !loading" class="text-center pa-12 no-print">
@@ -756,45 +734,6 @@ function printPage() {
 </template>
 
 <style scoped>
-/* Shared report table styles */
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.report-table thead tr {
-  background-color: rgb(var(--v-theme-surface-variant));
-}
-
-.report-table th {
-  padding: 10px 12px;
-  font-weight: 700;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.report-table td {
-  padding: 8px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.report-table .data-row:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.report-table tfoot .total-row {
-  background-color: rgba(var(--v-theme-secondary), 0.08);
-  border-top: 2px solid rgba(0, 0, 0, 0.18);
-}
-
-.report-table tfoot .total-row td {
-  padding: 12px;
-  border-color: rgba(0, 0, 0, 0.12);
-}
-
 .col-qty {
   min-width: 80px;
 }
@@ -824,117 +763,9 @@ function printPage() {
   display: none;
 }
 
-.text-success-print {
-  color: rgb(var(--v-theme-success));
-}
-
-.print-header,
-.print-only,
-.print-section-title {
-  display: none;
-}
-
-.signature-area {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.signature-line .line {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
-  max-width: 320px;
-  margin-bottom: 4px;
-}
-
 @media print {
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .print-header {
-    display: block !important;
-    text-align: center;
-    margin-bottom: 16px;
-  }
-
-  .print-title {
-    font-size: 13px;
-    font-weight: 800;
-    text-transform: uppercase;
-    margin: 0 0 4px;
-  }
-
-  .print-date {
-    font-size: 11px;
-    margin: 0 0 12px;
-  }
-
-  .print-only,
-  .print-section-title {
-    display: block !important;
-    font-size: 0.65rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    background-color: #ecdbc8 !important;
-    padding: 6px 12px;
-    margin: 0;
-  }
-
-  .no-print {
-    display: none !important;
-  }
   .hidden-screen {
     display: table-row !important;
-  }
-
-  @page {
-    size: A4 portrait;
-    margin: 16mm 12mm 16mm 12mm;
-  }
-
-  body {
-    font-size: 11px;
-  }
-
-  .report-card {
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    border: 1px solid #ccc !important;
-    break-inside: avoid;
-    margin-bottom: 8px !important;
-  }
-
-  .v-container {
-    padding: 0 !important;
-  }
-
-  .report-table {
-    font-size: 10px;
-  }
-
-  .report-table th,
-  .report-table td {
-    padding: 4px 6px;
-    border: 1px solid #999;
-  }
-
-  .report-table thead tr {
-    background-color: #d0c9c0 !important;
-  }
-  .report-table tfoot .total-row {
-    background-color: #ecdbc8 !important;
-  }
-
-  .text-success-print {
-    color: #1b5e20 !important;
-  }
-
-  .signature-line .line {
-    border-bottom: 1px solid #333;
-    max-width: 280px;
   }
 }
 </style>

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-
 definePageMeta({ layout: 'admin' })
 
 const { fetchProducts, createProduct, updateProduct, deleteProduct, fetchCategories, fetchProductionPoints, uploadFile, getAssetUrl } = usePdv()
@@ -437,14 +435,10 @@ function getProductionPointName(item: any) {
                 />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model.number="editedItem.price"
+                <MaskedCurrencyField
+                  v-model="editedItem.price"
                   label="Preço de Venda"
-                  type="number"
-                  prefix="R$"
-                  variant="outlined"
-                  prepend-inner-icon="mdi-currency-brl"
-                  required
+                  :min-value="0"
                 />
               </v-col>
               <v-col cols="12" md="6">

@@ -183,7 +183,7 @@ async function salvar() {
       valor: Number(form.value.valor),
       data_despesa: brToIsoDate(form.value.data_despesa),
       operator_id: operatorId,
-      categoria: typeof form.value.categoria === 'string' ? titleCase(form.value.categoria) : form.value.categoria,
+      categoria: form.value.categoria,
       responsavel_id: form.value.responsavel_id || null,
       observacao: form.value.observacao || null,
     } as never))
@@ -432,7 +432,7 @@ async function saveResponsavel() {
                   </v-col>
 
                   <v-col cols="12" sm="6">
-                    <v-combobox
+                    <v-select
                       v-model="form.categoria"
                       :items="categoriaOpcoes"
                       item-title="title"

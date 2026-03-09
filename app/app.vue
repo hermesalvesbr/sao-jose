@@ -28,3 +28,29 @@ useSeoMeta({
     <NuxtPage />
   </NuxtLayout>
 </template>
+
+<style>
+@media print {
+  .no-print,
+  .d-print-none {
+    display: none !important;
+  }
+
+  .print-only,
+  .d-print-block,
+  .d-none.d-print-block {
+    display: block !important;
+  }
+
+  .v-navigation-drawer,
+  .v-app-bar,
+  .v-footer {
+    display: none !important;
+  }
+
+  .v-main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+</style>
