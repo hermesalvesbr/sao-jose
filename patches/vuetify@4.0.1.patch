@@ -1,0 +1,72 @@
+diff --git a/dist/vuetify.esm.js b/dist/vuetify.esm.js
+index 20c1273d23424e4f88532d3d90370a15b7221312..1289a99d5c54b73d915277563d9665a82db5fcb3 100644
+--- a/dist/vuetify.esm.js
++++ b/dist/vuetify.esm.js
+@@ -6173,13 +6173,10 @@ function useBackButton(router, cb) {
+   if (IN_BROWSER && router?.beforeEach) {
+     nextTick(() => {
+       window.addEventListener('popstate', onPopstate);
+-      removeBefore = router.beforeEach((to, from, next) => {
+-        if (!inTransition) {
+-          setTimeout(() => popped ? cb(next) : next());
+-        } else {
+-          popped ? cb(next) : next();
+-        }
++      removeBefore = router.beforeEach(() => {
+         inTransition = true;
++        if (!popped) return;
++        return new Promise(resolve => setTimeout(() => resolve(cb())));
+       });
+       removeAfter = router?.afterEach(() => {
+         inTransition = false;
+@@ -12880,12 +12877,10 @@ const VOverlay = genericComponent()({
+     }
+     const router = useRouter();
+     useToggleScope(() => props.closeOnBack, () => {
+-      useBackButton(router, next => {
++      useBackButton(router, () => {
+         if (globalTop.value && isActive.value) {
+-          next(false);
+           if (!props.persistent) isActive.value = false;else animateClick();
+-        } else {
+-          next();
++          return false;
+         }
+       });
+     });
+diff --git a/dist/vuetify.js b/dist/vuetify.js
+index 7e466e701e3cf723ff1221ec4cfe4d3f01cbc8df..e9fa166e481520168e10ac872ddb277dfcab0ee4 100644
+--- a/dist/vuetify.js
++++ b/dist/vuetify.js
+@@ -6177,13 +6177,10 @@
+     if (IN_BROWSER && router?.beforeEach) {
+       vue.nextTick(() => {
+         window.addEventListener('popstate', onPopstate);
+-        removeBefore = router.beforeEach((to, from, next) => {
+-          if (!inTransition) {
+-            setTimeout(() => popped ? cb(next) : next());
+-          } else {
+-            popped ? cb(next) : next();
+-          }
++        removeBefore = router.beforeEach(() => {
+           inTransition = true;
++          if (!popped) return;
++          return new Promise(resolve => setTimeout(() => resolve(cb())));
+         });
+         removeAfter = router?.afterEach(() => {
+           inTransition = false;
+@@ -12884,12 +12881,10 @@
+       }
+       const router = useRouter();
+       useToggleScope(() => props.closeOnBack, () => {
+-        useBackButton(router, next => {
++        useBackButton(router, () => {
+           if (globalTop.value && isActive.value) {
+-            next(false);
+             if (!props.persistent) isActive.value = false;else animateClick();
+-          } else {
+-            next();
++            return false;
+           }
+         });
+       });
