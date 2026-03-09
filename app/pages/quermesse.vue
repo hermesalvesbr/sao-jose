@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import QRCode from 'qrcode'
+
 interface CardapioProduct {
   id: string
   name: string
@@ -100,17 +102,56 @@ function sectionIcon(name: string): string {
   return 'mdi-food'
 }
 
-/** Imprimir página da quermesse */
+/** Modo de impressão ativo */
+const printMode = ref<'list' | 'cardapio' | null>(null)
+
+/** Imprimir lista completa (original) */
 function printMenu(): void {
-  window.print()
+  printMode.value = 'list'
+  nextTick(() => window.print())
 }
 
-/** Seções de comida (para impressão — tudo exceto Lojinha) */
+/** Imprimir cardápio estilo restaurante (sem Lojinha) */
+const LOJINHA_POINT_ID = '771786ea-9431-411b-8274-28b224bfb5ad'
+
+function printCardapio(): void {
+  printMode.value = 'cardapio'
+  nextTick(() => window.print())
+}
+
+function resetPrintMode() {
+  printMode.value = null
+}
+
+onMounted(() => {
+  window.addEventListener('afterprint', resetPrintMode)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('afterprint', resetPrintMode)
+})
+
+/** Seções do cardápio (exclui Lojinha) */
+const cardapioSections = computed(() =>
+  sections.value.filter(s => s.point.id !== LOJINHA_POINT_ID),
+)
+
+/** QR code como data URL */
+const qrDataUrl = ref('')
+
+onMounted(async () => {
+  qrDataUrl.value = await QRCode.toDataURL('https://saojose.softagon.app/quermesse', {
+    width: 150,
+    margin: 1,
+  })
+})
+
+/** Seções de comida (para impressão lista — tudo exceto Lojinha) */
 const printFoodSections = computed(() =>
   sections.value.filter(s => !s.point.name.toLowerCase().includes('lojinha')),
 )
 
-/** Seção da Lojinha (para impressão) */
+/** Seção da Lojinha (para impressão lista) */
 const printShopSection = computed(() =>
   sections.value.find(s => s.point.name.toLowerCase().includes('lojinha')),
 )
@@ -136,18 +177,29 @@ const printShopSection = computed(() =>
           Confira todos os preços antes de chegar na festa!
         </p>
 
-        <!-- Botão imprimir (não aparece na impressão) -->
-        <v-btn
-          color="secondary"
-          variant="tonal"
-          prepend-icon="mdi-printer"
-          class="d-print-none mb-2"
-          size="large"
-          rounded="pill"
-          @click="printMenu"
-        >
-          Imprimir / PDF
-        </v-btn>
+        <!-- Botões de impressão (não aparecem na impressão) -->
+        <div class="d-flex justify-center ga-3 flex-wrap d-print-none mb-2">
+          <v-btn
+            color="primary"
+            variant="elevated"
+            prepend-icon="mdi-silverware-fork-knife"
+            size="large"
+            rounded="pill"
+            @click="printCardapio"
+          >
+            Cardápio
+          </v-btn>
+          <v-btn
+            color="secondary"
+            variant="tonal"
+            prepend-icon="mdi-printer"
+            size="large"
+            rounded="pill"
+            @click="printMenu"
+          >
+            Imprimir / PDF
+          </v-btn>
+        </div>
       </v-col>
     </v-row>
 
@@ -291,8 +343,8 @@ const printShopSection = computed(() =>
         </v-col>
       </v-row>
 
-      <!-- Versão de impressão (todas as seções visíveis) -->
-      <div class="d-none d-print-block print-root">
+      <!-- Versão de impressão: lista completa (original) -->
+      <div v-if="printMode === 'list'" class="print-list-root">
         <!-- Cabeçalho da impressão -->
         <div class="print-header">
           <div class="print-header-title">
@@ -382,6 +434,66 @@ const printShopSection = computed(() =>
           "São José, rogais por nós." &mdash; Capela São José
         </div>
       </div>
+
+      <!-- Versão de impressão: cardápio restaurante (sem Lojinha, fonte grande) -->
+      <div v-if="printMode === 'cardapio'" class="cardapio-root">
+        <!-- Cabeçalho do cardápio -->
+        <div class="cardapio-header">
+          <div class="cardapio-title">
+            Quermesse de São José
+          </div>
+          <div class="cardapio-subtitle">
+            Cardápio
+          </div>
+        </div>
+
+        <!-- Seções (exclui Lojinha) -->
+        <div
+          v-for="section in cardapioSections"
+          :key="`card-${section.point.id}`"
+          class="cardapio-section"
+        >
+          <div class="cardapio-section-title">
+            {{ section.point.name }}
+          </div>
+
+          <div
+            v-for="group in section.categories"
+            :key="`card-${group.category.id}`"
+            class="cardapio-category"
+          >
+            <div class="cardapio-category-title">
+              {{ group.category.name }}
+            </div>
+
+            <div
+              v-for="product in group.products"
+              :key="`card-${product.id}`"
+              class="cardapio-item"
+            >
+              <span class="cardapio-item-name">{{ product.name }}</span>
+              <span class="cardapio-item-dots" />
+              <span class="cardapio-item-price">{{ formatPrice(product.price) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Code + Rodapé -->
+        <div class="cardapio-footer">
+          <img
+            v-if="qrDataUrl"
+            :src="qrDataUrl"
+            alt="QR Code"
+            class="cardapio-qr"
+          >
+          <div class="cardapio-qr-label">
+            Veja o cardápio online
+          </div>
+          <div class="cardapio-qr-url">
+            saojose.softagon.app/quermesse
+          </div>
+        </div>
+      </div>
     </template>
 
     <!-- Sem dados -->
@@ -413,12 +525,26 @@ const printShopSection = computed(() =>
 }
 
 /* ── Estilos de impressão ── */
+
+/* Seções de impressão ficam ocultas na tela */
+.print-list-root,
+.cardapio-root {
+  display: none;
+}
+
 @media print {
   .quermesse-page {
     padding: 0 !important;
   }
 
-  .print-root {
+  /* Mostra a seção de impressão ativa */
+  .print-list-root,
+  .cardapio-root {
+    display: block !important;
+  }
+
+  /* ── Lista completa (original) ── */
+  .print-list-root {
     font-family: 'Segoe UI', Arial, sans-serif;
     color: #1a1a1a;
     padding: 5mm 10mm 3mm;
@@ -444,7 +570,6 @@ const printShopSection = computed(() =>
     margin-top: 2px;
   }
 
-  /* Grid de seções — 2 colunas */
   .print-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -466,7 +591,6 @@ const printShopSection = computed(() =>
     margin-bottom: 5px;
   }
 
-  /* Divisor Lojinha */
   .print-shop-divider {
     border-top: 2px dashed #c8a882;
     margin: 8mm 0 4mm;
@@ -526,6 +650,124 @@ const printShopSection = computed(() =>
     border-top: 1px solid #eee;
     margin-top: 8px;
     padding-top: 4px;
+    font-style: italic;
+  }
+
+  /* ── Cardápio restaurante ── */
+  .cardapio-root {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1a1a1a;
+    padding: 8mm 12mm 5mm;
+  }
+
+  .cardapio-header {
+    text-align: center;
+    padding-bottom: 5mm;
+    margin-bottom: 6mm;
+    border-bottom: 3px double #5d4037;
+  }
+
+  .cardapio-title {
+    font-size: 30pt;
+    font-weight: 700;
+    color: #5d4037;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .cardapio-subtitle {
+    font-size: 14pt;
+    color: #8d6e63;
+    font-style: italic;
+    margin-top: 2mm;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .cardapio-section {
+    margin-bottom: 6mm;
+    break-inside: avoid;
+  }
+
+  .cardapio-section-title {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #5d4037;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 5mm 0 3mm;
+    padding-bottom: 2mm;
+    border-bottom: 1.5px solid #c8a882;
+  }
+
+  .cardapio-category {
+    margin-bottom: 4mm;
+    break-inside: avoid;
+  }
+
+  .cardapio-category-title {
+    font-size: 15pt;
+    font-weight: 600;
+    color: #8d6e63;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2mm;
+    text-align: center;
+  }
+
+  .cardapio-item {
+    display: flex;
+    align-items: baseline;
+    font-size: 14pt;
+    padding: 1.5mm 0;
+    line-height: 1.4;
+  }
+
+  .cardapio-item-name {
+    color: #333;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .cardapio-item-dots {
+    flex: 1;
+    border-bottom: 1.5px dotted #c8a882;
+    margin: 0 3mm;
+    min-width: 10mm;
+    position: relative;
+    top: -3px;
+  }
+
+  .cardapio-item-price {
+    font-weight: 700;
+    color: #5d4037;
+    white-space: nowrap;
+    font-size: 14pt;
+  }
+
+  .cardapio-footer {
+    text-align: center;
+    margin-top: 8mm;
+    padding-top: 4mm;
+    border-top: 2px solid #c8a882;
+  }
+
+  .cardapio-qr {
+    width: 30mm;
+    height: 30mm;
+  }
+
+  .cardapio-qr-label {
+    font-size: 11pt;
+    color: #5d4037;
+    font-weight: 600;
+    margin-top: 2mm;
+  }
+
+  .cardapio-qr-url {
+    font-size: 9pt;
+    color: #8d6e63;
     font-style: italic;
   }
 }
