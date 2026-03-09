@@ -92,6 +92,7 @@ async function loadReport() {
         fields: ['id', 'descricao', 'valor', 'data_despesa', 'operator_id.id', 'operator_id.name'],
         filter: {
           _and: [
+            { status: { _neq: 'archived' } },
             { data_despesa: { _gte: dateFrom.value } },
             { data_despesa: { _lte: dateTo.value } },
           ],

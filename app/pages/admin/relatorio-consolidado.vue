@@ -93,6 +93,7 @@ async function loadReport() {
         fields: ['id', 'valor', 'data_despesa', 'descricao'],
         filter: {
           _and: [
+            { status: { _neq: 'archived' } },
             { data_despesa: { _gte: dateFrom.value } },
             { data_despesa: { _lte: dateTo.value } },
           ],
@@ -115,6 +116,7 @@ async function loadReport() {
         fields: ['id', 'valor', 'data_entrada', 'meio'],
         filter: {
           _and: [
+            { status: { _neq: 'archived' } },
             { data_entrada: { _gte: `${dateFrom.value}T00:00:00` } },
             { data_entrada: { _lte: `${dateTo.value}T23:59:59` } },
           ],
@@ -126,6 +128,7 @@ async function loadReport() {
         fields: ['id', 'valor_pago', 'data_pagamento', 'meio'],
         filter: {
           _and: [
+            { status: { _neq: 'archived' } },
             { data_pagamento: { _gte: `${dateFrom.value}T00:00:00` } },
             { data_pagamento: { _lte: `${dateTo.value}T23:59:59` } },
           ],

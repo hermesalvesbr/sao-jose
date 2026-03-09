@@ -6,7 +6,7 @@
  * Filtros: tipo, período, meio de pagamento.
  * UX: simples, mobile-first, ícones e cores por tipo para facilitar identificação.
  */
-import { formatCurrency, formatDate, usePdvReportPeriod } from '~/composables/usePdvReport'
+import { formatCurrency, formatDate, toLocalISO } from '~/composables/usePdvReport'
 import { MEIO_PAGAMENTO_LABELS, TIPO_RECEITA_LABELS } from '~/composables/useReceitas'
 
 definePageMeta({ layout: 'admin' })
@@ -14,9 +14,27 @@ definePageMeta({ layout: 'admin' })
 const { fetchReceitas, arquivarReceita, loading } = useReceitas()
 
 const items = ref<any[]>([])
-const filterTipo = ref<string | null>(null)
-const filterMeio = ref<string | null>(null)
-const { dateFrom, dateTo, setToday, setThisMonth, setNovena } = usePdvReportPeriod()
+const filterTipo = useState<string | null>('receitas-filter-tipo', () => null)
+const filterMeio = useState<string | null>('receitas-filter-meio', () => null)
+const dateFrom = useState<string>('receitas-filter-from', () => '')
+const dateTo = useState<string>('receitas-filter-to', () => '')
+
+function setToday() {
+  const today = toLocalISO(new Date())
+  dateFrom.value = today
+  dateTo.value = today
+}
+function setThisMonth() {
+  const d = new Date()
+  dateFrom.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  dateTo.value = toLocalISO(d)
+}
+function setNovena() {
+  const start = new Date()
+  start.setDate(start.getDate() - 8)
+  dateFrom.value = toLocalISO(start)
+  dateTo.value = toLocalISO(new Date())
+}
 
 const tipoOpcoes = Object.entries(TIPO_RECEITA_LABELS).map(([value, title]) => ({ value, title }))
 const meioOpcoes = Object.entries(MEIO_PAGAMENTO_LABELS).map(([value, title]) => ({ value, title }))
@@ -298,29 +316,21 @@ function tipoMeta(tipo: string): { icon: string, color: string } {
         </template>
 
         <template #[`item.actions`]="{ item }">
-          <div class="d-flex ga-1">
+          <div class="d-flex justify-end ga-1">
             <v-btn
               icon="mdi-pencil"
-              variant="text"
               size="small"
+              variant="text"
               color="primary"
               :to="`/admin/receitas/${item.id}`"
-            >
-              <v-tooltip activator="parent" location="top">
-                Editar
-              </v-tooltip>
-            </v-btn>
+            />
             <v-btn
               icon="mdi-archive-arrow-down-outline"
-              variant="text"
               size="small"
+              variant="text"
               color="error"
               @click="confirmArquivar(item)"
-            >
-              <v-tooltip activator="parent" location="top">
-                Arquivar
-              </v-tooltip>
-            </v-btn>
+            />
           </div>
         </template>
       </v-data-table>
