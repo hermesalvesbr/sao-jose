@@ -67,6 +67,8 @@ const CATEGORIA_LABELS: Record<string, string> = {
   repasse: 'Repasse Interno',
   outro: 'Outro',
 }
+
+const DIACRITICS_RE = /[\u0300-\u036F]/g
 const categoriaOpcoes = Object.entries(CATEGORIA_LABELS).map(([value, title]) => ({ value, title }))
 
 const rules = {
@@ -131,7 +133,7 @@ onMounted(async () => {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function normalizeName(value: string | null | undefined): string {
-  return (value ?? '').normalize('NFD').replace(/[\u0300-\u036F]/g, '').trim().toLowerCase()
+  return (value ?? '').normalize('NFD').replace(DIACRITICS_RE, '').trim().toLowerCase()
 }
 
 async function ensureCurrentOperatorId() {

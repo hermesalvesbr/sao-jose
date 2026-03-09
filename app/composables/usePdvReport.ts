@@ -10,6 +10,9 @@
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const BR_DATE_RE = /^\d{2}\/\d{2}\/\d{4}$/
+const DECIMAL_DOT_RE = /\d\.\d/
+const NON_DIGIT_DOT_RE = /[^\d.]/g
+const NON_DIGIT_COMMA_RE = /[^\d,]/g
 
 /**
  * Converte um objeto Date para string ISO local (YYYY-MM-DD) sem conversão UTC.
@@ -89,10 +92,10 @@ export function parseCurrencyInput(raw: string | number | null | undefined): num
   if (!normalized)
     return 0
 
-  if (!normalized.includes(',') && /\d\.\d/.test(normalized))
-    return Number.parseFloat(normalized.replace(/[^\d.]/g, '')) || 0
+  if (!normalized.includes(',') && DECIMAL_DOT_RE.test(normalized))
+    return Number.parseFloat(normalized.replace(NON_DIGIT_DOT_RE, '')) || 0
 
-  const cleaned = normalized.replace(/[^\d,]/g, '').replace(',', '.')
+  const cleaned = normalized.replace(NON_DIGIT_COMMA_RE, '').replace(',', '.')
   return Number.parseFloat(cleaned) || 0
 }
 

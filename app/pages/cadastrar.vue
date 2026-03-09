@@ -5,6 +5,10 @@ import { createItem, readItems } from '@directus/sdk'
 import { VMaskInput } from 'vuetify/labs/VMaskInput'
 import { titleCase } from '~/utils/normalize-text'
 
+const NON_DIGIT_RE = /\D/g
+const ONLY_NAME_CHARS_RE = /[^a-zA-Z\u00C0-\u00FF\s-]/g
+const BIRTH_DATE_RE = /^(\d{2})\/(\d{2})\/(\d{4})$/
+
 const phone = ref('')
 const phoneExists = ref<null | boolean>(null)
 const checkingPhone = ref(false)
@@ -27,7 +31,7 @@ const genderOptions = [
 
 const phoneRules = [
   (v: string) => !!v || 'Telefone obrigatório',
-  (v: string) => v.replace(/\D/g, '').length >= 10 || 'Telefone inválido',
+  (v: string) => v.replace(NON_DIGIT_RE, '').length >= 10 || 'Telefone inválido',
 ]
 const nameRules = [
   (v: string) => !!v || 'Nome obrigatório',
@@ -75,11 +79,11 @@ async function checkPhoneDirectus(cleanPhone: string): Promise<{ nome: string, i
  * Simula busca de telefone já cadastrado
  */
 async function checkPhone() {
-  if (!phone.value || phone.value.replace(/\D/g, '').length < 10)
+  if (!phone.value || phone.value.replace(NON_DIGIT_RE, '').length < 10)
     return
   checkingPhone.value = true
   await new Promise(r => setTimeout(r, 600))
-  const cleanPhone = phone.value.replace(/\D/g, '')
+  const cleanPhone = phone.value.replace(NON_DIGIT_RE, '')
   // Consulta real no Directus
   const found = await checkPhoneDirectus(cleanPhone)
   if (found) {
@@ -97,7 +101,7 @@ async function checkPhone() {
  * Normaliza o nome do fiel – reutiliza titleCase de normalize-text.ts
  */
 function normalizeNomeFiel(nome: string): string {
-  return titleCase(nome.replace(/[^a-zA-Z\u00C0-\u00FF\s-]/g, '').trim())
+  return titleCase(nome.replace(ONLY_NAME_CHARS_RE, '').trim())
 }
 
 const confirmDialog = ref(false)
@@ -114,7 +118,7 @@ function openConfirmDialog() {
   // Normaliza o nome antes de mostrar
   confirmData.value = {
     nome: normalizeNomeFiel(fullName.value),
-    telefone: phone.value.replace(/\D/g, ''),
+    telefone: phone.value.replace(NON_DIGIT_RE, ''),
     sexo: genderOptions.find(g => g.value === gender.value)?.title || '',
     nascimento: formatBirthDateBR(birthDate.value),
   }
@@ -125,7 +129,7 @@ function formatBirthDateBR(dateStr: string): string {
   if (!dateStr)
     return ''
 
-  const digits = dateStr.replace(/\D/g, '')
+  const digits = dateStr.replace(NON_DIGIT_RE, '')
   if (digits.length === 8) {
     return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`
   }
@@ -137,8 +141,7 @@ function parseDateBRtoISO(dateStr: string): string | undefined {
   const normalized = formatBirthDateBR(dateStr)
   if (!normalized)
     return undefined
-  const pattern = /^(\d{2})\/(\d{2})\/(\d{4})$/
-  const match = normalized.match(pattern)
+  const match = normalized.match(BIRTH_DATE_RE)
   if (!match)
     return undefined
   return `${match[3]}-${match[2]}-${match[1]}`
@@ -200,10 +203,12 @@ const isFormValid = computed(() => {
     phoneExists.value === false
     && !!fullName.value
     && !!gender.value
-    && /^\d{2}\/\d{2}\/\d{4}$/.test(formatBirthDateBR(birthDate.value))
+    && BIRTH_DATE_RE.test(formatBirthDateBR(birthDate.value))
     && !submitting.value
   )
 })
+
+const canCheckPhone = computed(() => !checkingPhone.value && !!phone.value && phone.value.replace(NON_DIGIT_RE, '').length >= 10)
 
 interface Schema {
   catolico: Catolico[]
@@ -218,7 +223,7 @@ usePublicSeo({
 function formatPhoneBR(phone: string): string {
   if (!phone)
     return ''
-  const digits = phone.replace(/\D/g, '')
+  const digits = phone.replace(NON_DIGIT_RE, '')
   if (digits.length === 11) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
   }
@@ -270,7 +275,7 @@ function formatPhoneBR(phone: string): string {
                 color="primary"
                 variant="text"
                 :loading="checkingPhone"
-                :disabled="checkingPhone || !phone || phone.replace(/\D/g, '').length < 10"
+                :disabled="!canCheckPhone"
                 @click.stop="checkPhone"
               >
                 <v-icon>mdi-arrow-right-circle</v-icon>

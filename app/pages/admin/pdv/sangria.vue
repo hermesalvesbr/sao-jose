@@ -163,7 +163,7 @@ async function saveForm() {
       showSnack('Sangria registrada com sucesso')
       // Offer print immediately after creation
       receiptItem.value = created
-      setTimeout(() => printReceipt(receiptItem.value), 300)
+      setTimeout(printReceipt, 300, receiptItem.value)
     }
     dialog.value = false
     await loadData()

@@ -175,10 +175,12 @@ async function performArchive() {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const NON_DIGIT_RE = /\D/g
+
 function formatPhone(phone: string | undefined | null): string {
   if (!phone)
     return '—'
-  const digits = phone.replace(/\D/g, '')
+  const digits = phone.replace(NON_DIGIT_RE, '')
   if (digits.length === 11)
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
   if (digits.length === 10)

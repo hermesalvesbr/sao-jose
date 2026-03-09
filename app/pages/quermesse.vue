@@ -69,7 +69,8 @@ const sections = computed<SectionData[]>(() => {
   }
 
   // Ordena seções: "Lojinha" por último
-  return [...pointMap.values()].sort((a, b) => {
+  const sectionsList = [...pointMap.values()]
+  return sectionsList.toSorted((a, b) => {
     const aIsLojinha = a.point.name.toLowerCase().includes('lojinha') ? 1 : 0
     const bIsLojinha = b.point.name.toLowerCase().includes('lojinha') ? 1 : 0
     return aIsLojinha - bIsLojinha

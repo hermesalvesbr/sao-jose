@@ -1,6 +1,8 @@
+const ADMIN_ROUTE_RE = /^\/admin\//
+
 export default defineNuxtRouteMiddleware(async (to) => {
   // Rotas que o middleware deve proteger
-  const protectedRoutes = /^\/admin\//.test(to.path)
+  const protectedRoutes = ADMIN_ROUTE_RE.test(to.path)
   const loginRoute = to.path === '/admin'
 
   if (protectedRoutes || loginRoute) {

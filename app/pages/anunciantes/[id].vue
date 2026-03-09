@@ -71,8 +71,9 @@ const exibicoesPorDia = computed(() => {
     const dia = formatarData(l.exibido_em)
     map.set(dia, (map.get(dia) ?? 0) + 1)
   }
-  return [...map.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
+  const entries = [...map.entries()]
+  return entries
+    .toSorted((a, b) => a[0].localeCompare(b[0]))
     .map(([dia, qtd]) => ({ dia, qtd }))
 })
 

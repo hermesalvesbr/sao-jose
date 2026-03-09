@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   const result = ads.map((ad) => {
     const adLogs = logs.filter(l => l.ads === ad.id)
     const totalDuracao = adLogs.reduce((acc, l) => acc + (l.duracao_exibida || 0), 0)
-    const sorted = [...adLogs].sort(
+    const sorted = adLogs.toSorted(
       (a, b) => new Date(b.exibido_em).getTime() - new Date(a.exibido_em).getTime(),
     )
     return {

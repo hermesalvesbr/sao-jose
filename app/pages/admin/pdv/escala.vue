@@ -14,6 +14,7 @@ import { formatDate, toLocalISO } from '~/composables/usePdvReport'
 definePageMeta({ layout: 'admin' })
 
 const { fetchSchedules, createSchedule, updateSchedule, deleteSchedule, fetchProductionPoints } = usePdv()
+const VOLUNTARIOS_SPLIT_RE = /[\n,]/
 
 // ─── Date range ───────────────────────────────────────────────────────────────
 const today = toLocalISO(new Date())
@@ -68,7 +69,7 @@ function getCell(date: string, pointId: string): any | null {
 function voluntariosPreview(cell: any | null): string {
   if (!cell?.voluntarios)
     return ''
-  const lines = cell.voluntarios.split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean)
+  const lines = cell.voluntarios.split(VOLUNTARIOS_SPLIT_RE).map((s: string) => s.trim()).filter(Boolean)
   if (lines.length <= 2)
     return lines.join(', ')
   return `${lines[0]}, ${lines[1]}... +${lines.length - 2}`
@@ -96,7 +97,7 @@ async function loadData() {
         filter: {
           _and: [
             { data: { _gte: rangeStart.value } },
-            { data: { _lte: days.value[days.value.length - 1] ?? rangeStart.value } },
+            { data: { _lte: days.value.at(-1) ?? rangeStart.value } },
           ],
         },
         sort: ['data'],

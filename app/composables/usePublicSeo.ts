@@ -6,6 +6,8 @@ interface UsePublicSeoOptions {
   noindex?: boolean
 }
 
+const TRAILING_SLASH_RE = /\/$/
+
 /**
  * Aplica metadados SEO padronizados para páginas públicas.
  * Inclui canonical, Open Graph e Twitter Card de forma DRY.
@@ -21,7 +23,7 @@ export function usePublicSeo(options: UsePublicSeoOptions) {
   const baseUrl = (runtimeSiteUrl
     || requestUrl?.origin
     || (import.meta.client ? window.location.origin : '')
-  ).replace(/\/$/, '')
+  ).replace(TRAILING_SLASH_RE, '')
 
   const canonicalUrl = computed(() => {
     const normalizedPath = currentPath.value.startsWith('/')

@@ -31,6 +31,8 @@ const MINOR_WORDS = new Set([
   'umas',
 ])
 
+const MULTI_SPACE_RE = /\s+/g
+
 /**
  * Capitaliza texto em title case (português).
  * Primeira palavra sempre maiúscula; preposições/artigos em minúscula.
@@ -40,7 +42,7 @@ export function titleCase(text: string): string {
     return text
   return text
     .trim()
-    .replace(/\s+/g, ' ')
+    .replace(MULTI_SPACE_RE, ' ')
     .split(' ')
     .map((word, i) => {
       const lower = word.toLowerCase()

@@ -3,6 +3,8 @@ import type { DirectusClient, RestClient } from '@directus/sdk'
 import type { Catolico, Dizimista } from '~/types/schema'
 import { createItem, readItems } from '@directus/sdk'
 
+const NON_DIGIT_RE = /\D/g
+
 // State
 const phone = ref('')
 const checkingPhone = ref(false)
@@ -25,7 +27,7 @@ interface Schema {
 // Rules
 const phoneRules = [
   (v: string) => !!v || 'Telefone obrigatório',
-  (v: string) => v.replace(/\D/g, '').length >= 10 || 'Telefone inválido',
+  (v: string) => v.replace(NON_DIGIT_RE, '').length >= 10 || 'Telefone inválido',
 ]
 const valorRules = [
   (v: number) => v > 0 || 'O valor deve ser maior que zero',
@@ -82,7 +84,7 @@ async function checkIfDizimista(catolicoId: string): Promise<boolean> {
  * Handles the phone number check.
  */
 async function checkPhone() {
-  if (!phone.value || phone.value.replace(/\D/g, '').length < 10)
+  if (!phone.value || phone.value.replace(NON_DIGIT_RE, '').length < 10)
     return
 
   checkingPhone.value = true
@@ -90,7 +92,7 @@ async function checkPhone() {
   alreadyDizimista.value = null
   valorMensal.value = null
 
-  const cleanPhone = phone.value.replace(/\D/g, '')
+  const cleanPhone = phone.value.replace(NON_DIGIT_RE, '')
   const found = await findCatolicoByPhone(cleanPhone)
 
   if (found) {
@@ -159,6 +161,8 @@ const isFormValid = computed(() => {
   return catolicoFound.value && !alreadyDizimista.value && valorMensal.value && valorMensal.value > 0 && !submitting.value
 })
 
+const canCheckPhone = computed(() => !checkingPhone.value && !!phone.value && phone.value.replace(NON_DIGIT_RE, '').length >= 10)
+
 usePublicSeo({
   title: 'Tornar-se Dizimista',
   description: 'Contribua com a sua comunidade tornando-se um dizimista. Um gesto de fé e partilha.',
@@ -201,7 +205,7 @@ usePublicSeo({
             <v-btn
               icon
               :loading="checkingPhone"
-              :disabled="checkingPhone || !phone || phone.replace(/\D/g, '').length < 10"
+              :disabled="!canCheckPhone"
               aria-label="Verificar telefone"
               @click="checkPhone"
             >

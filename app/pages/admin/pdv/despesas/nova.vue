@@ -52,6 +52,8 @@ const CATEGORIA_LABELS: Record<string, string> = {
   outro: 'Outro',
 }
 
+const DIACRITICS_RE = /[\u0300-\u036F]/g
+
 const categoriaOpcoes = Object.entries(CATEGORIA_LABELS).map(([value, title]) => ({ value, title }))
 
 const rules = {
@@ -61,7 +63,7 @@ const rules = {
 function normalizeName(value: string | null | undefined): string {
   return (value ?? '')
     .normalize('NFD')
-    .replace(/[\u0300-\u036F]/g, '')
+    .replace(DIACRITICS_RE, '')
     .trim()
     .toLowerCase()
 }
