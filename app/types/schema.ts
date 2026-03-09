@@ -42,6 +42,8 @@ export interface AdsNovenario {
   status_pagamento: string;
   /** Meio de pagamento utilizado */
   meio_pagamento: string;
+  /** Descrição da permuta realizada */
+  permuta_descricao: string | null;
 }
 
 export interface Agenda {

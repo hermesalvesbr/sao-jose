@@ -29,7 +29,7 @@ const financeiroItems = [
 ]
 
 const conteudoItems = [
-  { title: 'Anúncios', icon: 'mdi-bullhorn-outline', to: '/admin/anuncios' },
+  { title: 'Anúncios', icon: 'mdi-bullhorn-outline', to: '/admin/anuncio' },
 ]
 
 const cadastrosItems = [
@@ -66,7 +66,8 @@ const _pageTitle = computed(() => {
   return titles[route.path] || 'Painel'
 })
 
-// Breadcrumb
+// Breadcrumb — páginas podem sobrescrever o título do último segmento
+const breadcrumbOverride = useState<string | null>('breadcrumb-override', () => null)
 const breadcrumbs = computed(() => {
   const segments = route.path.split('/').filter(Boolean)
   const crumbs: { title: string, to?: string, disabled?: boolean }[] = []
@@ -78,6 +79,7 @@ const breadcrumbs = computed(() => {
     'add': 'Novo',
     'dizimos': 'Dízimos',
     'anuncios': 'Anúncios',
+    'anuncio': 'Anúncio',
     'relatorio-consolidado': 'Consolidado',
     'pdv': 'PDV',
     'categorias': 'Categorias',
@@ -97,10 +99,14 @@ const breadcrumbs = computed(() => {
   }
   segments.forEach((seg, i) => {
     path += `/${seg}`
+    const isLast = i === segments.length - 1
+    const title = isLast && breadcrumbOverride.value
+      ? breadcrumbOverride.value
+      : (labels[seg] || seg)
     crumbs.push({
-      title: labels[seg] || seg,
-      to: i < segments.length - 1 ? path : undefined,
-      disabled: i === segments.length - 1,
+      title,
+      to: !isLast ? path : undefined,
+      disabled: isLast,
     })
   })
   return crumbs

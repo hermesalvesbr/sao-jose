@@ -137,7 +137,7 @@ async function loadReport() {
       } as any)),
       // Anúncios (ads_novenario)
       client.request(readItems('ads_novenario', {
-        fields: ['id', 'anunciante', 'valor_pago', 'date_created', 'status', 'status_pagamento', 'meio_pagamento', 'data_pagamento'],
+        fields: ['id', 'anunciante', 'valor_pago', 'date_created', 'status', 'status_pagamento', 'meio_pagamento', 'data_pagamento', 'permuta_descricao'],
         filter: {
           _and: [
             { status: { _eq: 'published' } },
@@ -273,6 +273,15 @@ const dizimoByMethod = computed(() => {
   return acc
 })
 
+/** Anúncios com permuta (para detalhar no relatório). */
+const adsPermuta = computed(() =>
+  adsItems.value.filter(a => a.status_pagamento === 'permuta'),
+)
+
+const totalPermuta = computed(() =>
+  adsPermuta.value.reduce((s, a) => s + Number(a.valor_pago || 0), 0),
+)
+
 /** Valor pendente de receber (status = pendente). */
 const adsPendente = computed(() =>
   adsItems.value
@@ -352,7 +361,7 @@ const totalWithdrawals = computed(() =>
 )
 
 const saldoLiquido = computed(() =>
-  grandByMethod.value.total - totalExpenses.value - totalWithdrawals.value,
+  grandByMethod.value.total - totalExpenses.value - totalWithdrawals.value - totalPermuta.value,
 )
 
 const responsavelNome = computed(() =>
@@ -632,7 +641,7 @@ function printPage() {
         </div>
       </v-card>
 
-      <!-- ─── Saídas (Despesas + Sangrias) ─────────────────────────── -->
+      <!-- ─── Saídas (Despesas + Sangrias + Permutas) ─────────────────────────── -->
       <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
           <v-icon icon="mdi-cash-minus" color="error" class="me-2" />
@@ -669,6 +678,18 @@ function printPage() {
                   {{ formatCurrency(totalWithdrawals) }}
                 </td>
               </tr>
+              <tr v-for="ad in adsPermuta" :key="ad.id" class="data-row">
+                <td class="font-weight-medium">
+                  <v-icon size="16" icon="mdi-swap-horizontal" class="me-1 no-print" />
+                  Permuta — {{ ad.anunciante }}
+                  <span v-if="ad.permuta_descricao" class="text-caption text-medium-emphasis ms-1">
+                    ({{ ad.permuta_descricao }})
+                  </span>
+                </td>
+                <td class="col-money text-end text-error font-weight-bold">
+                  {{ formatCurrency(Number(ad.valor_pago || 0)) }}
+                </td>
+              </tr>
             </tbody>
             <tfoot>
               <tr class="total-row">
@@ -676,7 +697,7 @@ function printPage() {
                   Total de Saídas
                 </td>
                 <td class="col-money text-end font-weight-black text-error-print">
-                  {{ formatCurrency(totalExpenses + totalWithdrawals) }}
+                  {{ formatCurrency(totalExpenses + totalWithdrawals + totalPermuta) }}
                 </td>
               </tr>
             </tfoot>
@@ -702,10 +723,10 @@ function printPage() {
               </tr>
               <tr>
                 <td class="font-weight-medium text-error">
-                  - DESPESAS E SANGRIAS R$
+                  - DESPESAS, SANGRIAS E PERMUTAS R$
                 </td>
                 <td class="text-end font-weight-bold text-error-print">
-                  {{ formatCurrency(totalExpenses + totalWithdrawals) }}
+                  {{ formatCurrency(totalExpenses + totalWithdrawals + totalPermuta) }}
                 </td>
               </tr>
               <tr class="total-row saldo-row">
