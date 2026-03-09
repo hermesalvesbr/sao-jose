@@ -18,8 +18,8 @@ function toLocalISO(d: Date): string {
 }
 
 const today = toLocalISO(new Date())
-const dateFrom = ref(today)
-const dateTo = ref(today)
+const dateFrom = useState<string>('pdv-relatorio-from', () => today)
+const dateTo = useState<string>('pdv-relatorio-to', () => today)
 
 // ─── State ─────────────────────────────────────────────────────────────────────
 const sales = ref<any[]>([])

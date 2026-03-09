@@ -53,8 +53,8 @@ function mesAtualUltimo(): string {
   return `${ultimo.getFullYear()}-${String(ultimo.getMonth() + 1).padStart(2, '0')}-${String(ultimo.getDate()).padStart(2, '0')}`
 }
 
-const dataInicio = ref(mesAtualPrimeiro())
-const dataFim = ref(mesAtualUltimo())
+const dataInicio = useState<string>('ofertorio-from', () => mesAtualPrimeiro())
+const dataFim = useState<string>('ofertorio-to', () => mesAtualUltimo())
 const dataInicioField = computed({
   get: () => isoToBrDate(dataInicio.value),
   set: (value: string) => {

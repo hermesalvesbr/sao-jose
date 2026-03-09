@@ -13,8 +13,8 @@ const {
 } = useDizimos()
 
 // Estados para filtros de relatório
-const anoSelecionado = ref(new Date().getFullYear().toString())
-const mesSelecionado = ref('')
+const anoSelecionado = useState<string>('dizimos-relatorios-ano', () => new Date().getFullYear().toString())
+const mesSelecionado = useState<string>('dizimos-relatorios-mes', () => '')
 
 // Carrega os dados
 onMounted(async () => {

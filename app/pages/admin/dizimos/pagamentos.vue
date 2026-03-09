@@ -13,9 +13,9 @@ const {
 } = useDizimos()
 
 // Estados
-const search = ref('')
-const filtroMes = ref('')
-const filtroAno = ref(new Date().getFullYear().toString())
+const search = useState<string>('dizimos-pagamentos-search', () => '')
+const filtroMes = useState<string>('dizimos-pagamentos-mes', () => '')
+const filtroAno = useState<string>('dizimos-pagamentos-ano', () => new Date().getFullYear().toString())
 
 // Carrega os pagamentos
 onMounted(() => {

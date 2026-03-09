@@ -7,7 +7,7 @@
  * Arquivamento (soft-delete) via status = 'archived'.
  */
 import { readItems, updateItem } from '@directus/sdk'
-import { brToIsoDate, formatCurrency, formatDate, isoToBrDate, usePdvReportPeriod } from '~/composables/usePdvReport'
+import { brToIsoDate, formatCurrency, formatDate, isoToBrDate, toLocalISO } from '~/composables/usePdvReport'
 
 definePageMeta({ layout: 'admin' })
 
@@ -37,23 +37,32 @@ const snackbarMsg = ref('')
 const snackbarColor = ref<'success' | 'error'>('success')
 
 // Filters
-const search = ref('')
-const { dateFrom, dateTo, setToday, setThisMonth, setNovena } = usePdvReportPeriod()
-const filterCategoria = ref<string | null>(null)
-const activeQuickFilter = ref<'hoje' | 'mes' | 'novena' | null>(null)
+const search = useState<string>('pdv-despesas-search', () => '')
+const dateFrom = useState<string>('pdv-despesas-from', () => '')
+const dateTo = useState<string>('pdv-despesas-to', () => '')
+const filterCategoria = useState<string | null>('pdv-despesas-categoria', () => null)
+const activeQuickFilter = useState<'hoje' | 'mes' | 'novena' | null>('pdv-despesas-quick-filter', () => null)
 
 function applyToday() {
-  setToday()
+  const today = toLocalISO(new Date())
+  dateFrom.value = today
+  dateTo.value = today
   activeQuickFilter.value = 'hoje'
 }
 
 function applyThisMonth() {
-  setThisMonth()
+  const d = new Date()
+  dateFrom.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  dateTo.value = toLocalISO(d)
   activeQuickFilter.value = 'mes'
 }
 
 function applyNovena() {
-  setNovena()
+  const d = new Date()
+  const start = new Date(d)
+  start.setDate(d.getDate() - 8)
+  dateFrom.value = toLocalISO(start)
+  dateTo.value = toLocalISO(d)
   activeQuickFilter.value = 'novena'
 }
 const dateFromField = computed({

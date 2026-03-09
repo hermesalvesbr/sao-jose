@@ -7,21 +7,50 @@
  *
  * DRY: formatação e seleção de período via usePdvReport.
  */
-import { formatCurrency, formatDate } from '~/composables/usePdvReport'
+import { formatCurrency, formatDate, toLocalISO } from '~/composables/usePdvReport'
 
 definePageMeta({ layout: 'admin' })
 
 const { fetchSaleItems } = usePdv()
 const { user } = useAuth()
-const {
-  dateFrom,
-  dateTo,
-  periodLabel,
-  setToday,
-  setYesterday,
-  setThisWeek,
-  setThisMonth,
-} = usePdvReportPeriod()
+const today = toLocalISO(new Date())
+const dateFrom = useState<string>('pdv-relatorio-itens-from', () => today)
+const dateTo = useState<string>('pdv-relatorio-itens-to', () => today)
+
+const periodLabel = computed(() => {
+  if (dateFrom.value === dateTo.value)
+    return formatDate(dateFrom.value)
+  return `${formatDate(dateFrom.value)} a ${formatDate(dateTo.value)}`
+})
+
+function setToday() {
+  const d = toLocalISO(new Date())
+  dateFrom.value = d
+  dateTo.value = d
+}
+
+function setYesterday() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  const iso = toLocalISO(d)
+  dateFrom.value = iso
+  dateTo.value = iso
+}
+
+function setThisWeek() {
+  const d = new Date()
+  const dayOfWeek = d.getDay()
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  dateFrom.value = toLocalISO(monday)
+  dateTo.value = toLocalISO(new Date())
+}
+
+function setThisMonth() {
+  const d = new Date()
+  dateFrom.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  dateTo.value = toLocalISO(d)
+}
 
 // ─── State ───────────────────────────────────────────────────────────────────
 const saleItems = ref<any[]>([])

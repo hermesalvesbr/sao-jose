@@ -11,8 +11,8 @@ const itemToDelete = ref<string | null>(null)
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
-const search = ref('')
-const filterPagamento = ref<string | null>(null)
+const search = useState<string>('anuncios-search', () => '')
+const filterPagamento = useState<string | null>('anuncios-pagamento', () => null)
 
 const STATUS_PAGAMENTO_LABELS: Record<string, string> = {
   pago: 'Pago',
