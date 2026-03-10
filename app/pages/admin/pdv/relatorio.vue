@@ -27,6 +27,7 @@ const sangrias = ref<any[]>([])
 const operators = ref<any[]>([])
 const loading = ref(false)
 const reportGenerated = ref(false)
+const handoverOperator = ref<OperatorRow | null>(null)
 
 // ─── Quick date shortcuts ──────────────────────────────────────────────────────
 function setToday() {
@@ -131,7 +132,12 @@ async function loadReport() {
   }
 }
 
-onMounted(loadReport)
+onMounted(() => {
+  loadReport()
+  window.addEventListener('afterprint', () => {
+    handoverOperator.value = null
+  })
+})
 
 // ─── Aggregations ──────────────────────────────────────────────────────────────
 interface OperatorRow {
@@ -222,10 +228,15 @@ const generatedAtLabel = computed(() =>
 function printReport() {
   window.print()
 }
+
+function printHandover(row: OperatorRow) {
+  handoverOperator.value = row
+  nextTick(() => window.print())
+}
 </script>
 
 <template>
-  <v-container fluid class="pa-4 pa-md-6">
+  <v-container fluid class="pa-4 pa-md-6" :class="{ 'in-handover-print': handoverOperator !== null }">
     <!-- ─── Screen-only header ──────────────────────────────────────────── -->
     <div class="d-flex flex-wrap justify-space-between align-center mb-5 ga-3 no-print">
       <div>
@@ -347,6 +358,7 @@ function printReport() {
                 <th class="col-money text-end">
                   TOTAL R$
                 </th>
+                <th class="col-action no-print" />
               </tr>
             </thead>
             <tbody>
@@ -380,10 +392,19 @@ function printReport() {
                 <td class="col-money text-end font-weight-bold">
                   {{ formatCurrency(row.total) }}
                 </td>
+                <td class="col-action no-print text-center">
+                  <v-btn
+                    icon="mdi-printer-check"
+                    size="small"
+                    variant="tonal"
+                    color="primary"
+                    @click="printHandover(row)"
+                  />
+                </td>
               </tr>
               <!-- Empty rows to match paper form aesthetic on print -->
               <tr v-for="n in Math.max(0, 8 - salesByOperator.length)" :key="`empty-${n}`" class="empty-row">
-                <td colspan="5">
+                <td colspan="6">
 &nbsp;
                 </td>
               </tr>
@@ -566,6 +587,16 @@ function printReport() {
         Selecione o período e clique em Carregar para gerar o relatório
       </p>
     </div>
+
+    <!-- ─── Handover print area (only visible during per-operator print) ── -->
+    <div v-if="handoverOperator" class="handover-print-area">
+      <PrintCashHandoverReport
+        :operator="handoverOperator"
+        :period-label="periodLabel"
+        :coordinator-name="responsavelNome"
+        :generated-at-label="generatedAtLabel"
+      />
+    </div>
   </v-container>
 </template>
 
@@ -579,8 +610,17 @@ function printReport() {
   background-color: rgba(var(--v-theme-primary), 0.1) !important;
 }
 
+.handover-print-area {
+  display: none;
+}
+
 .col-money {
   min-width: 110px;
+}
+
+.col-action {
+  width: 52px;
+  padding: 4px 8px;
 }
 
 .resumo-header {
@@ -604,6 +644,19 @@ function printReport() {
 
   .print-obs {
     font-size: 8px;
+  }
+
+  /* Handover mode: hide main report, show handover area */
+  .handover-print-area {
+    display: none;
+  }
+
+  .in-handover-print .report-area {
+    display: none !important;
+  }
+
+  .in-handover-print .handover-print-area {
+    display: block !important;
   }
 }
 </style>
