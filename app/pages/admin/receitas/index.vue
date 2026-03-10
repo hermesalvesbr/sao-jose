@@ -65,7 +65,7 @@ const headers = [
   { title: 'Data', key: 'data', width: '110px', sortable: true },
   { title: 'Tipo', key: 'tipo', width: '160px', sortable: true },
   { title: 'Descrição', key: 'descricao', sortable: true },
-  { title: 'Meio', key: 'meio_pagamento', width: '120px', sortable: true },
+  { title: 'Meio', key: 'meio_pagamento', width: '180px', sortable: false },
   { title: 'Valor', key: 'valor', align: 'end' as const, width: '120px', sortable: true },
   { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '90px' },
 ]
@@ -75,8 +75,14 @@ const filteredItems = computed(() => {
   let result = items.value
   if (filterTipo.value)
     result = result.filter(i => i.tipo === filterTipo.value)
-  if (filterMeio.value)
-    result = result.filter(i => i.meio_pagamento === filterMeio.value)
+  if (filterMeio.value) {
+    const meio = filterMeio.value
+    result = result.filter((i) => {
+      if (Array.isArray(i.pagamentos) && i.pagamentos.length > 0)
+        return i.pagamentos.some((p: { meio: string }) => p.meio === meio)
+      return i.meio_pagamento === meio
+    })
+  }
   if (dateFrom.value)
     result = result.filter(i => !i.data || i.data >= dateFrom.value!)
   if (dateTo.value)
@@ -369,7 +375,18 @@ function fileIcon(mime: string): string {
         </template>
 
         <template #[`item.meio_pagamento`]="{ item }">
-          <v-chip v-if="item.meio_pagamento" size="small" variant="outlined" label>
+          <div v-if="Array.isArray(item.pagamentos) && item.pagamentos.length > 1" class="d-flex flex-column ga-1 py-1">
+            <v-chip
+              v-for="(pag, i) in item.pagamentos"
+              :key="i"
+              size="x-small"
+              variant="outlined"
+              label
+            >
+              {{ meioLabel(pag.meio) }}: {{ formatCurrency(pag.valor) }}
+            </v-chip>
+          </div>
+          <v-chip v-else-if="item.meio_pagamento" size="small" variant="outlined" label>
             {{ meioLabel(item.meio_pagamento) }}
           </v-chip>
           <span v-else class="text-disabled">—</span>

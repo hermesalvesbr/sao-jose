@@ -327,7 +327,13 @@ export interface Receita {
   observacao: string;
   /** Paroquiano responsável pelo recebimento */
   responsavel_id: string | Catolico;
-  documentos: number[] | ReceitasFile[];
+  documentos: number[] | ReceitasFile[]
+  pagamentos?: ReceitaPagamento[] | null
+}
+
+export interface ReceitaPagamento {
+  meio: string
+  valor: number
 }
 
 export interface ReceitasComprovante {
@@ -442,7 +448,7 @@ export interface ApiCollections {
   pdv_sales: PdvSale[];
   pdv_schedules: PdvSchedule[];
   receitas: Receita[];
-  receitas_comprovantes: ReceitasComprovante[];
+  receitas_comprovantes: ReceitasComprovante[]
   receitas_files: ReceitasFile[];
   directus_users: DirectusUser[];
   directus_files: DirectusFile[];

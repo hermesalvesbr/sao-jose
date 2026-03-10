@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ReceitasFile } from '~/types/schema'
+import type { ReceitaPagamento, ReceitasFile } from '~/types/schema'
 import { createItem, deleteItem, readItems, uploadFiles } from '@directus/sdk'
-import { brToIsoDate, isoToBrDate } from '~/composables/usePdvReport'
+import { brToIsoDate, formatCurrency, isoToBrDate } from '~/composables/usePdvReport'
 import { MEIO_PAGAMENTO_LABELS, TIPO_RECEITA_LABELS } from '~/composables/useReceitas'
 
 definePageMeta({ layout: 'admin' })
@@ -49,12 +49,23 @@ const snackbarColor = ref<'success' | 'error'>('success')
 const form = ref({
   tipo: null as string | null,
   descricao: '',
-  valor: undefined as number | undefined,
   data: '',
-  meio_pagamento: null as string | null,
+  pagamentos: [{ meio: null as string | null, valor: undefined as number | undefined }],
   responsavel_id: null as string | null,
   observacao: '',
 })
+
+const totalPagamentos = computed(() =>
+  form.value.pagamentos.reduce((sum, p) => sum + (Number(p.valor) || 0), 0),
+)
+
+function addPagamento(): void {
+  form.value.pagamentos.push({ meio: null, valor: undefined })
+}
+
+function removePagamento(index: number): void {
+  form.value.pagamentos.splice(index, 1)
+}
 
 // ─── Comprovantes ─────────────────────────────────────────────────────────────
 const directusUrl = useRuntimeConfig().public.directus.url as string
@@ -71,12 +82,18 @@ async function loadForm(): Promise<void> {
     return
   }
   const resp = receita.responsavel_id
+  // Backward compat: se pagamentos não estiver salvo, sintetiza do valor+meio_pagamento legado
+  const rawPag = receita.pagamentos
+  const pagamentos: Array<{ meio: string | null, valor: number | undefined }>
+    = Array.isArray(rawPag) && rawPag.length > 0
+      ? rawPag.map((p: ReceitaPagamento) => ({ meio: p.meio, valor: p.valor }))
+      : [{ meio: receita.meio_pagamento ?? null, valor: receita.valor ?? undefined }]
+
   form.value = {
     tipo: receita.tipo ?? null,
     descricao: receita.descricao ?? '',
-    valor: receita.valor ?? undefined,
     data: isoToBrDate(receita.data as string),
-    meio_pagamento: receita.meio_pagamento ?? null,
+    pagamentos,
     responsavel_id: (typeof resp === 'object' && resp) ? (resp as { id: string }).id : resp ?? null,
     observacao: receita.observacao ?? '',
   }
@@ -85,6 +102,10 @@ async function loadForm(): Promise<void> {
 // ─── Regras de validação ──────────────────────────────────────────────────────
 const rules = {
   required: (v: unknown) => !!v || 'Campo obrigatório',
+  positive: (v: unknown) => {
+    const n = Number(v)
+    return (!Number.isNaN(n) && n > 0) || 'Informe um valor positivo'
+  },
 }
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
@@ -95,12 +116,20 @@ async function submit(): Promise<void> {
 
   salvando.value = true
   try {
+    const pagamentos: ReceitaPagamento[] = form.value.pagamentos
+      .filter(p => p.meio && Number(p.valor) > 0)
+      .map(p => ({ meio: p.meio!, valor: Number(p.valor) }))
+
+    const valor = pagamentos.reduce((s, p) => s + p.valor, 0)
+    const meio_pagamento = pagamentos.length === 1 ? (pagamentos[0]?.meio ?? null) : null
+
     const payload: Record<string, unknown> = {
       tipo: form.value.tipo,
       descricao: form.value.descricao,
-      valor: Number(form.value.valor),
+      valor,
       data: brToIsoDate(form.value.data),
-      meio_pagamento: form.value.meio_pagamento,
+      pagamentos,
+      meio_pagamento,
       observacao: form.value.observacao || null,
       responsavel_id: form.value.responsavel_id || null,
     }
@@ -304,25 +333,58 @@ function formatBytes(bytes: number | undefined): string {
                     />
                   </v-col>
 
-                  <v-col cols="12" sm="6">
-                    <MaskedCurrencyField
-                      v-model="form.valor"
-                      label="Valor R$ *"
-                      :rules="[rules.required]"
-                      :min-value="0.01"
-                    />
-                  </v-col>
-
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="form.meio_pagamento"
-                      :items="meioOpcoes"
-                      item-title="title"
-                      item-value="value"
-                      label="Meio de recebimento *"
-                      :rules="[rules.required]"
-                      prepend-inner-icon="mdi-cash"
-                    />
+                  <!-- Meios de pagamento -->
+                  <v-col cols="12">
+                    <div class="text-subtitle-2 font-weight-medium mb-3">
+                      Meios de recebimento *
+                    </div>
+                    <div
+                      v-for="(pag, i) in form.pagamentos"
+                      :key="i"
+                      class="d-flex ga-2 align-start mb-2"
+                    >
+                      <v-select
+                        v-model="pag.meio"
+                        :items="meioOpcoes"
+                        item-title="title"
+                        item-value="value"
+                        label="Meio *"
+                        class="flex-shrink-0"
+                        style="min-width: 170px; max-width: 220px;"
+                        :rules="[rules.required]"
+                        prepend-inner-icon="mdi-cash"
+                      />
+                      <MaskedCurrencyField
+                        v-model="pag.valor"
+                        label="Valor R$ *"
+                        class="flex-grow-1"
+                        :rules="[rules.positive]"
+                        :min-value="0.01"
+                      />
+                      <v-btn
+                        v-if="form.pagamentos.length > 1"
+                        icon="mdi-delete-outline"
+                        variant="text"
+                        color="error"
+                        size="small"
+                        class="mt-1 flex-shrink-0"
+                        @click="removePagamento(i)"
+                      />
+                    </div>
+                    <div class="d-flex align-center justify-space-between mt-2">
+                      <v-btn
+                        variant="tonal"
+                        color="primary"
+                        prepend-icon="mdi-plus"
+                        size="small"
+                        @click="addPagamento"
+                      >
+                        Adicionar meio
+                      </v-btn>
+                      <span v-if="form.pagamentos.length > 1" class="text-body-2 font-weight-medium text-success">
+                        Total: {{ formatCurrency(totalPagamentos) }}
+                      </span>
+                    </div>
                   </v-col>
 
                   <v-col cols="12">
