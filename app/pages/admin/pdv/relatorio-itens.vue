@@ -7,7 +7,7 @@
  *
  * DRY: formatação e seleção de período via usePdvReport.
  */
-import { formatCurrency, formatDate, toLocalISO } from '~/composables/usePdvReport'
+import { dayEndBRT, dayStartBRT, formatCurrency, formatDate, toLocalISO } from '~/composables/usePdvReport'
 
 definePageMeta({ layout: 'admin' })
 
@@ -87,8 +87,8 @@ async function loadReport() {
       filter: {
         _and: [
           { sale_id: { sale_status: { _eq: 'completed' } } },
-          { sale_id: { date_created: { _gte: `${dateFrom.value}T00:00:00` } } },
-          { sale_id: { date_created: { _lte: `${dateTo.value}T23:59:59` } } },
+          { sale_id: { date_created: { _gte: dayStartBRT(dateFrom.value) } } },
+          { sale_id: { date_created: { _lte: dayEndBRT(dateTo.value) } } },
         ],
       },
       limit: -1,

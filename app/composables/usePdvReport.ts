@@ -18,7 +18,20 @@ const NON_DIGIT_COMMA_RE = /[^\d,]/g
  * Converte um objeto Date para string ISO local (YYYY-MM-DD) sem conversão UTC.
  */
 export function toLocalISO(d: Date): string {
-  return d.toISOString().substring(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/** Retorna YYYY-MM-DDT00:00:00-03:00 para início do dia em BRT. */
+export function dayStartBRT(dateStr: string): string {
+  return `${dateStr}T00:00:00-03:00`
+}
+
+/** Retorna YYYY-MM-DDT23:59:59-03:00 para fim do dia em BRT. */
+export function dayEndBRT(dateStr: string): string {
+  return `${dateStr}T23:59:59-03:00`
 }
 
 /**

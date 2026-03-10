@@ -7,15 +7,14 @@
  *
  * Geração de PDF via window.print() com estilos @media print.
  */
+import { dayEndBRT, dayStartBRT, toLocalISO } from '~/composables/usePdvReport'
+
 definePageMeta({ layout: 'admin' })
 
 const { fetchSales, fetchExpenses, fetchOperators, fetchCashWithdrawals } = usePdv()
 const { user } = useAuth()
 
 // ─── Dates ─────────────────────────────────────────────────────────────────────
-function toLocalISO(d: Date): string {
-  return d.toISOString().substring(0, 10)
-}
 
 const today = toLocalISO(new Date())
 const dateFrom = useState<string>('pdv-relatorio-from', () => today)
@@ -82,8 +81,8 @@ async function loadReport() {
         filter: {
           _and: [
             { sale_status: { _eq: 'completed' } },
-            { date_created: { _gte: `${dateFrom.value}T00:00:00` } },
-            { date_created: { _lte: `${dateTo.value}T23:59:59` } },
+            { date_created: { _gte: dayStartBRT(dateFrom.value) } },
+            { date_created: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         sort: ['operator_id', 'date_created'],
@@ -105,8 +104,8 @@ async function loadReport() {
         fields: ['id', 'valor', 'motivo', 'data_hora'],
         filter: {
           _and: [
-            { data_hora: { _gte: `${dateFrom.value}T00:00:00` } },
-            { data_hora: { _lte: `${dateTo.value}T23:59:59` } },
+            { data_hora: { _gte: dayStartBRT(dateFrom.value) } },
+            { data_hora: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         limit: -1,

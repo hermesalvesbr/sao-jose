@@ -11,7 +11,7 @@
  * DRY: usa usePdvReport para formatação e seleção de período.
  */
 import { readItems } from '@directus/sdk'
-import { formatCurrency, formatDate } from '~/composables/usePdvReport'
+import { dayEndBRT, dayStartBRT, formatCurrency, formatDate } from '~/composables/usePdvReport'
 
 definePageMeta({ layout: 'admin' })
 
@@ -35,6 +35,7 @@ const directusClient = useDirectusClient()
 // ─── State ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
 const reportGenerated = ref(false)
+const showAnunciantes = ref(false)
 
 // Quermesse + Lojinha (PDV)
 const pdvSales = ref<any[]>([])
@@ -70,8 +71,8 @@ async function loadReport() {
         filter: {
           _and: [
             { sale_status: { _eq: 'completed' } },
-            { date_created: { _gte: `${dateFrom.value}T00:00:00` } },
-            { date_created: { _lte: `${dateTo.value}T23:59:59` } },
+            { date_created: { _gte: dayStartBRT(dateFrom.value) } },
+            { date_created: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         limit: -1,
@@ -82,8 +83,8 @@ async function loadReport() {
         filter: {
           _and: [
             { sale_id: { sale_status: { _eq: 'completed' } } },
-            { sale_id: { date_created: { _gte: `${dateFrom.value}T00:00:00` } } },
-            { sale_id: { date_created: { _lte: `${dateTo.value}T23:59:59` } } },
+            { sale_id: { date_created: { _gte: dayStartBRT(dateFrom.value) } } },
+            { sale_id: { date_created: { _lte: dayEndBRT(dateTo.value) } } },
           ],
         },
         limit: -1,
@@ -105,8 +106,8 @@ async function loadReport() {
         fields: ['id', 'valor', 'motivo', 'data_hora'],
         filter: {
           _and: [
-            { data_hora: { _gte: `${dateFrom.value}T00:00:00` } },
-            { data_hora: { _lte: `${dateTo.value}T23:59:59` } },
+            { data_hora: { _gte: dayStartBRT(dateFrom.value) } },
+            { data_hora: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         limit: -1,
@@ -117,8 +118,8 @@ async function loadReport() {
         filter: {
           _and: [
             { status: { _neq: 'archived' } },
-            { data_entrada: { _gte: `${dateFrom.value}T00:00:00` } },
-            { data_entrada: { _lte: `${dateTo.value}T23:59:59` } },
+            { data_entrada: { _gte: dayStartBRT(dateFrom.value) } },
+            { data_entrada: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         limit: -1,
@@ -129,8 +130,8 @@ async function loadReport() {
         filter: {
           _and: [
             { status: { _neq: 'archived' } },
-            { data_pagamento: { _gte: `${dateFrom.value}T00:00:00` } },
-            { data_pagamento: { _lte: `${dateTo.value}T23:59:59` } },
+            { data_pagamento: { _gte: dayStartBRT(dateFrom.value) } },
+            { data_pagamento: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         limit: -1,
@@ -141,8 +142,8 @@ async function loadReport() {
         filter: {
           _and: [
             { status: { _eq: 'published' } },
-            { date_created: { _gte: `${dateFrom.value}T00:00:00` } },
-            { date_created: { _lte: `${dateTo.value}T23:59:59` } },
+            { date_created: { _gte: dayStartBRT(dateFrom.value) } },
+            { date_created: { _lte: dayEndBRT(dateTo.value) } },
           ],
         },
         limit: -1,
@@ -346,10 +347,10 @@ const receitasByMethod = computed(() => {
 
 /** Totais por coluna de pagamento. */
 const grandByMethod = computed(() => ({
-  dinheiro: pdvByMethod.value.dinheiro + ofertaByMethod.value.dinheiro + dizimoByMethod.value.dinheiro + adsByMethod.value.dinheiro + receitasByMethod.value.dinheiro,
-  pix: pdvByMethod.value.pix + ofertaByMethod.value.pix + dizimoByMethod.value.pix + adsByMethod.value.pix + receitasByMethod.value.pix,
-  cartao: pdvByMethod.value.cartao + ofertaByMethod.value.cartao + dizimoByMethod.value.cartao + adsByMethod.value.cartao + receitasByMethod.value.cartao,
-  total: pdvByMethod.value.total + ofertaByMethod.value.total + dizimoByMethod.value.total + adsByMethod.value.total + receitasByMethod.value.total,
+  dinheiro: pdvByMethod.value.dinheiro + ofertaByMethod.value.dinheiro + dizimoByMethod.value.dinheiro + (showAnunciantes.value ? adsByMethod.value.dinheiro : 0) + receitasByMethod.value.dinheiro,
+  pix: pdvByMethod.value.pix + ofertaByMethod.value.pix + dizimoByMethod.value.pix + (showAnunciantes.value ? adsByMethod.value.pix : 0) + receitasByMethod.value.pix,
+  cartao: pdvByMethod.value.cartao + ofertaByMethod.value.cartao + dizimoByMethod.value.cartao + (showAnunciantes.value ? adsByMethod.value.cartao : 0) + receitasByMethod.value.cartao,
+  total: pdvByMethod.value.total + ofertaByMethod.value.total + dizimoByMethod.value.total + (showAnunciantes.value ? adsByMethod.value.total : 0) + receitasByMethod.value.total,
 }))
 
 const totalExpenses = computed(() =>
@@ -361,7 +362,7 @@ const totalWithdrawals = computed(() =>
 )
 
 const saldoLiquido = computed(() =>
-  grandByMethod.value.total - totalExpenses.value - totalWithdrawals.value - totalPermuta.value,
+  grandByMethod.value.total - totalExpenses.value - totalWithdrawals.value - (showAnunciantes.value ? totalPermuta.value : 0),
 )
 
 const responsavelNome = computed(() =>
@@ -454,6 +455,18 @@ function printPage() {
             <v-btn color="primary" prepend-icon="mdi-magnify" block :loading="loading" @click="loadReport">
               Carregar
             </v-btn>
+          </v-col>
+        </v-row>
+        <v-row class="mt-0">
+          <v-col cols="12" sm="4">
+            <v-switch
+              v-model="showAnunciantes"
+              label="Incluir anunciantes"
+              color="primary"
+              density="compact"
+              hide-details
+              class="no-print"
+            />
           </v-col>
         </v-row>
       </v-card-text>
@@ -573,7 +586,7 @@ function printPage() {
                   {{ formatCurrency(dizimoByMethod.total) }}
                 </td>
               </tr>
-              <tr class="data-row">
+              <tr v-if="showAnunciantes" class="data-row">
                 <td class="font-weight-medium">
                   <v-icon size="16" icon="mdi-bullhorn-outline" class="me-1 no-print" />
                   Anúncios ({{ adsItems.length }}× — {{ adsItems.filter(a => a.status_pagamento === 'pago' || a.status_pagamento === 'permuta').length }} pago(s))
@@ -678,18 +691,20 @@ function printPage() {
                   {{ formatCurrency(totalWithdrawals) }}
                 </td>
               </tr>
-              <tr v-for="ad in adsPermuta" :key="ad.id" class="data-row">
-                <td class="font-weight-medium">
-                  <v-icon size="16" icon="mdi-swap-horizontal" class="me-1 no-print" />
-                  Permuta — {{ ad.anunciante }}
-                  <span v-if="ad.permuta_descricao" class="text-caption text-medium-emphasis ms-1">
-                    ({{ ad.permuta_descricao }})
-                  </span>
-                </td>
-                <td class="col-money text-end text-error font-weight-bold">
-                  {{ formatCurrency(Number(ad.valor_pago || 0)) }}
-                </td>
-              </tr>
+              <template v-if="showAnunciantes">
+                <tr v-for="ad in adsPermuta" :key="ad.id" class="data-row">
+                  <td class="font-weight-medium">
+                    <v-icon size="16" icon="mdi-swap-horizontal" class="me-1 no-print" />
+                    Permuta — {{ ad.anunciante }}
+                    <span v-if="ad.permuta_descricao" class="text-caption text-medium-emphasis ms-1">
+                      ({{ ad.permuta_descricao }})
+                    </span>
+                  </td>
+                  <td class="col-money text-end text-error font-weight-bold">
+                    {{ formatCurrency(Number(ad.valor_pago || 0)) }}
+                  </td>
+                </tr>
+              </template>
             </tbody>
             <tfoot>
               <tr class="total-row">
@@ -697,7 +712,7 @@ function printPage() {
                   Total de Saídas
                 </td>
                 <td class="col-money text-end font-weight-black text-error-print">
-                  {{ formatCurrency(totalExpenses + totalWithdrawals + totalPermuta) }}
+                  {{ formatCurrency(totalExpenses + totalWithdrawals + (showAnunciantes ? totalPermuta : 0)) }}
                 </td>
               </tr>
             </tfoot>
@@ -723,10 +738,10 @@ function printPage() {
               </tr>
               <tr>
                 <td class="font-weight-medium text-error">
-                  - DESPESAS, SANGRIAS E PERMUTAS R$
+                  - DESPESAS{{ showAnunciantes ? ', SANGRIAS E PERMUTAS' : ' E SANGRIAS' }} R$
                 </td>
                 <td class="text-end font-weight-bold text-error-print">
-                  {{ formatCurrency(totalExpenses + totalWithdrawals + totalPermuta) }}
+                  {{ formatCurrency(totalExpenses + totalWithdrawals + (showAnunciantes ? totalPermuta : 0)) }}
                 </td>
               </tr>
               <tr class="total-row saldo-row">
