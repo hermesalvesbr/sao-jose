@@ -71,6 +71,7 @@ async function loadReport() {
         fields: [
           'id',
           'total_amount',
+          'discount_amount',
           'payment_method',
           'sale_status',
           'created_at',
@@ -141,6 +142,7 @@ interface OperatorRow {
   pix: number
   cartao: number
   total: number
+  desconto: number
 }
 
 const salesByOperator = computed((): OperatorRow[] => {
@@ -152,11 +154,12 @@ const salesByOperator = computed((): OperatorRow[] => {
     const opName: string = typeof op === 'object' && op ? op.name : 'Sem Operador'
 
     if (!map.has(opId)) {
-      map.set(opId, { id: opId, name: opName, dinheiro: 0, pix: 0, cartao: 0, total: 0 })
+      map.set(opId, { id: opId, name: opName, dinheiro: 0, pix: 0, cartao: 0, total: 0, desconto: 0 })
     }
 
     const row = map.get(opId)!
     const amount = Number(sale.total_amount || 0)
+    const discount = Number(sale.discount_amount || 0)
     const method: string = sale.payment_method ?? 'dinheiro'
 
     if (method === 'dinheiro')
@@ -167,6 +170,7 @@ const salesByOperator = computed((): OperatorRow[] => {
       row.cartao += amount
 
     row.total += amount
+    row.desconto += discount
   }
 
   return [...map.values()].toSorted((a, b) => a.name.localeCompare(b.name))
@@ -177,6 +181,7 @@ const grandTotal = computed(() => ({
   pix: salesByOperator.value.reduce((s, r) => s + r.pix, 0),
   cartao: salesByOperator.value.reduce((s, r) => s + r.cartao, 0),
   total: salesByOperator.value.reduce((s, r) => s + r.total, 0),
+  desconto: salesByOperator.value.reduce((s, r) => s + r.desconto, 0),
 }))
 
 const totalExpenses = computed(() =>
@@ -331,11 +336,14 @@ function printReport() {
                 <th class="col-money text-end">
                   TOTAL R$
                 </th>
+                <th v-if="grandTotal.desconto > 0" class="col-money text-end">
+                  DESCONTO
+                </th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="salesByOperator.length === 0">
-                <td colspan="5" class="text-center pa-6 text-medium-emphasis">
+                <td :colspan="grandTotal.desconto > 0 ? 6 : 5" class="text-center pa-6 text-medium-emphasis">
                   Nenhuma venda finalizada no período informado
                 </td>
               </tr>
@@ -355,10 +363,13 @@ function printReport() {
                 <td class="col-money text-end font-weight-bold">
                   {{ formatCurrency(row.total) }}
                 </td>
+                <td v-if="grandTotal.desconto > 0" class="col-money text-end text-medium-emphasis">
+                  {{ row.desconto > 0 ? formatCurrency(row.desconto) : '—' }}
+                </td>
               </tr>
               <!-- Empty rows to match paper form aesthetic on print -->
               <tr v-for="n in Math.max(0, 8 - salesByOperator.length)" :key="`empty-${n}`" class="empty-row">
-                <td colspan="5">
+                <td :colspan="grandTotal.desconto > 0 ? 6 : 5">
 &nbsp;
                 </td>
               </tr>
@@ -379,6 +390,9 @@ function printReport() {
                 </td>
                 <td class="text-end font-weight-black text-success-print">
                   {{ formatCurrency(grandTotal.total) }}
+                </td>
+                <td v-if="grandTotal.desconto > 0" class="text-end font-weight-bold text-warning">
+                  {{ formatCurrency(grandTotal.desconto) }}
                 </td>
               </tr>
             </tfoot>
