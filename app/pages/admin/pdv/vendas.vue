@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useDisplay } from 'vuetify'
 
 definePageMeta({ layout: 'admin' })
 
-const { fetchSales, createSale, createSaleItem, fetchProducts, updateProduct, updateSale, fetchSaleItems } = usePdv()
+const { mobile } = useDisplay()
+
+const { fetchSales, createSale, createSaleItem, fetchProducts, updateProduct, updateSale, fetchSaleItems, fetchOperators } = usePdv()
 
 const items = ref<any[]>([])
 const products = ref<any[]>([])
@@ -19,6 +22,16 @@ const detailSale = ref<any>(null)
 const detailItems = ref<any[]>([])
 const detailLoading = ref(false)
 
+// ─── Operator transfer state ──────────────────────────────────────────────────
+const operators = ref<any[]>([])
+const transferOperatorId = ref<string | null>(null)
+const transferring = ref(false)
+const detailPaymentMethod = ref<string>('')
+const savingPayment = ref(false)
+const snackbar = ref(false)
+const snackbarMsg = ref('')
+const snackbarColor = ref<'success' | 'error'>('success')
+
 const cart = ref<any[]>([])
 const selectedProduct = ref(null)
 const saleQuantity = ref(1)
@@ -26,7 +39,7 @@ const paymentMethod = ref('dinheiro')
 const saleObservation = ref('')
 
 const headers = [
-  { title: 'Venda', key: 'id' },
+  { title: 'Operador', key: 'operator_id' },
   { title: 'Data/Hora', key: 'created_at' },
   { title: 'Status', key: 'sale_status', align: 'center' as const },
   { title: 'Pagamento', key: 'payment_method' },
@@ -59,12 +72,14 @@ const filteredProducts = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    const [salesRes, prodRes] = await Promise.all([
-      fetchSales({ limit: -1, sort: ['-date_created'] }),
+    const [salesRes, prodRes, opsRes] = await Promise.all([
+      fetchSales({ limit: -1, sort: ['-date_created'], fields: ['*', 'operator_id.id', 'operator_id.name'] }),
       fetchProducts({ limit: -1, filter: { active: { _eq: true } } }),
+      fetchOperators({ limit: -1, filter: { active: { _eq: true } }, sort: ['name'] }),
     ])
     items.value = salesRes || []
     products.value = prodRes || []
+    operators.value = (opsRes || []) as any[]
   }
   catch (error) {
     console.error(error)
@@ -208,6 +223,52 @@ async function updateSaleStatus(item: any, newStatus: string) {
   }
 }
 
+async function confirmTransfer() {
+  if (!detailSale.value || !transferOperatorId.value)
+    return
+  transferring.value = true
+  try {
+    await updateSale(detailSale.value.id, { operator_id: transferOperatorId.value })
+    snackbarMsg.value = 'Operador transferido com sucesso!'
+    snackbarColor.value = 'success'
+    snackbar.value = true
+    await loadData()
+    detailSale.value = items.value.find(s => s.id === detailSale.value?.id) ?? detailSale.value
+  }
+  catch (err) {
+    console.error(err)
+    snackbarMsg.value = 'Erro ao transferir operador'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  }
+  finally {
+    transferring.value = false
+  }
+}
+
+async function confirmPaymentChange() {
+  if (!detailSale.value || !detailPaymentMethod.value)
+    return
+  savingPayment.value = true
+  try {
+    await updateSale(detailSale.value.id, { payment_method: detailPaymentMethod.value })
+    snackbarMsg.value = 'Forma de pagamento atualizada!'
+    snackbarColor.value = 'success'
+    snackbar.value = true
+    await loadData()
+    detailSale.value = items.value.find(s => s.id === detailSale.value?.id) ?? detailSale.value
+  }
+  catch (err) {
+    console.error(err)
+    snackbarMsg.value = 'Erro ao atualizar pagamento'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  }
+  finally {
+    savingPayment.value = false
+  }
+}
+
 function formatDate(dateStr: string) {
   if (!dateStr)
     return '-'
@@ -260,6 +321,8 @@ async function openSaleDetail(sale: any) {
   detailItems.value = []
   detailDialog.value = true
   detailLoading.value = true
+  transferOperatorId.value = typeof sale.operator_id === 'object' ? (sale.operator_id?.id ?? null) : (sale.operator_id ?? null)
+  detailPaymentMethod.value = sale.payment_method ?? ''
   try {
     const res = await fetchSaleItems({
       fields: [
@@ -352,10 +415,13 @@ async function openSaleDetail(sale: any) {
         hover
         items-per-page="10"
       >
-        <template #[`item.id`]="{ item }">
-          <span class="text-caption font-weight-medium text-medium-emphasis">
+        <template #[`item.operator_id`]="{ item }">
+          <div class="text-body-2 font-weight-medium">
+            {{ typeof item.operator_id === 'object' ? (item.operator_id?.name ?? '–') : (item.operator_id ?? '–') }}
+          </div>
+          <div class="text-caption text-medium-emphasis">
             #{{ item.id?.substring(0, 8) }}
-          </span>
+          </div>
         </template>
 
         <template #[`item.created_at`]="{ item }">
@@ -657,123 +723,201 @@ async function openSaleDetail(sale: any) {
     </v-dialog>
 
     <!-- Sale Detail Dialog -->
-    <v-dialog v-model="detailDialog" max-width="600px">
-      <v-card rounded="xl">
-        <v-card-title class="d-flex align-center justify-space-between pa-4">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-receipt-text-outline" color="primary" class="me-2" />
-            <span class="text-subtitle-1 font-weight-bold">
-              Venda #{{ detailSale?.id?.substring(0, 8) }}
-            </span>
-          </div>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="detailDialog = false" />
-        </v-card-title>
+    <v-dialog v-model="detailDialog" max-width="600px" :fullscreen="mobile">
+      <v-card :rounded="mobile ? '0' : 'xl'" class="d-flex flex-column" style="max-height: 100dvh;">
+        <!-- Toolbar header -->
+        <v-toolbar density="compact" color="surface" border="b">
+          <v-icon icon="mdi-receipt-text-outline" color="primary" class="ms-3 me-2" />
+          <v-toolbar-title>
+            <span class="text-subtitle-1 font-weight-bold me-2">Venda #{{ detailSale?.id?.substring(0, 8) }}</span>
+            <v-chip
+              v-if="detailSale"
+              :color="getStatusColor(detailSale.sale_status)"
+              size="x-small"
+              variant="tonal"
+              label
+            >
+              {{ getStatusLabel(detailSale.sale_status) }}
+            </v-chip>
+          </v-toolbar-title>
+          <template #append>
+            <v-btn icon="mdi-close" variant="text" @click="detailDialog = false" />
+          </template>
+        </v-toolbar>
 
-        <v-divider />
-
-        <v-card-text class="pa-4">
-          <!-- Sale info -->
-          <div class="d-flex flex-wrap ga-4 mb-4">
-            <div>
+        <!-- Scrollable body -->
+        <v-card-text class="overflow-y-auto pa-4" style="flex: 1 1 0; min-height: 0;">
+          <!-- Info grid 2-col -->
+          <v-row dense class="mb-2">
+            <v-col cols="6">
               <div class="text-caption text-medium-emphasis">
                 Data/Hora
               </div>
               <div class="text-body-2 font-weight-medium">
                 {{ formatDate(detailSale?.created_at || detailSale?.date_created) }}
               </div>
-            </div>
-            <div>
+            </v-col>
+            <v-col cols="6">
               <div class="text-caption text-medium-emphasis">
-                Pagamento
+                Total
+              </div>
+              <div class="text-body-1 font-weight-bold text-success">
+                {{ formatCurrency(detailSale?.total_amount) }}
+                <span v-if="Number(detailSale?.discount_amount) > 0" class="text-caption text-error ms-1">
+                  (-{{ formatCurrency(detailSale?.discount_amount) }})
+                </span>
+              </div>
+            </v-col>
+            <v-col cols="6" class="mt-2">
+              <div class="text-caption text-medium-emphasis">
+                Pagamento atual
               </div>
               <div class="d-flex align-center">
-                <v-icon :icon="getPaymentIcon(detailSale?.payment_method)" size="16" class="me-1" color="secondary" />
+                <v-icon :icon="getPaymentIcon(detailSale?.payment_method)" size="14" class="me-1" color="secondary" />
                 <span class="text-body-2 font-weight-medium">{{ getPaymentLabel(detailSale?.payment_method) }}</span>
               </div>
-            </div>
-            <div>
+            </v-col>
+            <v-col cols="6" class="mt-2">
               <div class="text-caption text-medium-emphasis">
-                Status
+                Operador atual
               </div>
-              <v-chip
-                :color="getStatusColor(detailSale?.sale_status)"
-                size="x-small"
-                variant="tonal"
-                label
-              >
-                {{ getStatusLabel(detailSale?.sale_status) }}
-              </v-chip>
-            </div>
+              <div class="text-body-2 font-weight-medium">
+                {{ typeof detailSale?.operator_id === 'object' ? (detailSale?.operator_id?.name ?? '–') : (detailSale?.operator_id ? '...' : '–') }}
+              </div>
+            </v-col>
+          </v-row>
+
+          <v-divider class="mb-4" />
+
+          <!-- Items -->
+          <div class="text-overline text-medium-emphasis mb-2">
+            Itens da venda
+          </div>
+          <v-progress-linear v-if="detailLoading" indeterminate color="primary" class="mb-3" rounded />
+          <div v-if="!detailLoading && detailItems.length > 0" class="overflow-x-auto">
+            <table class="detail-table">
+              <thead>
+                <tr>
+                  <th class="text-start">
+                    Produto
+                  </th>
+                  <th class="text-end">
+                    Qtd
+                  </th>
+                  <th class="text-end">
+                    Unit.
+                  </th>
+                  <th class="text-end">
+                    Subtotal
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="si in detailItems" :key="si.id">
+                  <td class="font-weight-medium">
+                    {{ typeof si.product_id === 'object' ? si.product_id?.name : 'Produto' }}
+                  </td>
+                  <td class="text-end">
+                    {{ si.quantity }}
+                  </td>
+                  <td class="text-end">
+                    {{ formatCurrency(si.unit_price) }}
+                  </td>
+                  <td class="text-end font-weight-bold">
+                    {{ formatCurrency(si.total_price) }}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="font-weight-black">
+                  <td colspan="3" class="text-end">
+                    Total
+                  </td>
+                  <td class="text-end">
+                    {{ formatCurrency(detailSale?.total_amount) }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div v-if="!detailLoading && detailItems.length === 0" class="text-center pa-4 text-medium-emphasis text-body-2">
+            Nenhum item encontrado para esta venda
           </div>
 
-          <!-- Items table -->
-          <v-progress-linear v-if="detailLoading" indeterminate color="primary" class="mb-4" />
+          <v-divider class="my-4" />
 
-          <table v-if="!detailLoading && detailItems.length > 0" class="detail-table">
-            <thead>
-              <tr>
-                <th class="text-start">
-                  Produto
-                </th>
-                <th class="text-start">
-                  Categoria
-                </th>
-                <th class="text-end">
-                  Qtd
-                </th>
-                <th class="text-end">
-                  Unitário
-                </th>
-                <th class="text-end">
-                  Subtotal
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="si in detailItems" :key="si.id">
-                <td class="font-weight-medium">
-                  {{ typeof si.product_id === 'object' ? si.product_id?.name : 'Produto' }}
-                </td>
-                <td class="text-medium-emphasis text-body-2">
-                  {{ typeof si.product_id === 'object' && si.product_id?.category_id ? (typeof si.product_id.category_id === 'object' ? si.product_id.category_id.name : '') : '' }}
-                </td>
-                <td class="text-end">
-                  {{ si.quantity }}
-                </td>
-                <td class="text-end">
-                  {{ formatCurrency(si.unit_price) }}
-                </td>
-                <td class="text-end font-weight-bold">
-                  {{ formatCurrency(si.total_price) }}
-                </td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="font-weight-black">
-                <td colspan="4" class="text-end">
-                  Total
-                </td>
-                <td class="text-end">
-                  {{ formatCurrency(detailSale?.total_amount) }}
-                </td>
-              </tr>
-              <tr v-if="Number(detailSale?.discount_amount) > 0" class="text-error">
-                <td colspan="4" class="text-end">
-                  Desconto
-                </td>
-                <td class="text-end">
-                  {{ formatCurrency(detailSale?.discount_amount) }}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <!-- Edit section -->
+          <div class="text-overline text-medium-emphasis mb-3">
+            Editar venda
+          </div>
 
-          <div v-if="!detailLoading && detailItems.length === 0" class="text-center pa-6 text-medium-emphasis">
-            Nenhum item encontrado para esta venda
+          <!-- Payment method change -->
+          <div class="text-caption font-weight-medium mb-2">
+            Forma de Pagamento
+          </div>
+          <v-row dense class="mb-2">
+            <v-col v-for="pm in paymentMethods" :key="pm.value" cols="6">
+              <v-btn
+                variant="outlined"
+                block
+                :color="detailPaymentMethod === pm.value ? pm.color : 'grey'"
+                :class="{ 'border-2': detailPaymentMethod === pm.value }"
+                size="small"
+                class="justify-start"
+                @click="detailPaymentMethod = pm.value"
+              >
+                <v-icon :icon="pm.icon" start size="16" />
+                {{ pm.title }}
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-btn
+            block
+            variant="tonal"
+            color="secondary"
+            size="small"
+            prepend-icon="mdi-credit-card-sync-outline"
+            :loading="savingPayment"
+            :disabled="!detailPaymentMethod || detailPaymentMethod === detailSale?.payment_method"
+            class="mb-5"
+            @click="confirmPaymentChange"
+          >
+            Salvar forma de pagamento
+          </v-btn>
+
+          <!-- Operator transfer -->
+          <div class="text-caption font-weight-medium mb-2">
+            Transferir para outro operador
+          </div>
+          <div class="d-flex align-center ga-2">
+            <v-select
+              v-model="transferOperatorId"
+              :items="operators"
+              item-title="name"
+              item-value="id"
+              label="Selecionar operador"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              class="flex-grow-1"
+            />
+            <v-btn
+              color="primary"
+              variant="tonal"
+              :loading="transferring"
+              :disabled="!transferOperatorId || transferOperatorId === (typeof detailSale?.operator_id === 'object' ? detailSale?.operator_id?.id : detailSale?.operator_id)"
+              icon="mdi-account-switch"
+              @click="confirmTransfer"
+            />
           </div>
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="bottom end">
+      {{ snackbarMsg }}
+    </v-snackbar>
   </v-container>
 </template>
 
