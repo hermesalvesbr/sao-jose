@@ -42,8 +42,8 @@ export interface AdsNovenario {
   status_pagamento: string;
   /** Meio de pagamento utilizado */
   meio_pagamento: string;
-  /** Descrição da permuta realizada */
-  permuta_descricao: string | null;
+  /** Descrição da permuta realizada (obrigatório quando status_pagamento = permuta) */
+  permuta_descricao: string;
 }
 
 export interface Agenda {
@@ -327,10 +327,19 @@ export interface Receita {
   observacao: string;
   /** Paroquiano responsável pelo recebimento */
   responsavel_id: string | Catolico;
+  documentos: number[] | ReceitasFile[];
 }
 
 export interface ReceitasComprovante {
   id: number;
+  receita_id: string;
+  directus_files_id: string;
+}
+
+export interface ReceitasFile {
+  id: number;
+  receitas_id: string | Receita;
+  directus_files_id: string | DirectusFile;
 }
 
 export interface DirectusUser {
@@ -434,6 +443,7 @@ export interface ApiCollections {
   pdv_schedules: PdvSchedule[];
   receitas: Receita[];
   receitas_comprovantes: ReceitasComprovante[];
+  receitas_files: ReceitasFile[];
   directus_users: DirectusUser[];
   directus_files: DirectusFile[];
 }

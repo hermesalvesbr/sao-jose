@@ -6,10 +6,13 @@
  * Filtros: tipo, período, meio de pagamento.
  * UX: simples, mobile-first, ícones e cores por tipo para facilitar identificação.
  */
+import { readItems } from '@directus/sdk'
 import { formatCurrency, formatDate, toLocalISO } from '~/composables/usePdvReport'
 import { MEIO_PAGAMENTO_LABELS, TIPO_RECEITA_LABELS } from '~/composables/useReceitas'
 
 definePageMeta({ layout: 'admin' })
+
+const directusUrl = useRuntimeConfig().public.directus.url as string
 
 const { fetchReceitas, arquivarReceita, loading } = useReceitas()
 
@@ -46,6 +49,7 @@ const TIPO_META: Record<string, { icon: string, color: string }> = {
   taxa: { icon: 'mdi-ticket-outline', color: 'info' },
   subsidio: { icon: 'mdi-bank-transfer-in', color: 'secondary' },
   reembolso: { icon: 'mdi-cash-refund', color: 'primary' },
+  intencoes: { icon: 'mdi-candelabra', color: 'purple' },
   outro: { icon: 'mdi-dots-horizontal-circle-outline', color: 'default' },
 }
 
@@ -86,7 +90,35 @@ const totalFiltrado = computed(() =>
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 async function loadData() {
-  items.value = await fetchReceitas()
+  const receitas = await fetchReceitas()
+
+  // Load comprovantes
+  try {
+    const c = await useAuth().getAuthClient()
+    const compRes = await c.request(readItems('receitas_files', {
+      filter: { receitas_id: { _in: receitas.map(r => r.id) } },
+      fields: ['id', 'receitas_id', 'directus_files_id.id', 'directus_files_id.title', 'directus_files_id.type'],
+      limit: -1,
+    } as never)) as any[]
+
+    const compByReceita = new Map<string, any[]>()
+    for (const comp of compRes) {
+      const rId = typeof comp.receitas_id === 'object' ? comp.receitas_id?.id : comp.receitas_id
+      if (!compByReceita.has(rId))
+        compByReceita.set(rId, [])
+      compByReceita.get(rId)!.push(comp)
+    }
+
+    for (const r of receitas)
+      (r as any)._comprovantes = compByReceita.get(r.id) || []
+  }
+  catch (e) {
+    console.error('Erro ao carregar comprovantes:', e)
+    for (const r of receitas)
+      (r as any)._comprovantes = []
+  }
+
+  items.value = receitas
 }
 
 onMounted(loadData)
@@ -149,6 +181,25 @@ function meioLabel(meio: string) {
 
 function tipoMeta(tipo: string): { icon: string, color: string } {
   return TIPO_META[tipo] ?? { icon: 'mdi-dots-horizontal-circle-outline', color: 'default' }
+}
+
+function getComprovantes(item: any): { id: string, title: string, type: string }[] {
+  if (!Array.isArray(item._comprovantes))
+    return []
+  return item._comprovantes
+    .map((c: any) => {
+      const f = typeof c.directus_files_id === 'object' ? c.directus_files_id : null
+      return f ? { id: f.id, title: f.title || 'Arquivo', type: f.type || '' } : null
+    })
+    .filter(Boolean) as { id: string, title: string, type: string }[]
+}
+
+function fileIcon(mime: string): string {
+  if (mime.startsWith('image/'))
+    return 'mdi-file-image-outline'
+  if (mime === 'application/pdf')
+    return 'mdi-file-pdf-box'
+  return 'mdi-file-document-outline'
 }
 </script>
 
@@ -298,6 +349,21 @@ function tipoMeta(tipo: string): { icon: string, color: string } {
             </div>
             <div v-if="item.observacao" class="text-caption text-medium-emphasis text-truncate" style="max-width: 240px;">
               {{ item.observacao }}
+            </div>
+            <div v-if="getComprovantes(item).length" class="d-flex flex-wrap ga-1 mt-1">
+              <v-chip
+                v-for="file in getComprovantes(item)"
+                :key="file.id"
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                label
+                :prepend-icon="fileIcon(file.type)"
+                :href="`${directusUrl}/assets/${file.id}`"
+                target="_blank"
+              >
+                {{ file.title }}
+              </v-chip>
             </div>
           </div>
         </template>

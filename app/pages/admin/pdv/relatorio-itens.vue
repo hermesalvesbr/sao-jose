@@ -339,6 +339,26 @@ function isPointExpanded(id: string) {
 function printPage() {
   window.print()
 }
+
+// ─── Ranking filters ───────────────────────────────────────────────────────────────
+const rankingCategoryFilter = ref<string | null>(null)
+const rankingSearch = ref('')
+
+const rankingCategoryOptions = computed(() =>
+  categoryRows.value.map(c => ({ title: c.name, value: c.id })),
+)
+
+const filteredProductRows = computed(() => {
+  let rows = productRows.value
+  if (rankingCategoryFilter.value) {
+    rows = rows.filter(r => r.categoryId === rankingCategoryFilter.value)
+  }
+  if (rankingSearch.value) {
+    const term = rankingSearch.value.toLowerCase()
+    rows = rows.filter(r => r.name.toLowerCase().includes(term))
+  }
+  return rows
+})
 </script>
 
 <template>
@@ -624,7 +644,32 @@ function printPage() {
           <span class="text-subtitle-1 font-weight-bold">Ranking de Produtos</span>
         </v-card-title>
         <PrintReportSectionTitle title="Ranking de produtos" />
-
+        <!-- Ranking filters (screen only) -->
+        <v-row class="px-4 mb-2 no-print" align="center">
+          <v-col cols="12" sm="5">
+            <v-text-field
+              v-model="rankingSearch"
+              prepend-inner-icon="mdi-magnify"
+              label="Buscar produto..."
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-select
+              v-model="rankingCategoryFilter"
+              :items="rankingCategoryOptions"
+              label="Filtrar categoria"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              prepend-inner-icon="mdi-tag-outline"
+            />
+          </v-col>
+        </v-row>
         <div class="pa-4">
           <table class="report-table">
             <thead>
@@ -650,13 +695,13 @@ function printPage() {
               </tr>
             </thead>
             <tbody>
-              <tr v-if="productRows.length === 0">
+              <tr v-if="filteredProductRows.length === 0">
                 <td colspan="6" class="text-center pa-6 text-medium-emphasis">
                   Nenhum dado disponível
                 </td>
               </tr>
               <tr
-                v-for="(prod, idx) in productRows"
+                v-for="(prod, idx) in filteredProductRows"
                 :key="prod.id"
                 class="data-row"
               >

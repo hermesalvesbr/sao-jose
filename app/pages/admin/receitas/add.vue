@@ -86,14 +86,8 @@ async function submit() {
     if (form.value.responsavel_id)
       payload.responsavel_id = form.value.responsavel_id
 
-    const created = await salvarReceita(payload as any)
-    snackbarMsg.value = 'Receita salva! Você pode agora anexar comprovantes.'
-    snackbarColor.value = 'success'
-    snackbar.value = true
-    // redireciona para edição onde o usuário pode fazer upload de comprovantes
-    setTimeout(() => {
-      navigateTo(`/admin/receitas/${(created as any).id}`)
-    }, 800)
+    await salvarReceita(payload as any)
+    await navigateTo('/admin/receitas')
   }
   catch {
     snackbarMsg.value = 'Erro ao salvar receita. Tente novamente.'

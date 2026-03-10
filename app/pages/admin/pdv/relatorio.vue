@@ -141,6 +141,9 @@ interface OperatorRow {
   pix: number
   cartao: number
   total: number
+  desconto_dinheiro: number
+  desconto_pix: number
+  desconto_cartao: number
   desconto: number
 }
 
@@ -153,7 +156,7 @@ const salesByOperator = computed((): OperatorRow[] => {
     const opName: string = typeof op === 'object' && op ? op.name : 'Sem Operador'
 
     if (!map.has(opId)) {
-      map.set(opId, { id: opId, name: opName, dinheiro: 0, pix: 0, cartao: 0, total: 0, desconto: 0 })
+      map.set(opId, { id: opId, name: opName, dinheiro: 0, pix: 0, cartao: 0, total: 0, desconto_dinheiro: 0, desconto_pix: 0, desconto_cartao: 0, desconto: 0 })
     }
 
     const row = map.get(opId)!
@@ -161,12 +164,18 @@ const salesByOperator = computed((): OperatorRow[] => {
     const discount = Number(sale.discount_amount || 0)
     const method: string = sale.payment_method ?? 'dinheiro'
 
-    if (method === 'dinheiro')
+    if (method === 'dinheiro') {
       row.dinheiro += amount
-    else if (method === 'pix')
+      row.desconto_dinheiro += discount
+    }
+    else if (method === 'pix') {
       row.pix += amount
-    else
+      row.desconto_pix += discount
+    }
+    else {
       row.cartao += amount
+      row.desconto_cartao += discount
+    }
 
     row.total += amount
     row.desconto += discount
@@ -180,6 +189,9 @@ const grandTotal = computed(() => ({
   pix: salesByOperator.value.reduce((s, r) => s + r.pix, 0),
   cartao: salesByOperator.value.reduce((s, r) => s + r.cartao, 0),
   total: salesByOperator.value.reduce((s, r) => s + r.total, 0),
+  desconto_dinheiro: salesByOperator.value.reduce((s, r) => s + r.desconto_dinheiro, 0),
+  desconto_pix: salesByOperator.value.reduce((s, r) => s + r.desconto_pix, 0),
+  desconto_cartao: salesByOperator.value.reduce((s, r) => s + r.desconto_cartao, 0),
   desconto: salesByOperator.value.reduce((s, r) => s + r.desconto, 0),
 }))
 
@@ -335,14 +347,11 @@ function printReport() {
                 <th class="col-money text-end">
                   TOTAL R$
                 </th>
-                <th v-if="grandTotal.desconto > 0" class="col-money text-end">
-                  DESCONTO
-                </th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="salesByOperator.length === 0">
-                <td :colspan="grandTotal.desconto > 0 ? 6 : 5" class="text-center pa-6 text-medium-emphasis">
+                <td colspan="5" class="text-center pa-6 text-medium-emphasis">
                   Nenhuma venda finalizada no período informado
                 </td>
               </tr>
@@ -351,24 +360,30 @@ function printReport() {
                   {{ row.name }}
                 </td>
                 <td class="col-money text-end">
-                  {{ row.dinheiro > 0 ? formatCurrency(row.dinheiro) : '—' }}
+                  <div>{{ row.dinheiro > 0 ? formatCurrency(row.dinheiro) : '—' }}</div>
+                  <div v-if="row.desconto_dinheiro > 0" class="text-caption text-error">
+                    desc. {{ formatCurrency(row.desconto_dinheiro) }}
+                  </div>
                 </td>
                 <td class="col-money text-end">
-                  {{ row.pix > 0 ? formatCurrency(row.pix) : '—' }}
+                  <div>{{ row.pix > 0 ? formatCurrency(row.pix) : '—' }}</div>
+                  <div v-if="row.desconto_pix > 0" class="text-caption text-error">
+                    desc. {{ formatCurrency(row.desconto_pix) }}
+                  </div>
                 </td>
                 <td class="col-money text-end">
-                  {{ row.cartao > 0 ? formatCurrency(row.cartao) : '—' }}
+                  <div>{{ row.cartao > 0 ? formatCurrency(row.cartao) : '—' }}</div>
+                  <div v-if="row.desconto_cartao > 0" class="text-caption text-error">
+                    desc. {{ formatCurrency(row.desconto_cartao) }}
+                  </div>
                 </td>
                 <td class="col-money text-end font-weight-bold">
                   {{ formatCurrency(row.total) }}
                 </td>
-                <td v-if="grandTotal.desconto > 0" class="col-money text-end text-medium-emphasis">
-                  {{ row.desconto > 0 ? formatCurrency(row.desconto) : '—' }}
-                </td>
               </tr>
               <!-- Empty rows to match paper form aesthetic on print -->
               <tr v-for="n in Math.max(0, 8 - salesByOperator.length)" :key="`empty-${n}`" class="empty-row">
-                <td :colspan="grandTotal.desconto > 0 ? 6 : 5">
+                <td colspan="5">
 &nbsp;
                 </td>
               </tr>
@@ -379,19 +394,25 @@ function printReport() {
                   Total Geral
                 </td>
                 <td class="text-end font-weight-bold">
-                  {{ grandTotal.dinheiro > 0 ? formatCurrency(grandTotal.dinheiro) : '—' }}
+                  <div>{{ grandTotal.dinheiro > 0 ? formatCurrency(grandTotal.dinheiro) : '—' }}</div>
+                  <div v-if="grandTotal.desconto_dinheiro > 0" class="text-caption text-error">
+                    desc. {{ formatCurrency(grandTotal.desconto_dinheiro) }}
+                  </div>
                 </td>
                 <td class="text-end font-weight-bold">
-                  {{ grandTotal.pix > 0 ? formatCurrency(grandTotal.pix) : '—' }}
+                  <div>{{ grandTotal.pix > 0 ? formatCurrency(grandTotal.pix) : '—' }}</div>
+                  <div v-if="grandTotal.desconto_pix > 0" class="text-caption text-error">
+                    desc. {{ formatCurrency(grandTotal.desconto_pix) }}
+                  </div>
                 </td>
                 <td class="text-end font-weight-bold">
-                  {{ grandTotal.cartao > 0 ? formatCurrency(grandTotal.cartao) : '—' }}
+                  <div>{{ grandTotal.cartao > 0 ? formatCurrency(grandTotal.cartao) : '—' }}</div>
+                  <div v-if="grandTotal.desconto_cartao > 0" class="text-caption text-error">
+                    desc. {{ formatCurrency(grandTotal.desconto_cartao) }}
+                  </div>
                 </td>
                 <td class="text-end font-weight-black text-success-print">
                   {{ formatCurrency(grandTotal.total) }}
-                </td>
-                <td v-if="grandTotal.desconto > 0" class="text-end font-weight-bold text-warning">
-                  {{ formatCurrency(grandTotal.desconto) }}
                 </td>
               </tr>
             </tfoot>

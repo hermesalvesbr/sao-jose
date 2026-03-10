@@ -206,6 +206,9 @@ function aggregateByProductionPoint() {
 
   for (const [, items] of bySale) {
     const sale = typeof items[0].sale_id === 'object' ? items[0].sale_id : null
+    // Ignorar vendas canceladas (defesa contra filtro relacional do Directus)
+    if (sale?.sale_status !== 'completed')
+      continue
     const saleTotalAmount = Number(sale?.total_amount || 0)
     const method: string = (sale?.payment_method ?? 'dinheiro')
     const itemsSum = items.reduce((s: number, i: any) => s + Number(i.total_price || 0), 0)

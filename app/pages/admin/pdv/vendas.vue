@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 definePageMeta({ layout: 'admin' })
 
-const { fetchSales, createSale, createSaleItem, fetchProducts, updateProduct, updateSale } = usePdv()
+const { fetchSales, createSale, createSaleItem, fetchProducts, updateProduct, updateSale, fetchSaleItems } = usePdv()
 
 const items = ref<any[]>([])
 const products = ref<any[]>([])
@@ -12,6 +12,12 @@ const dialog = ref(false)
 const search = useState<string>('pdv-vendas-search', () => '')
 const statusFilter = useState<string | null>('pdv-vendas-status', () => null)
 const productSearch = ref('')
+
+// ─── Detail modal state ─────────────────────────────────────────────────────────
+const detailDialog = ref(false)
+const detailSale = ref<any>(null)
+const detailItems = ref<any[]>([])
+const detailLoading = ref(false)
 
 const cart = ref<any[]>([])
 const selectedProduct = ref(null)
@@ -248,6 +254,35 @@ function getPaymentIcon(method: string) {
   const pm = paymentMethods.find(p => p.value === method)
   return pm?.icon || 'mdi-cash'
 }
+
+async function openSaleDetail(sale: any) {
+  detailSale.value = sale
+  detailItems.value = []
+  detailDialog.value = true
+  detailLoading.value = true
+  try {
+    const res = await fetchSaleItems({
+      fields: [
+        'id',
+        'quantity',
+        'unit_price',
+        'total_price',
+        'product_id.id',
+        'product_id.name',
+        'product_id.category_id.name',
+      ],
+      filter: { sale_id: { _eq: sale.id } },
+      limit: -1,
+    })
+    detailItems.value = (res as any[]) || []
+  }
+  catch (e) {
+    console.error('Error fetching sale items:', e)
+  }
+  finally {
+    detailLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -359,18 +394,31 @@ function getPaymentIcon(method: string) {
         </template>
 
         <template #[`item.actions`]="{ item }">
-          <v-btn
-            v-if="item.sale_status !== 'cancelled'"
-            variant="text"
-            size="small"
-            color="error"
-            @click="updateSaleStatus(item, 'cancelled')"
-          >
-            <v-icon icon="mdi-cancel" size="18" />
-            <v-tooltip activator="parent" location="top">
-              Cancelar venda
-            </v-tooltip>
-          </v-btn>
+          <div class="d-flex align-center justify-end">
+            <v-btn
+              variant="text"
+              size="small"
+              color="primary"
+              @click="openSaleDetail(item)"
+            >
+              <v-icon icon="mdi-eye-outline" size="18" />
+              <v-tooltip activator="parent" location="top">
+                Ver detalhes
+              </v-tooltip>
+            </v-btn>
+            <v-btn
+              v-if="item.sale_status !== 'cancelled'"
+              variant="text"
+              size="small"
+              color="error"
+              @click="updateSaleStatus(item, 'cancelled')"
+            >
+              <v-icon icon="mdi-cancel" size="18" />
+              <v-tooltip activator="parent" location="top">
+                Cancelar venda
+              </v-tooltip>
+            </v-btn>
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -607,6 +655,125 @@ function getPaymentIcon(method: string) {
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <!-- Sale Detail Dialog -->
+    <v-dialog v-model="detailDialog" max-width="600px">
+      <v-card rounded="xl">
+        <v-card-title class="d-flex align-center justify-space-between pa-4">
+          <div class="d-flex align-center">
+            <v-icon icon="mdi-receipt-text-outline" color="primary" class="me-2" />
+            <span class="text-subtitle-1 font-weight-bold">
+              Venda #{{ detailSale?.id?.substring(0, 8) }}
+            </span>
+          </div>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="detailDialog = false" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="pa-4">
+          <!-- Sale info -->
+          <div class="d-flex flex-wrap ga-4 mb-4">
+            <div>
+              <div class="text-caption text-medium-emphasis">
+                Data/Hora
+              </div>
+              <div class="text-body-2 font-weight-medium">
+                {{ formatDate(detailSale?.created_at || detailSale?.date_created) }}
+              </div>
+            </div>
+            <div>
+              <div class="text-caption text-medium-emphasis">
+                Pagamento
+              </div>
+              <div class="d-flex align-center">
+                <v-icon :icon="getPaymentIcon(detailSale?.payment_method)" size="16" class="me-1" color="secondary" />
+                <span class="text-body-2 font-weight-medium">{{ getPaymentLabel(detailSale?.payment_method) }}</span>
+              </div>
+            </div>
+            <div>
+              <div class="text-caption text-medium-emphasis">
+                Status
+              </div>
+              <v-chip
+                :color="getStatusColor(detailSale?.sale_status)"
+                size="x-small"
+                variant="tonal"
+                label
+              >
+                {{ getStatusLabel(detailSale?.sale_status) }}
+              </v-chip>
+            </div>
+          </div>
+
+          <!-- Items table -->
+          <v-progress-linear v-if="detailLoading" indeterminate color="primary" class="mb-4" />
+
+          <table v-if="!detailLoading && detailItems.length > 0" class="detail-table">
+            <thead>
+              <tr>
+                <th class="text-start">
+                  Produto
+                </th>
+                <th class="text-start">
+                  Categoria
+                </th>
+                <th class="text-end">
+                  Qtd
+                </th>
+                <th class="text-end">
+                  Unitário
+                </th>
+                <th class="text-end">
+                  Subtotal
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="si in detailItems" :key="si.id">
+                <td class="font-weight-medium">
+                  {{ typeof si.product_id === 'object' ? si.product_id?.name : 'Produto' }}
+                </td>
+                <td class="text-medium-emphasis text-body-2">
+                  {{ typeof si.product_id === 'object' && si.product_id?.category_id ? (typeof si.product_id.category_id === 'object' ? si.product_id.category_id.name : '') : '' }}
+                </td>
+                <td class="text-end">
+                  {{ si.quantity }}
+                </td>
+                <td class="text-end">
+                  {{ formatCurrency(si.unit_price) }}
+                </td>
+                <td class="text-end font-weight-bold">
+                  {{ formatCurrency(si.total_price) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="font-weight-black">
+                <td colspan="4" class="text-end">
+                  Total
+                </td>
+                <td class="text-end">
+                  {{ formatCurrency(detailSale?.total_amount) }}
+                </td>
+              </tr>
+              <tr v-if="Number(detailSale?.discount_amount) > 0" class="text-error">
+                <td colspan="4" class="text-end">
+                  Desconto
+                </td>
+                <td class="text-end">
+                  {{ formatCurrency(detailSale?.discount_amount) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div v-if="!detailLoading && detailItems.length === 0" class="text-center pa-6 text-medium-emphasis">
+            Nenhum item encontrado para esta venda
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -630,5 +797,26 @@ function getPaymentIcon(method: string) {
 
 .border-2 {
   border-width: 2px !important;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.detail-table th,
+.detail-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.detail-table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.6);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.12);
+}
+.detail-table tfoot td {
+  border-top: 2px solid rgba(0, 0, 0, 0.12);
+  border-bottom: none;
 }
 </style>

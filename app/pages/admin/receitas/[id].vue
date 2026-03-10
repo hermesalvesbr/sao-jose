@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { readItems } from '@directus/sdk'
+import type { ReceitasFile } from '~/types/schema'
+import { createItem, deleteItem, readItems, uploadFiles } from '@directus/sdk'
 /**
  * Editar Receita — Formulário de edição
  *
@@ -60,6 +61,13 @@ const form = ref({
   observacao: '',
 })
 
+// ─── Comprovantes ─────────────────────────────────────────────────────────────────
+const directusUrl = useRuntimeConfig().public.directus.url as string
+const comprovantes = ref<ReceitasFile[]>([])
+const pendingFiles = ref<File[]>([])
+const removeComprDialog = ref(false)
+const comprToRemove = ref<ReceitasFile | null>(null)
+
 async function loadForm() {
   const receita = await fetchReceitaById(id.value)
   if (!receita) {
@@ -108,6 +116,13 @@ async function submit() {
       payload.responsavel_id = null
 
     await atualizarReceita(id.value, payload as any)
+
+    // Upload pending files
+    if (pendingFiles.value.length) {
+      await attachFiles(pendingFiles.value)
+      pendingFiles.value = []
+    }
+
     await navigateTo('/admin/receitas')
   }
   catch {
@@ -119,8 +134,91 @@ async function submit() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  await Promise.all([loadForm(), loadCatolicos()])
+  await Promise.all([loadForm(), loadCatolicos(), loadComprovantes()])
 })
+
+// ─── Comprovantes helpers ──────────────────────────────────────────────────────
+async function loadComprovantes() {
+  try {
+    const c = await useAuth().getAuthClient()
+    const res = await c.request(readItems('receitas_files', {
+      filter: { receitas_id: { _eq: id.value } },
+      fields: ['id', 'receitas_id', 'directus_files_id.*'],
+      sort: ['-id'],
+      limit: -1,
+    } as never))
+    comprovantes.value = (res as unknown as ReceitasFile[]) ?? []
+  }
+  catch (e) {
+    console.error('loadComprovantes error', e)
+    comprovantes.value = []
+  }
+}
+
+async function attachFiles(files: File[]) {
+  if (!files.length)
+    return
+  const c = await useAuth().getAuthClient()
+  for (const file of files) {
+    const fd = new FormData()
+    fd.append('file', file)
+    const uploaded = await c.request(uploadFiles(fd)) as { id: string }
+    if (!uploaded?.id)
+      throw new Error('Upload falhou')
+    await c.request(createItem('receitas_files', {
+      receitas_id: id.value,
+      directus_files_id: uploaded.id,
+    } as never))
+  }
+}
+
+function confirmRemoveCompr(item: ReceitasFile) {
+  comprToRemove.value = item
+  removeComprDialog.value = true
+}
+
+async function performRemoveCompr() {
+  if (!comprToRemove.value)
+    return
+  try {
+    const c = await useAuth().getAuthClient()
+    await c.request(deleteItem('receitas_files', comprToRemove.value.id as never))
+    removeComprDialog.value = false
+    comprToRemove.value = null
+    await loadComprovantes()
+  }
+  catch {
+    snackbarMsg.value = 'Erro ao remover comprovante.'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  }
+}
+
+function getComprFile(d: unknown): { id?: string, title?: string, type?: string, filesize?: number } | null {
+  if (!d)
+    return null
+  return typeof d === 'object' ? d as { id?: string, title?: string, type?: string, filesize?: number } : { id: d as string }
+}
+
+function fileIcon(mime: string | undefined): string {
+  if (!mime)
+    return 'mdi-file-outline'
+  if (mime.startsWith('image/'))
+    return 'mdi-file-image-outline'
+  if (mime === 'application/pdf')
+    return 'mdi-file-pdf-box'
+  return 'mdi-file-document-outline'
+}
+
+function formatBytes(bytes: number | undefined): string {
+  if (!bytes)
+    return ''
+  if (bytes < 1024)
+    return `${bytes} B`
+  if (bytes < 1024 * 1024)
+    return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 </script>
 
 <template>
@@ -259,7 +357,101 @@ onMounted(async () => {
           </v-btn>
         </v-card-actions>
       </v-card>
+
+      <!-- Comprovantes / Anexos -->
+      <v-card :elevation="0" class="border mt-4" rounded="xl">
+        <v-card-title class="d-flex align-center pa-4">
+          <v-icon color="primary" class="me-2">
+            mdi-paperclip
+          </v-icon>
+          <span class="text-h6">Comprovantes</span>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-4">
+          <v-file-upload
+            v-model="pendingFiles"
+            multiple
+            clearable
+            density="comfortable"
+            accept="image/*,application/pdf"
+            icon="mdi-cloud-upload-outline"
+            title="Arraste e solte os arquivos aqui"
+            subtitle="PNG, JPG e PDF"
+            browse-text="Selecionar arquivos"
+            divider-text="ou"
+            inset-file-list
+          />
+
+          <!-- Comprovantes existentes -->
+          <div v-if="comprovantes.length > 0" class="mt-4">
+            <div class="text-subtitle-2 font-weight-medium mb-2">
+              Anexados
+            </div>
+            <v-list lines="one" density="compact" class="pa-0">
+              <v-list-item
+                v-for="comp in comprovantes"
+                :key="comp.id"
+                :prepend-icon="fileIcon(getComprFile(comp.directus_files_id)?.type)"
+                rounded="lg"
+                class="border mb-1"
+              >
+                <v-list-item-title class="text-body-2">
+                  {{ getComprFile(comp.directus_files_id)?.title ?? 'Arquivo' }}
+                  <span class="text-caption text-disabled ms-2">
+                    {{ formatBytes(getComprFile(comp.directus_files_id)?.filesize) }}
+                  </span>
+                </v-list-item-title>
+                <template #append>
+                  <v-btn
+                    v-if="getComprFile(comp.directus_files_id)?.id"
+                    icon="mdi-open-in-new"
+                    variant="text"
+                    size="x-small"
+                    color="primary"
+                    :href="`${directusUrl}/assets/${getComprFile(comp.directus_files_id)?.id}`"
+                    target="_blank"
+                  />
+                  <v-btn
+                    icon="mdi-delete-outline"
+                    variant="text"
+                    size="x-small"
+                    color="error"
+                    @click="confirmRemoveCompr(comp)"
+                  />
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+          <p v-else class="text-caption text-disabled mt-4 mb-0">
+            Nenhum comprovante anexado.
+          </p>
+        </v-card-text>
+      </v-card>
     </template>
+
+    <!-- Dialog: Remover comprovante -->
+    <v-dialog v-model="removeComprDialog" max-width="400">
+      <v-card rounded="xl">
+        <v-card-title class="d-flex align-center pa-5 pb-3">
+          <v-icon color="warning" class="me-2">
+            mdi-alert-outline
+          </v-icon>
+          Remover comprovante?
+        </v-card-title>
+        <v-card-text class="px-5">
+          O arquivo será desvinculado desta receita.
+        </v-card-text>
+        <v-card-actions class="pa-5 pt-0">
+          <v-spacer />
+          <v-btn variant="text" @click="removeComprDialog = false">
+            Cancelar
+          </v-btn>
+          <v-btn color="error" variant="tonal" @click="performRemoveCompr">
+            Remover
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="bottom end">
