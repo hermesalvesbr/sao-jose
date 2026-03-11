@@ -48,7 +48,6 @@ export async function usePublicDirectusClient() {
   return getStaticClient(token)
 }
 
-
 /**
  * Executa uma requisição no Directus com retry automático
  * @param operation Função que faz a requisição
