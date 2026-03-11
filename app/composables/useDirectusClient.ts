@@ -39,6 +39,17 @@ export async function useDirectusClient() {
 }
 
 /**
+ * Retorna um client Directus com o token estático público configurado no .env
+ * Usado em páginas públicas onde o visitante não tem login no painel.
+ */
+export async function usePublicDirectusClient() {
+  const { public: { directus: { token } } } = useRuntimeConfig()
+  const { getStaticClient } = useAuth()
+  return getStaticClient(token)
+}
+
+
+/**
  * Executa uma requisição no Directus com retry automático
  * @param operation Função que faz a requisição
  * @returns Resultado da requisição

@@ -44,13 +44,19 @@ const birthRules = [
   (v: string) => !!v || 'Data obrigatória',
 ]
 
+const defaultBirthDate = computed(() => {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() - 30)
+  return date.toISOString().split('T')[0]
+})
+
 /**
  * Consulta no Directus se o telefone já existe na collection catolico
  * @returns objeto { nome, instituicaoNome } se encontrado, senão null
  */
 async function checkPhoneDirectus(cleanPhone: string): Promise<{ nome: string, instituicaoNome: string | null } | null> {
   try {
-    const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
+    const d = await usePublicDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
     const result = await d.request(readItems('catolico', {
       filter: { telefone: { _eq: cleanPhone } },
       fields: ['nome', { instituicao: ['nome'] }] as any,
@@ -151,7 +157,7 @@ async function onConfirmSubmit() {
   submitting.value = true
   try {
     // Cria o client tipado
-    const d = await useDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
+    const d = await usePublicDirectusClient() as DirectusClient<Schema> & RestClient<Schema>
     // Monta o payload conforme o schema
     const payload: Partial<Catolico> = {
       nome: confirmData.value.nome,
@@ -314,6 +320,7 @@ function formatPhoneBR(phone: string): string {
                     :rules="birthRules"
                     variant="outlined"
                     rounded="lg"
+                    :default-picker-date="defaultBirthDate"
                   />
                 </v-col>
               </v-row>

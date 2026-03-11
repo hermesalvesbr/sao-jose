@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
       readItems('ads_novenario', {
         fields: ['id', 'anunciante', 'tipo_midia', 'duracao', 'midia'],
         filter: { status: { _eq: 'published' } },
-        sort: ['sort'],
+        sort: ['-date_created'],
         limit: -1,
       }),
     ) as unknown as AdsNovenario[],
@@ -50,13 +50,5 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  return result.sort((a, b) => {
-    if (!a.ultima_exibicao && !b.ultima_exibicao)
-      return 0
-    if (!a.ultima_exibicao)
-      return 1
-    if (!b.ultima_exibicao)
-      return -1
-    return new Date(b.ultima_exibicao).getTime() - new Date(a.ultima_exibicao).getTime()
-  })
+  return result
 })

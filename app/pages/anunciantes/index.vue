@@ -175,7 +175,15 @@ function chipIcon(tipo: string): string {
           <v-card-text class="pa-5">
             <!-- Nome + imagem + tipo -->
             <div class="d-flex align-center ga-3 mb-3">
-              <v-avatar v-if="item.midia" size="48" rounded="lg">
+              <v-avatar v-if="item.midia && item.tipo_midia === 'video'" size="48" rounded="lg">
+                <video
+                  :src="getDirectusAssetUrl(item.midia)"
+                  muted
+                  playsinline
+                  style="width: 100%; height: 100%; object-fit: cover;"
+                />
+              </v-avatar>
+              <v-avatar v-else-if="item.midia" size="48" rounded="lg">
                 <v-img :src="getDirectusAssetUrl(item.midia)" :alt="item.anunciante" cover />
               </v-avatar>
               <v-avatar v-else size="48" rounded="lg" color="#FFF8E1">

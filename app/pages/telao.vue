@@ -24,20 +24,39 @@ function lsSet(key: string, value: unknown): void {
   catch { /* quota esgotada – ignora */ }
 }
 
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function shuffleArray<T>(array: T[]): T[] {
+  const newArray = [...array]
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    // Usa casting temporário para contornar 'noUncheckedIndexedAccess'
+    const temp = newArray[i] as T
+    newArray[i] = newArray[j] as T
+    newArray[j] = temp
+  }
+  return newArray
+}
+
 // ─── Ads data com fallback offline ───────────────────────────────────────────
+const masterAds = ref<AdsNovenario[]>([])
 const anuncios = ref<AdsNovenario[]>([])
 
 async function carregarAnuncios(): Promise<void> {
   try {
     const data = await $fetch<AdsNovenario[]>('/api/ads-novenario')
-    anuncios.value = data
+    masterAds.value = data
     lsSet(ADS_CACHE_KEY, data) // atualiza cache local sempre que carregar com sucesso
   }
   catch {
     // Sem internet: usa cache local para manter o telão funcionando
     const cached = lsGet<AdsNovenario[]>(ADS_CACHE_KEY)
     if (cached?.length)
-      anuncios.value = cached
+      masterAds.value = cached
+  }
+
+  // Inicializa a playlist embaralhada na primeira carga
+  if (anuncios.value.length === 0 && masterAds.value.length > 0) {
+    anuncios.value = shuffleArray(masterAds.value)
   }
 }
 
@@ -51,7 +70,7 @@ function getMediaUrl(ad: AdsNovenario): string {
 
 // Pré-carrega imagens no browser cache para que fiquem disponíveis offline
 function preloadImages(): void {
-  anuncios.value.forEach((ad) => {
+  masterAds.value.forEach((ad) => {
     if (ad.tipo_midia !== 'video') {
       const img = new Image()
       img.src = getMediaUrl(ad)
@@ -131,7 +150,26 @@ function avancarAd(duracaoReal?: number): void {
   }
   transitioning.value = true
   setTimeout(() => {
-    currentIndex.value = (currentIndex.value + 1) % Math.max(anuncios.value.length, 1)
+    const nextIndex = currentIndex.value + 1
+
+    // Se completou a playlist, embaralha uma nova lista com os dados recarregados
+    if (nextIndex >= anuncios.value.length) {
+      if (masterAds.value.length > 0) {
+        const lastAdId = ad?.id
+        anuncios.value = shuffleArray(masterAds.value)
+        // Evita que o primeiro anúncio da nova rodada seja igual ao último da anterior
+        if (anuncios.value.length > 1 && anuncios.value[0]?.id === lastAdId) {
+          const temp = anuncios.value[0] as AdsNovenario
+          anuncios.value[0] = anuncios.value[1] as AdsNovenario
+          anuncios.value[1] = temp
+        }
+      }
+      currentIndex.value = 0
+    }
+    else {
+      currentIndex.value = nextIndex
+    }
+
     adStartTime = Date.now()
     transitioning.value = false
     scheduleNext()
@@ -159,8 +197,8 @@ function onVideoEnded(): void {
 onMounted(async () => {
   await carregarAnuncios()
   preloadImages()
-  if (anuncios.value.length > 1)
-    currentIndex.value = Math.floor(Math.random() * anuncios.value.length)
+  // Removido o start aleatório para começar sempre do mais recente (index 0)
+  currentIndex.value = 0
   adStartTime = Date.now()
   scheduleNext()
 

@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     readItems('ads_novenario', {
       fields: ['id', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort'],
       filter: { status: { _eq: 'published' } },
-      sort: ['sort'],
+      sort: ['-date_created'],
       limit: -1,
     }),
   )

@@ -255,9 +255,19 @@ let _authService: AuthService | null = null
 export function useAuth() {
   if (!_authService) {
     _authService = new AuthService()
-    // Executa verificação inicial de autenticação
+    // Executa verificação inicial de autenticação apenas em rotas administrativas
     if (typeof window !== 'undefined') {
-      _authService.init()
+      try {
+        const route = useRoute()
+        if (route && (route.path.startsWith('/admin') || route.path === '/login')) {
+          _authService.init()
+        }
+      }
+      catch {
+        if (window.location.pathname.startsWith('/admin') || window.location.pathname === '/login') {
+          _authService.init()
+        }
+      }
     }
   }
   return {

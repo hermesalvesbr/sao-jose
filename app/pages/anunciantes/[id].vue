@@ -26,6 +26,48 @@ const totalDuracao = computed(() =>
   logs.value.reduce((a, l) => a + (l.duracao_exibida || 0), 0),
 )
 
+// Previsão da próxima exibição
+const previsaoProximaExibicao = computed(() => {
+  if (logs.value.length < 2)
+    return null
+
+  // Logs já vêm ordenados do mais recente para o mais antigo da API
+  // Pega os últimos 3 intervalos (precisa de até 4 logs)
+  const recentLogs = logs.value.slice(0, 4)
+  const intervalos = []
+
+  for (let i = 0; i < recentLogs.length - 1; i++) {
+    const logAtual = recentLogs[i]
+    const logAnterior = recentLogs[i + 1]
+    if (logAtual && logAnterior) {
+      const atual = new Date(logAtual.exibido_em).getTime()
+      const anterior = new Date(logAnterior.exibido_em).getTime()
+      intervalos.push(atual - anterior)
+    }
+  }
+
+  if (intervalos.length === 0)
+    return null
+
+  // Calcula a média dos intervalos em milissegundos
+  const mediaIntervalo = intervalos.reduce((a, b) => a + b, 0) / intervalos.length
+
+  // Adiciona a média ao timestamp mais recente (índice 0)
+  const logMaisRecente = recentLogs[0]
+  if (!logMaisRecente)
+    return null
+
+  const ultimoTimestamp = new Date(logMaisRecente.exibido_em).getTime()
+  const estimativa = new Date(ultimoTimestamp + mediaIntervalo)
+
+  // Se a estimativa já passou (painel provavelmente desligado/parado), retorna null para não confundir
+  if (estimativa.getTime() < Date.now()) {
+    return null
+  }
+
+  return formatarHora(estimativa.toISOString())
+})
+
 // ─── SEO ──────────────────────────────────────────────────────────────────────
 const seoTitle = computed(() =>
   ad.value ? `${ad.value.anunciante} — Anunciante do Novenário` : 'Anunciante — Novenário São José',
@@ -169,6 +211,8 @@ function chipColor(tipo: string): string {
             v-if="ad.tipo_midia === 'video'"
             :src="getDirectusAssetUrl(ad.midia)"
             controls
+            autoplay
+            loop
             muted
             playsinline
             class="preview-media"
@@ -187,7 +231,7 @@ function chipColor(tipo: string): string {
 
       <!-- KPI cards -->
       <v-row class="mb-6" dense>
-        <v-col cols="6" md="6">
+        <v-col cols="4" md="4">
           <v-card rounded="lg" color="#FFF8E1" flat border>
             <v-card-text class="pa-4 text-center">
               <v-icon color="#5D4037" class="mb-1">
@@ -202,7 +246,7 @@ function chipColor(tipo: string): string {
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col cols="6" md="6">
+        <v-col cols="4" md="4">
           <v-card rounded="lg" color="#FFF8E1" flat border>
             <v-card-text class="pa-4 text-center">
               <v-icon color="#5D4037" class="mb-1">
@@ -212,7 +256,22 @@ function chipColor(tipo: string): string {
                 {{ formatarTempo(totalDuracao) }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                Tempo Total no Ar
+                Tempo no Ar
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="4" md="4">
+          <v-card rounded="lg" color="#E8F5E9" flat border>
+            <v-card-text class="pa-4 text-center">
+              <v-icon color="#2E7D32" class="mb-1">
+                mdi-update
+              </v-icon>
+              <div class="text-h5 font-weight-bold text-green-darken-3">
+                {{ previsaoProximaExibicao || '--:--' }}
+              </div>
+              <div class="text-caption text-green-darken-3" style="opacity: 0.8;">
+                Próxima Exibição
               </div>
             </v-card-text>
           </v-card>

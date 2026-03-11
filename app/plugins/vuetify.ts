@@ -2,6 +2,7 @@ import type { ThemeDefinition } from 'vuetify'
 import { createVuetify } from 'vuetify'
 import { VFileUpload, VFileUploadDropzone, VFileUploadItem, VFileUploadList } from 'vuetify/labs/VFileUpload'
 import { VMaskInput } from 'vuetify/labs/VMaskInput'
+import { pt } from 'vuetify/locale'
 
 // import this after install `@mdi/font` package
 import '@mdi/font/css/materialdesignicons.css'
@@ -94,6 +95,15 @@ export default defineNuxtPlugin((app) => {
       VFileUploadItem,
       VFileUploadList,
       VMaskInput,
+    },
+    locale: {
+      locale: 'pt',
+      messages: { pt },
+    },
+    date: {
+      locale: {
+        pt: 'pt-BR',
+      },
     },
     theme: {
       defaultTheme: 'cidadeTema',
