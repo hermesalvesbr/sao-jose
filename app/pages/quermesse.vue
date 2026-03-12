@@ -133,8 +133,11 @@ onBeforeUnmount(() => {
 /** Seções do cardápio (exclui Lojinha e Outros) */
 const cardapioSections = computed(() =>
   sections.value.filter((s) => {
-    const name = s.point.name.toLowerCase()
-    return !name.includes('lojinha') && !name.includes('outros')
+    const idsToIgnore = [
+      '84d7c74e-b120-4174-a15e-39c434ec80e2', // Outros
+      '771786ea-9431-411b-8274-28b224bfb5ad', // Lojinha
+    ]
+    return !idsToIgnore.includes(s.point.id)
   }),
 )
 
@@ -151,8 +154,11 @@ onMounted(async () => {
 /** Seções de comida (para impressão lista — tudo exceto Lojinha e Outros) */
 const printFoodSections = computed(() =>
   sections.value.filter((s) => {
-    const name = s.point.name.toLowerCase()
-    return !name.includes('lojinha') && !name.includes('outros')
+    const idsToIgnore = [
+      '84d7c74e-b120-4174-a15e-39c434ec80e2', // Outros
+      '771786ea-9431-411b-8274-28b224bfb5ad', // Lojinha
+    ]
+    return !idsToIgnore.includes(s.point.id)
   }),
 )
 </script>
