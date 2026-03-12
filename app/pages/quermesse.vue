@@ -112,7 +112,6 @@ function printMenu(): void {
 }
 
 /** Imprimir cardápio estilo restaurante (sem Lojinha) */
-const LOJINHA_POINT_ID = '771786ea-9431-411b-8274-28b224bfb5ad'
 
 function printCardapio(): void {
   printMode.value = 'cardapio'
@@ -131,9 +130,12 @@ onBeforeUnmount(() => {
   window.removeEventListener('afterprint', resetPrintMode)
 })
 
-/** Seções do cardápio (exclui Lojinha) */
+/** Seções do cardápio (exclui Lojinha e Outros) */
 const cardapioSections = computed(() =>
-  sections.value.filter(s => s.point.id !== LOJINHA_POINT_ID),
+  sections.value.filter((s) => {
+    const name = s.point.name.toLowerCase()
+    return !name.includes('lojinha') && !name.includes('outros')
+  }),
 )
 
 /** QR code como data URL */
@@ -146,14 +148,12 @@ onMounted(async () => {
   })
 })
 
-/** Seções de comida (para impressão lista — tudo exceto Lojinha) */
+/** Seções de comida (para impressão lista — tudo exceto Lojinha e Outros) */
 const printFoodSections = computed(() =>
-  sections.value.filter(s => !s.point.name.toLowerCase().includes('lojinha')),
-)
-
-/** Seção da Lojinha (para impressão lista) */
-const printShopSection = computed(() =>
-  sections.value.find(s => s.point.name.toLowerCase().includes('lojinha')),
+  sections.value.filter((s) => {
+    const name = s.point.name.toLowerCase()
+    return !name.includes('lojinha') && !name.includes('outros')
+  }),
 )
 </script>
 
@@ -393,41 +393,6 @@ const printShopSection = computed(() =>
             </div>
           </div>
         </div>
-
-        <!-- Lojinha — seção própria com grid 2 colunas -->
-        <template v-if="printShopSection">
-          <div class="print-shop-divider" />
-          <div class="print-point-title print-shop-title">
-            {{ printShopSection.point.name }}
-          </div>
-          <div class="print-grid">
-            <div
-              v-for="group in printShopSection.categories"
-              :key="`print-shop-${group.category.id}`"
-              class="print-category"
-            >
-              <div class="print-category-title">
-                {{ group.category.name }}
-              </div>
-              <table class="print-table">
-                <tbody>
-                  <tr
-                    v-for="(product, i) in group.products"
-                    :key="`print-shop-${product.id}`"
-                    :class="i % 2 === 0 ? 'print-row-even' : 'print-row-odd'"
-                  >
-                    <td class="print-td-name">
-                      {{ product.name }}
-                    </td>
-                    <td class="print-td-price">
-                      {{ formatPrice(product.price) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </template>
 
         <!-- Rodapé da impressão -->
         <div class="print-footer">
