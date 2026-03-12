@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 
 definePageMeta({ layout: 'admin' })
@@ -21,6 +21,20 @@ const detailDialog = ref(false)
 const detailSale = ref<any>(null)
 const detailItems = ref<any[]>([])
 const detailLoading = ref(false)
+
+// ─── Adjust transfers state ──────────────────────────────────────────────────
+const adjustDialog = ref(false)
+const adjustLoading = ref(false)
+const adjustOperatorId = ref<string | null>(null)
+const adjustSales = ref<any[]>([])
+const adjustSelectedRows = ref<string[]>([])
+const adjustTargetPaymentMethod = ref('pix')
+
+const adjustSelectedSalesTotal = computed(() => {
+  return adjustSales.value
+    .filter(s => adjustSelectedRows.value.includes(s.id))
+    .reduce((sum, s) => sum + Number(s.total_amount || 0), 0)
+})
 
 // ─── Operator transfer state ──────────────────────────────────────────────────
 const operators = ref<any[]>([])
@@ -88,6 +102,80 @@ async function loadData() {
     loading.value = false
   }
 }
+
+// ─── Adjust methods ──────────────────────────────────────────────────────────
+
+async function fetchAdjustSales() {
+  if (!adjustOperatorId.value)
+    return
+  adjustLoading.value = true
+  try {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Filtra vendas de hoje, do operador selecionado, que sejam concluídas (dinheiro removido do filtro para ser geral)
+    const res = await fetchSales({
+      fields: ['id', 'total_amount', 'created_at', 'date_created', 'payment_method'],
+      filter: {
+        operator_id: { _eq: adjustOperatorId.value },
+        sale_status: { _eq: 'completed' },
+        date_created: { _gte: today.toISOString() },
+      },
+      limit: -1,
+      sort: ['-date_created'],
+    })
+    adjustSales.value = res || []
+    adjustSelectedRows.value = []
+  }
+  catch (err) {
+    console.error(err)
+  }
+  finally {
+    adjustLoading.value = false
+  }
+}
+
+function openAdjustDialog() {
+  adjustOperatorId.value = null
+  adjustSales.value = []
+  adjustSelectedRows.value = []
+  adjustDialog.value = true
+}
+
+async function confirmAdjustBatch() {
+  if (adjustSelectedRows.value.length === 0)
+    return
+  adjustLoading.value = true
+  try {
+    for (const saleId of adjustSelectedRows.value) {
+      await updateSale(saleId, { payment_method: adjustTargetPaymentMethod.value })
+    }
+    const methodLabel = getPaymentLabel(adjustTargetPaymentMethod.value)
+    snackbarMsg.value = `${adjustSelectedRows.value.length} venda(s) alterada(s) para ${methodLabel}!`
+    snackbarColor.value = 'success'
+    snackbar.value = true
+    await loadData()
+    // Refresh modal list
+    if (adjustOperatorId.value) {
+      await fetchAdjustSales()
+    }
+    adjustSelectedRows.value = []
+  }
+  catch (err) {
+    console.error(err)
+    snackbarMsg.value = 'Erro ao atualizar vendas'
+    snackbarColor.value = 'error'
+    snackbar.value = true
+  }
+  finally {
+    adjustLoading.value = false
+  }
+}
+
+watch(adjustOperatorId, () => {
+  if (adjustOperatorId.value)
+    fetchAdjustSales()
+})
 
 onMounted(() => {
   loadData()
@@ -360,14 +448,25 @@ async function openSaleDetail(sale: any) {
           Registre e acompanhe todas as vendas do PDV
         </p>
       </div>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-cart-plus"
-        size="large"
-        @click="openNewSale"
-      >
-        Nova Venda
-      </v-btn>
+      <div class="d-flex ga-3 flex-wrap">
+        <v-btn
+          color="secondary"
+          variant="tonal"
+          prepend-icon="mdi-swap-horizontal"
+          size="large"
+          @click="openAdjustDialog"
+        >
+          Ajuste Dinheiro → PIX
+        </v-btn>
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-cart-plus"
+          size="large"
+          @click="openNewSale"
+        >
+          Nova Venda
+        </v-btn>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -505,7 +604,15 @@ async function openSaleDetail(sale: any) {
               </div>
             </div>
           </div>
-          <v-btn icon="mdi-close" variant="text" color="white" @click="dialog = false" />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            color="white"
+            density="comfortable"
+            class="position-absolute"
+            style="top: 12px; right: 12px; z-index: 10;"
+            @click="dialog = false"
+          />
         </v-card-title>
 
         <!-- Body -->
@@ -723,195 +830,441 @@ async function openSaleDetail(sale: any) {
     </v-dialog>
 
     <!-- Sale Detail Dialog -->
-    <v-dialog v-model="detailDialog" max-width="600px" :fullscreen="mobile">
-      <v-card :rounded="mobile ? '0' : 'xl'" class="d-flex flex-column" style="max-height: 100dvh;">
-        <!-- Toolbar header -->
-        <v-toolbar density="compact" color="surface" border="b">
-          <v-icon icon="mdi-receipt-text-outline" color="primary" class="ms-3 me-2" />
-          <v-toolbar-title>
-            <span class="text-subtitle-1 font-weight-bold me-2">Venda #{{ detailSale?.id?.substring(0, 8) }}</span>
-            <v-chip
-              v-if="detailSale"
-              :color="getStatusColor(detailSale.sale_status)"
-              size="x-small"
-              variant="tonal"
-              label
-            >
-              {{ getStatusLabel(detailSale.sale_status) }}
-            </v-chip>
-          </v-toolbar-title>
-          <template #append>
-            <v-btn icon="mdi-close" variant="text" @click="detailDialog = false" />
-          </template>
-        </v-toolbar>
+    <v-dialog v-model="detailDialog" max-width="600px" :fullscreen="mobile" transition="dialog-bottom-transition" scrollable>
+      <v-card :rounded="mobile ? '0' : 'xl'" class="d-flex flex-column overflow-hidden" :style="{ maxHeight: mobile ? '100dvh' : '90vh', minHeight: mobile ? '100dvh' : '500px' }">
+        <!-- Premium Header Section -->
+        <div class="pa-4 pb-10 position-relative text-white overflow-hidden shadow-sm" style="background: linear-gradient(135deg, #1e293b, #334155);">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center">
+              <v-avatar color="white" variant="tonal" class="me-3" size="40">
+                <v-icon icon="mdi-receipt-text-outline" color="white" />
+              </v-avatar>
+              <div>
+                <div class="text-h6 font-weight-bold leading-tight">
+                  Venda #{{ detailSale?.id?.substring(0, 8) }}
+                </div>
+                <div class="text-caption" style="opacity: 0.8;">
+                  Detalhes e edição da transação
+                </div>
+              </div>
+            </div>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              color="white"
+              density="comfortable"
+              class="position-absolute"
+              style="top: 12px; right: 12px; z-index: 10;"
+              @click="detailDialog = false"
+            />
+          </div>
+
+          <v-chip
+            v-if="detailSale"
+            :color="getStatusColor(detailSale.sale_status)"
+            size="small"
+            class="mt-1 font-weight-bold"
+            variant="flat"
+          >
+            {{ getStatusLabel(detailSale.sale_status) }}
+          </v-chip>
+
+          <!-- Decorative element -->
+          <v-icon icon="mdi-receipt-text-outline" class="position-absolute" style="right: -20px; bottom: -30px; font-size: 150px; opacity: 0.05; transform: rotate(-15deg);" />
+        </div>
+
+        <!-- Float Info Cards (overlapping header) -->
+        <div class="px-4" style="margin-top: -30px; position: relative; z-index: 1;">
+          <v-card rounded="lg" elevation="4" class="pa-4 bg-white border">
+            <v-row dense align="center">
+              <v-col cols="6" class="border-e">
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold" style="letter-spacing: 0.5px;">
+                  Data/Hora
+                </div>
+                <div class="text-body-1 font-weight-medium">
+                  {{ formatDate(detailSale?.created_at || detailSale?.date_created) }}
+                </div>
+              </v-col>
+              <v-col cols="6" class="ps-4">
+                <div class="text-caption text-medium-emphasis text-uppercase font-weight-bold" style="letter-spacing: 0.5px;">
+                  Valor Total
+                </div>
+                <div class="text-h6 font-weight-black text-success">
+                  {{ formatCurrency(detailSale?.total_amount) }}
+                </div>
+              </v-col>
+            </v-row>
+          </v-card>
+        </div>
 
         <!-- Scrollable body -->
-        <v-card-text class="overflow-y-auto pa-4" style="flex: 1 1 0; min-height: 0;">
-          <!-- Info grid 2-col -->
-          <v-row dense class="mb-2">
+        <v-card-text class="overflow-y-auto pa-4 pt-6">
+          <!-- Secondary Info Grid -->
+          <v-row class="mb-4">
             <v-col cols="6">
-              <div class="text-caption text-medium-emphasis">
-                Data/Hora
-              </div>
-              <div class="text-body-2 font-weight-medium">
-                {{ formatDate(detailSale?.created_at || detailSale?.date_created) }}
-              </div>
+              <v-card variant="tonal" color="secondary" rounded="lg" class="pa-3 h-100">
+                <div class="text-caption font-weight-bold mb-1">
+                  PAGAMENTO ATUAL
+                </div>
+                <div class="d-flex align-center">
+                  <v-icon :icon="getPaymentIcon(detailSale?.payment_method)" size="20" class="me-2" />
+                  <span class="text-body-2 font-weight-bold">{{ getPaymentLabel(detailSale?.payment_method) }}</span>
+                </div>
+              </v-card>
             </v-col>
             <v-col cols="6">
-              <div class="text-caption text-medium-emphasis">
-                Total
-              </div>
-              <div class="text-body-1 font-weight-bold text-success">
-                {{ formatCurrency(detailSale?.total_amount) }}
-                <span v-if="Number(detailSale?.discount_amount) > 0" class="text-caption text-error ms-1">
-                  (-{{ formatCurrency(detailSale?.discount_amount) }})
-                </span>
-              </div>
-            </v-col>
-            <v-col cols="6" class="mt-2">
-              <div class="text-caption text-medium-emphasis">
-                Pagamento atual
-              </div>
-              <div class="d-flex align-center">
-                <v-icon :icon="getPaymentIcon(detailSale?.payment_method)" size="14" class="me-1" color="secondary" />
-                <span class="text-body-2 font-weight-medium">{{ getPaymentLabel(detailSale?.payment_method) }}</span>
-              </div>
-            </v-col>
-            <v-col cols="6" class="mt-2">
-              <div class="text-caption text-medium-emphasis">
-                Operador atual
-              </div>
-              <div class="text-body-2 font-weight-medium">
-                {{ typeof detailSale?.operator_id === 'object' ? (detailSale?.operator_id?.name ?? '–') : (detailSale?.operator_id ? '...' : '–') }}
-              </div>
+              <v-card variant="tonal" color="primary" rounded="lg" class="pa-3 h-100">
+                <div class="text-caption font-weight-bold mb-1">
+                  OPERADOR RESPONSÁVEL
+                </div>
+                <div class="d-flex align-center">
+                  <v-icon icon="mdi-account-outline" size="20" class="me-2" />
+                  <span class="text-body-2 font-weight-bold">{{ typeof detailSale?.operator_id === 'object' ? (detailSale?.operator_id?.name ?? '–') : (detailSale?.operator_id ? '...' : 'Desconhecido') }}</span>
+                </div>
+              </v-card>
             </v-col>
           </v-row>
 
-          <v-divider class="mb-4" />
-
-          <!-- Items -->
-          <div class="text-overline text-medium-emphasis mb-2">
-            Itens da venda
-          </div>
-          <v-progress-linear v-if="detailLoading" indeterminate color="primary" class="mb-3" rounded />
-          <div v-if="!detailLoading && detailItems.length > 0" class="overflow-x-auto">
-            <table class="detail-table">
-              <thead>
-                <tr>
-                  <th class="text-start">
-                    Produto
-                  </th>
-                  <th class="text-end">
-                    Qtd
-                  </th>
-                  <th class="text-end">
-                    Unit.
-                  </th>
-                  <th class="text-end">
-                    Subtotal
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="si in detailItems" :key="si.id">
-                  <td class="font-weight-medium">
-                    {{ typeof si.product_id === 'object' ? si.product_id?.name : 'Produto' }}
-                  </td>
-                  <td class="text-end">
-                    {{ si.quantity }}
-                  </td>
-                  <td class="text-end">
-                    {{ formatCurrency(si.unit_price) }}
-                  </td>
-                  <td class="text-end font-weight-bold">
-                    {{ formatCurrency(si.total_price) }}
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr class="font-weight-black">
-                  <td colspan="3" class="text-end">
-                    Total
-                  </td>
-                  <td class="text-end">
-                    {{ formatCurrency(detailSale?.total_amount) }}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <div v-if="!detailLoading && detailItems.length === 0" class="text-center pa-4 text-medium-emphasis text-body-2">
-            Nenhum item encontrado para esta venda
+          <!-- Items Table Section -->
+          <div class="d-flex align-center mb-2">
+            <v-icon icon="mdi-basket-outline" color="secondary" size="18" class="me-2" />
+            <div class="text-subtitle-2 font-weight-bold">
+              ITENS DA VENDA
+            </div>
+            <v-spacer />
+            <v-chip v-if="!detailLoading" size="x-small" variant="outlined" color="secondary">
+              {{ detailItems.length }} itens
+            </v-chip>
           </div>
 
-          <v-divider class="my-4" />
+          <v-card rounded="lg" variant="outlined" class="mb-6 overflow-hidden">
+            <v-progress-linear v-if="detailLoading" indeterminate color="primary" height="2" />
+            <div v-if="!detailLoading && detailItems.length > 0">
+              <table class="detail-table premium">
+                <thead>
+                  <tr>
+                    <th class="text-start">
+                      Produto
+                    </th>
+                    <th class="text-end">
+                      Qtd
+                    </th>
+                    <th class="text-end">
+                      Subtotal
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="si in detailItems" :key="si.id">
+                    <td>
+                      <div class="text-body-2 font-weight-medium">
+                        {{ typeof si.product_id === 'object' ? si.product_id?.name : 'Produto' }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ formatCurrency(si.unit_price) }} /un
+                      </div>
+                    </td>
+                    <td class="text-end text-body-2">
+                      {{ si.quantity }}
+                    </td>
+                    <td class="text-end font-weight-bold text-body-2">
+                      {{ formatCurrency(si.total_price) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else-if="!detailLoading" class="text-center pa-8">
+              <v-icon icon="mdi-basket-off-outline" size="32" color="grey-lighten-1" />
+              <p class="text-body-2 text-medium-emphasis mt-2">
+                Nenhum item nesta venda
+              </p>
+            </div>
+          </v-card>
 
-          <!-- Edit section -->
-          <div class="text-overline text-medium-emphasis mb-3">
-            Editar venda
-          </div>
+          <!-- Action Section -->
+          <div class="bg-grey-lighten-5 pa-4 rounded-xl border-dashed border">
+            <div class="text-subtitle-2 font-weight-black mb-4 d-flex align-center">
+              <v-icon icon="mdi-square-edit-outline" size="18" color="primary" class="me-2" />
+              AJUSTAR INFORMAÇÕES
+            </div>
 
-          <!-- Payment method change -->
-          <div class="text-caption font-weight-medium mb-2">
-            Forma de Pagamento
-          </div>
-          <v-row dense class="mb-2">
-            <v-col v-for="pm in paymentMethods" :key="pm.value" cols="6">
-              <v-btn
+            <!-- Payment method change -->
+            <div class="text-caption font-weight-bold text-medium-emphasis mb-2 ms-1">
+              MUDAR FORMA DE PAGAMENTO
+            </div>
+            <v-row dense class="mb-4">
+              <v-col v-for="pm in paymentMethods" :key="pm.value" cols="6" sm="3">
+                <v-card
+                  variant="flat"
+                  :color="detailPaymentMethod === pm.value ? pm.color : 'white'"
+                  :class="{ 'border-primary border-2': detailPaymentMethod === pm.value, 'border': detailPaymentMethod !== pm.value }"
+                  class="pa-2 text-center cursor-pointer h-100 d-flex flex-column align-center justify-center transition-all"
+                  rounded="lg"
+                  @click="detailPaymentMethod = pm.value"
+                >
+                  <v-icon :icon="pm.icon" size="20" class="mb-1" :color="detailPaymentMethod === pm.value ? 'white' : 'grey-darken-1'" />
+                  <div class="text-caption font-weight-bold" :class="detailPaymentMethod === pm.value ? 'text-white' : 'text-grey-darken-1'">
+                    {{ pm.title }}
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-btn
+              block
+              elevation="0"
+              color="primary"
+              size="large"
+              rounded="lg"
+              :loading="savingPayment"
+              :disabled="!detailPaymentMethod || detailPaymentMethod === detailSale?.payment_method"
+              class="mb-6 text-none"
+              prepend-icon="mdi-check-circle-outline"
+              @click="confirmPaymentChange"
+            >
+              Confirmar Novo Pagamento
+            </v-btn>
+
+            <v-divider class="mb-6 border-dashed" />
+
+            <!-- Operator transfer -->
+            <div class="text-caption font-weight-bold text-medium-emphasis mb-2 ms-1">
+              TRANSFERIR PARA OUTRO OPERADOR
+            </div>
+            <div class="d-flex align-center ga-2 mb-2">
+              <v-autocomplete
+                v-model="transferOperatorId"
+                :items="operators"
+                item-title="name"
+                item-value="id"
+                label="Selecione o Operador"
                 variant="outlined"
-                block
-                :color="detailPaymentMethod === pm.value ? pm.color : 'grey'"
-                :class="{ 'border-2': detailPaymentMethod === pm.value }"
-                size="small"
-                class="justify-start"
-                @click="detailPaymentMethod = pm.value"
-              >
-                <v-icon :icon="pm.icon" start size="16" />
-                {{ pm.title }}
-              </v-btn>
-            </v-col>
-          </v-row>
-          <v-btn
-            block
-            variant="tonal"
-            color="secondary"
-            size="small"
-            prepend-icon="mdi-credit-card-sync-outline"
-            :loading="savingPayment"
-            :disabled="!detailPaymentMethod || detailPaymentMethod === detailSale?.payment_method"
-            class="mb-5"
-            @click="confirmPaymentChange"
-          >
-            Salvar forma de pagamento
-          </v-btn>
-
-          <!-- Operator transfer -->
-          <div class="text-caption font-weight-medium mb-2">
-            Transferir para outro operador
+                density="comfortable"
+                hide-details
+                bg-color="white"
+                rounded="lg"
+                class="flex-grow-1"
+              />
+              <v-btn
+                color="secondary"
+                variant="flat"
+                size="large"
+                rounded="lg"
+                :loading="transferring"
+                :disabled="!transferOperatorId || transferOperatorId === (typeof detailSale?.operator_id === 'object' ? detailSale?.operator_id?.id : detailSale?.operator_id)"
+                icon="mdi-account-switch"
+                @click="confirmTransfer"
+              />
+            </div>
           </div>
-          <div class="d-flex align-center ga-2">
-            <v-select
-              v-model="transferOperatorId"
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- Adjust Dinheiro -> PIX Dialog -->
+    <v-dialog v-model="adjustDialog" max-width="600px" :fullscreen="mobile" scrollable>
+      <v-card :rounded="mobile ? '0' : 'xl'" class="d-flex flex-column" :style="{ maxHeight: mobile ? '100dvh' : '90vh', minHeight: mobile ? '100dvh' : '400px' }">
+        <!-- Premium Header Section -->
+        <div class="pa-4 pb-10 position-relative text-white overflow-hidden shadow-sm" style="background: linear-gradient(135deg, #475569, #1e293b);">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center">
+              <v-avatar color="white" variant="tonal" class="me-3" size="40">
+                <v-icon icon="mdi-swap-horizontal" color="white" />
+              </v-avatar>
+              <div>
+                <div class="text-h6 font-weight-bold leading-tight">
+                  Ajuste de Pagamentos
+                </div>
+                <div class="text-caption" style="opacity: 0.8;">
+                  Correção em lote das vendas de hoje
+                </div>
+              </div>
+            </div>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              color="white"
+              density="comfortable"
+              class="position-absolute"
+              style="top: 12px; right: 12px; z-index: 10;"
+              @click="adjustDialog = false"
+            />
+          </div>
+
+          <!-- Decorative element -->
+          <v-icon icon="mdi-swap-horizontal" class="position-absolute" style="right: -20px; bottom: -30px; font-size: 150px; opacity: 0.05; transform: rotate(-15deg);" />
+        </div>
+
+        <!-- Overlapping Operator Selection -->
+        <div class="px-4" style="margin-top: -30px; position: relative; z-index: 1;">
+          <v-card rounded="lg" elevation="4" class="pa-4 bg-white border">
+            <v-autocomplete
+              v-model="adjustOperatorId"
               :items="operators"
               item-title="name"
               item-value="id"
-              label="Selecionar operador"
+              label="Operador Responsável"
               variant="outlined"
-              density="compact"
+              density="comfortable"
               hide-details
               clearable
-              class="flex-grow-1"
+              rounded="lg"
+              placeholder="Selecione o operador das vendas"
             />
-            <v-btn
-              color="primary"
-              variant="tonal"
-              :loading="transferring"
-              :disabled="!transferOperatorId || transferOperatorId === (typeof detailSale?.operator_id === 'object' ? detailSale?.operator_id?.id : detailSale?.operator_id)"
-              icon="mdi-account-switch"
-              @click="confirmTransfer"
-            />
+          </v-card>
+        </div>
+
+        <v-card-text class="overflow-y-auto pa-4 pt-6">
+          <div class="d-flex align-center mb-4 pa-3 bg-secondary-lighten-5 rounded-lg border border-secondary-lighten-4">
+            <v-icon icon="mdi-information-outline" color="secondary" class="me-3" />
+            <div class="text-caption text-secondary-darken-1">
+              Liste as transações do operador e selecione as que deseja ajustar.
+            </div>
+          </div>
+
+          <v-divider class="mb-4" />
+
+          <div v-if="adjustOperatorId && !adjustLoading && adjustSales.length > 0">
+            <div class="text-overline text-medium-emphasis mb-2 d-flex justify-space-between align-center">
+              Vendas Registradas (Hoje)
+              <v-btn
+                variant="text"
+                size="small"
+                color="primary"
+                class="text-none"
+                @click="adjustSelectedRows = adjustSelectedRows.length === adjustSales.length ? [] : adjustSales.map(s => s.id)"
+              >
+                {{ adjustSelectedRows.length === adjustSales.length ? 'Desmarcar todos' : 'Marcar todos' }}
+              </v-btn>
+            </div>
+
+            <v-list density="comfortable" class="border rounded-xl bg-grey-lighten-4 pa-0 overflow-hidden">
+              <v-list-item
+                v-for="(sale, index) in adjustSales"
+                :key="sale.id"
+                :class="{ 'border-b': index < adjustSales.length - 1 }"
+                class="px-2"
+              >
+                <template #prepend>
+                  <v-checkbox-btn
+                    v-model="adjustSelectedRows"
+                    :value="sale.id"
+                    color="primary"
+                  />
+                </template>
+                <div class="d-flex align-center py-2 w-100">
+                  <div class="flex-grow-1">
+                    <div class="text-body-2 font-weight-bold">
+                      Venda #{{ sale.id.substring(0, 8) }}
+                    </div>
+                    <div class="text-caption text-medium-emphasis d-flex align-center ga-2">
+                      <span>
+                        <v-icon icon="mdi-clock-outline" size="12" class="me-1" />
+                        {{ formatDate(sale.created_at || sale.date_created).split(',')[1] }}
+                      </span>
+                      <v-divider vertical length="10" />
+                      <span class="d-flex align-center">
+                        <v-icon :icon="getPaymentIcon(sale.payment_method)" size="12" class="me-1" />
+                        {{ getPaymentLabel(sale.payment_method) }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="text-end ms-3">
+                    <div class="text-body-1 font-weight-black text-secondary">
+                      {{ formatCurrency(sale.total_amount) }}
+                    </div>
+                  </div>
+                </div>
+              </v-list-item>
+            </v-list>
+          </div>
+          <div v-else-if="adjustLoading" class="text-center pa-10 w-100">
+            <v-progress-circular indeterminate color="primary" size="48" width="5" class="mb-4" />
+            <div class="text-body-2 text-medium-emphasis font-weight-medium">
+              Buscando transações...
+            </div>
+          </div>
+
+          <div v-else-if="adjustOperatorId" class="text-center pa-12 border rounded-xl bg-grey-lighten-4 stripe-bg w-100">
+            <v-icon icon="mdi-check-circle-outline" size="48" color="success" class="mb-4" />
+            <div class="text-h6 font-weight-bold mb-1">
+              Tudo certo!
+            </div>
+            <div class="text-body-2 text-medium-emphasis">
+              Nenhuma venda encontrada hoje para este operador.
+            </div>
+          </div>
+
+          <div v-else class="text-center pa-12 border rounded-xl border-dashed w-100">
+            <v-icon icon="mdi-account-search-outline" size="48" color="grey-lighten-1" class="mb-4" />
+            <div class="text-body-2 text-medium-emphasis">
+              Selecione um operador para iniciar o ajuste.
+            </div>
           </div>
         </v-card-text>
+
+        <!-- Improved Batch Control -->
+        <v-card-actions class="pa-4 border-t d-block bg-white shadow-top">
+          <div v-if="adjustSelectedRows.length > 0" class="mb-4">
+            <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-2 ms-1" style="letter-spacing: 0.5px;">
+              Alterar lote para:
+            </div>
+            <v-row dense>
+              <v-col v-for="pm in paymentMethods" :key="pm.value" cols="3">
+                <v-card
+                  variant="tonal"
+                  :color="adjustTargetPaymentMethod === pm.value ? pm.color : 'grey-lighten-1'"
+                  class="pa-2 text-center cursor-pointer transition-swing"
+                  :class="{ 'border-primary border-2': adjustTargetPaymentMethod === pm.value }"
+                  @click="adjustTargetPaymentMethod = pm.value"
+                >
+                  <v-icon :icon="pm.icon" size="20" class="mb-1" />
+                  <div class="text-caption font-weight-bold" style="font-size: 0.65rem !important;">
+                    {{ pm.title }}
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+          </div>
+
+          <div class="d-flex align-center justify-space-between pt-2">
+            <div v-if="adjustSelectedRows.length > 0">
+              <div class="text-caption text-medium-emphasis leading-none">
+                TOTAL SELECIONADO ({{ adjustSelectedRows.length }})
+              </div>
+              <div class="text-h6 font-weight-black text-primary leading-tight">
+                {{ formatCurrency(adjustSelectedSalesTotal) }}
+              </div>
+            </div>
+            <div v-else class="text-caption text-medium-emphasis">
+              Selecione itens para ajustar
+            </div>
+
+            <div class="d-flex ga-2">
+              <v-btn
+                variant="text"
+                color="grey-darken-1"
+                class="text-none font-weight-medium"
+                @click="adjustDialog = false"
+              >
+                Cancelar
+              </v-btn>
+              <v-btn
+                color="primary"
+                variant="flat"
+                class="text-none font-weight-bold px-6"
+                size="large"
+                rounded="lg"
+                :loading="adjustLoading"
+                :disabled="adjustSelectedRows.length === 0"
+                @click="confirmAdjustBatch"
+              >
+                Confirmar Ajuste
+              </v-btn>
+            </div>
+          </div>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -962,5 +1315,45 @@ async function openSaleDetail(sale: any) {
 .detail-table tfoot td {
   border-top: 2px solid rgba(0, 0, 0, 0.12);
   border-bottom: none;
+}
+.detail-table.premium th {
+  background-color: #f8fafc;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-table.premium td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+.transition-all:hover {
+  transform: translateY(-2px);
+  filter: brightness(0.95);
+}
+
+.border-primary {
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+
+.stripe-bg {
+  background-image: linear-gradient(
+    45deg,
+    #f8fafc 25%,
+    transparent 25%,
+    transparent 50%,
+    #f8fafc 50%,
+    #f8fafc 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 20px 20px;
 }
 </style>
