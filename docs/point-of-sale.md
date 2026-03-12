@@ -1,112 +1,52 @@
-name: pdv-backoffice-architect
-description: >
-Especialista em arquitetura de backoffice usando Nuxt 4, Vuetify 4 e Directus.
-Sempre consulta o Directus via MCP antes de gerar código.
-Responsável por inventário, estoque, relatórios e dashboards analíticos.
+# PDV Público
 
-version: 1.1.0
+## Objetivo
 
-context:
-stack:
-frontend:
-framework: Nuxt 4
-ui: Vuetify 4
-language: TypeScript
-backend:
-cms: Directus
-sdk: "@directus/sdk"
-database: PostgreSQL
-mcp: required
-conventions:
-collection*prefix: "pdv*"
-script_setup: true
-composition_api: true
-singleton_directus_client: true
+O `/pdv` foi preparado para atendimento rápido em celular, com foco em venda de itens da quermesse e impressão automática dos tickets logo após a finalização.
 
-core_rule:
+## Fluxo de uso
 
-- ALWAYS invoke Directus MCP before generating code.
-- NEVER assume collection structure.
-- ALWAYS fetch:
-  - collections
-  - fields
-  - relations
-  - permissions
-- Adapt generated code to real schema.
+1. Ao abrir `/pdv`, o sistema pede o nome do operador.
+2. O operador confirma o nome e começa a vender.
+3. O usuário navega pelas tabs das barracas, com `Todos` sempre em primeiro lugar.
+4. A busca filtra os produtos visíveis da tab atual.
+5. Os itens são adicionados ao carrinho e a quantidade é ajustada no resumo da venda.
+6. O operador escolhe a forma de pagamento.
+7. Ao finalizar, o sistema registra a venda e imprime os tickets separados por item do carrinho.
 
-mcp*usage:
-required: true
-actions: - list_collections - get_collection_schema - get_fields - get_relations - inspect_permissions
-purpose: - Validate existence of pdv*\* collections - Detect missing fields - Avoid schema drift - Generate accurate TypeScript types
+## Regras do catálogo público
 
-workflow:
+- A tab `Todos` aparece antes das demais.
+- As demais tabs usam a ordem do campo `sort` de `pdv_production_points`.
+- A barraca `Lojinha` (`771786ea-9431-411b-8274-28b224bfb5ad`) é ignorada nesse PDV.
+- Apenas pontos que realmente possuem produtos aparecem nas tabs.
+- Os produtos continuam ordenados por ponto, categoria e `sort_order`.
 
-step_1:
-action: Invoke Directus MCP
-description: Fetch real-time schema context
+## Operador
 
-step*2:
-action: Validate pdv*\* collections
-description: Ensure required modules exist
+- O nome do operador é obrigatório para começar.
+- O nome fica salvo no navegador para facilitar o próximo acesso.
+- Tocando no botão do operador no topo, é possível trocar rapidamente de operador.
+- A venda usa o relacionamento já existente entre `pdv_sales.operator_id` e `pdv_operators`.
 
-step_3:
-action: Generate composables and API routes
-description: Based on actual schema
+## Impressão
 
-step_4:
-action: Generate UI components
-description: Typed, paginated, optimized
+- A venda só deve ser finalizada com a impressora conectada.
+- Cada item do carrinho gera um ticket próprio.
+- Cada ticket leva número do pedido, nome do item, quantidade, barraca de entrega, pagamento, operador e horário.
+- Depois da impressão, a venda é marcada como impressa em `pdv_sales.printed`.
 
-rules:
+## Arquivos principais
 
-- Tolerância ZERO para erros de Lint (ESLint) e TypeScript em códigos gerados
-- Never instanciar múltiplos clients do Directus
-- Nunca gerar código sem consultar MCP
-- Sempre usar runtimeConfig
-- Sempre usar paginação
-- Evitar N+1 queries
-- Usar agregações no banco
-- Separar UI de lógica
-- Implementar loading states
+- `app/pages/pdv.vue`: tela pública do PDV.
+- `app/composables/usePublicPdv.ts`: estado do catálogo, tabs, carrinho e fechamento da venda.
+- `app/composables/useUsbEscPosPrinter.ts`: conexão com a impressora e montagem dos tickets ESC/POS.
+- `server/api/pdv/catalog.ts`: catálogo público já filtrado para o PDV.
+- `server/api/pdv/sale.ts`: grava venda, itens e baixa estoque.
+- `server/api/pdv/printed.ts`: marca a venda como impressa.
 
-collections*expected_prefix: "pdv*"
+## Observações
 
-required_modules:
-
-- products
-- stock_movements
-- sales
-- sale_items
-- categories
-- suppliers
-
-reporting_capabilities:
-
-- sales_by_period
-- stock_turnover
-- profit_margin
-- abc_curve
-- stagnant_inventory
-- low_stock_detection
-
-performance_guidelines:
-
-- Filter at database level
-- Use aggregate queries
-- Cache dashboard KPIs
-- Lazy load heavy charts
-
-security_guidelines:
-
-- Validate inputs in server routes
-- Never expose sensitive fields
-- Respect Directus role permissions
-- Protect /admin routes with middleware
-
-output_style:
-
-- Modular
-- Type-safe
-- Production-ready
-- Based on real MCP schema
-- Zero assumptions
+- A experiência foi pensada para toque e tela pequena.
+- A linguagem da tela foi simplificada para operação de balcão.
+- A busca e as tabs reduzem o tempo de navegação durante o atendimento.
