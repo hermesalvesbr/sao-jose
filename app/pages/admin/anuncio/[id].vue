@@ -29,12 +29,20 @@ const defaultItem = {
   valor_pago: 0,
   midia: null as string | null,
   status: 'published',
-  status_pagamento: 'pendente' as 'pendente' | 'pago' | 'permuta',
+  status_pagamento: 'pendente' as 'pendente' | 'pago' | 'permuta' | 'permuta_parcial',
   meio_pagamento: null as string | null,
   data_pagamento: null as string | null,
   permuta_descricao: null as string | null,
+  valor_permuta: 0,
+  valor_pago_especie: 0,
+  recibo_pagamento: null as string | null,
 }
 const editedItem = ref({ ...defaultItem })
+
+const comprovanteFile = ref<File | null>(null)
+const comprovantePreview = ref<string | null>(null)
+const isPermuta = computed(() => ['permuta', 'permuta_parcial', 'permuta_anuncio'].includes(editedItem.value.status_pagamento))
+const isPermutaParcial = computed(() => editedItem.value.status_pagamento === 'permuta_parcial')
 
 const duracaoLabel = computed(() => `${editedItem.value.duracao}s`)
 const custoSegundoPreview = computed(() => {
@@ -64,14 +72,21 @@ onMounted(async () => {
         valor_pago: Number(ad.valor_pago),
         midia: midiaId,
         status: ad.status,
-        status_pagamento: (ad.status_pagamento ?? 'pendente') as 'pendente' | 'pago' | 'permuta',
+        status_pagamento: (ad.status_pagamento ?? 'pendente') as 'pendente' | 'pago' | 'permuta' | 'permuta_parcial',
         meio_pagamento: ad.meio_pagamento ?? null,
         data_pagamento: ad.data_pagamento ?? null,
         permuta_descricao: ad.permuta_descricao ?? null,
+        valor_permuta: Number(ad.valor_permuta) || 0,
+        valor_pago_especie: Number(ad.valor_pago_especie) || 0,
+        recibo_pagamento: typeof ad.recibo_pagamento === 'object' && ad.recibo_pagamento
+          ? (ad.recibo_pagamento as { id: string }).id
+          : ad.recibo_pagamento as string | null,
       }
       breadcrumbOverride.value = ad.anunciante
       midiaPreview.value = midiaId ? await getAssetUrl(midiaId) : null
       midiaPreviewOriginal.value = midiaPreview.value
+      if (editedItem.value.recibo_pagamento)
+        comprovantePreview.value = getAssetUrl(editedItem.value.recibo_pagamento)
     }
     else {
       await navigateTo('/admin/anuncio')
@@ -99,7 +114,7 @@ async function saveItem(): Promise<void> {
     snackbar.value = true
     return
   }
-  if (editedItem.value.status_pagamento === 'permuta' && !editedItem.value.permuta_descricao?.trim()) {
+  if (isPermuta.value && !editedItem.value.permuta_descricao?.trim()) {
     snackbarText.value = 'Informe a descrição da permuta.'
     snackbarColor.value = 'warning'
     snackbar.value = true
@@ -117,9 +132,11 @@ async function saveItem(): Promise<void> {
       status_pagamento: editedItem.value.status_pagamento,
       meio_pagamento: editedItem.value.meio_pagamento || null,
       data_pagamento: editedItem.value.data_pagamento || null,
-      permuta_descricao: editedItem.value.status_pagamento === 'permuta'
+      permuta_descricao: isPermuta.value
         ? (editedItem.value.permuta_descricao || null)
         : null,
+      valor_permuta: isPermuta.value ? Number(editedItem.value.valor_permuta) || 0 : 0,
+      valor_pago_especie: isPermutaParcial.value ? Number(editedItem.value.valor_pago_especie) || 0 : 0,
     }
 
     if (midiaFile.value) {
@@ -127,6 +144,14 @@ async function saveItem(): Promise<void> {
       const fileId = await uploadMidia(midiaFile.value)
       if (fileId)
         payload.midia = fileId
+      uploading.value = false
+    }
+
+    if (comprovanteFile.value) {
+      uploading.value = true
+      const compId = await uploadMidia(comprovanteFile.value)
+      if (compId)
+        payload.recibo_pagamento = compId
       uploading.value = false
     }
 
@@ -336,7 +361,9 @@ async function saveItem(): Promise<void> {
                 :items="[
                   { title: 'Pendente', value: 'pendente' },
                   { title: 'Pago', value: 'pago' },
-                  { title: 'Permuta', value: 'permuta' },
+                  { title: 'Permuta Total', value: 'permuta' },
+                  { title: 'Permuta Parcial', value: 'permuta_parcial' },
+                  { title: 'Permuta Anúncio', value: 'permuta_anuncio' },
                 ]"
                 label="Status Pagamento"
                 variant="outlined"
@@ -356,6 +383,7 @@ async function saveItem(): Promise<void> {
                 variant="outlined"
                 prepend-inner-icon="mdi-credit-card-outline"
                 clearable
+                :disabled="editedItem.status_pagamento === 'permuta'"
               />
             </v-col>
 
@@ -370,7 +398,52 @@ async function saveItem(): Promise<void> {
               />
             </v-col>
 
-            <v-col v-if="editedItem.status_pagamento === 'permuta'" cols="12">
+            <!-- Campos de Permuta -->
+            <v-col v-if="isPermuta" cols="12">
+              <v-alert
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
+                :icon="editedItem.status_pagamento === 'permuta' ? 'mdi-swap-horizontal' : 'mdi-swap-horizontal-bold'"
+              >
+                {{
+                  editedItem.status_pagamento === 'permuta'
+                    ? 'Permuta total: o anunciante pagou integralmente via serviço/produto.'
+                    : 'Permuta parcial: parte foi paga em espécie, parte via serviço/produto.'
+                }}
+              </v-alert>
+            </v-col>
+
+            <v-col v-if="isPermuta" cols="12" :md="isPermutaParcial ? 6 : 12">
+              <v-text-field
+                v-model.number="editedItem.valor_permuta"
+                label="Valor da Permuta (R$) *"
+                type="number"
+                min="0"
+                step="0.01"
+                prepend-inner-icon="mdi-swap-horizontal"
+                variant="outlined"
+                hint="Valor monetário equivalente ao serviço/produto permutado"
+                persistent-hint
+              />
+            </v-col>
+
+            <v-col v-if="isPermutaParcial" cols="12" md="6">
+              <v-text-field
+                v-model.number="editedItem.valor_pago_especie"
+                label="Valor Pago em Espécie (R$) *"
+                type="number"
+                min="0"
+                step="0.01"
+                prepend-inner-icon="mdi-cash"
+                variant="outlined"
+                hint="Valor efetivamente pago em dinheiro/pix/cartão"
+                persistent-hint
+              />
+            </v-col>
+
+            <v-col v-if="isPermuta" cols="12">
               <v-textarea
                 v-model="editedItem.permuta_descricao"
                 label="Descrição da Permuta *"
@@ -380,6 +453,53 @@ async function saveItem(): Promise<void> {
                 rows="3"
                 :rules="[v => !!v?.trim() || 'Obrigatório informar a descrição da permuta']"
                 required
+              />
+            </v-col>
+
+            <!-- Comprovante de Pagamento -->
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-body-2 font-weight-bold text-medium-emphasis mb-1 mt-3">
+                <v-icon size="16" class="mr-1">
+                  mdi-file-document-check-outline
+                </v-icon>
+                Comprovante de Pagamento
+              </div>
+            </v-col>
+
+            <v-col v-if="!isNew && comprovantePreview && !comprovanteFile" cols="12">
+              <div class="text-body-2 text-medium-emphasis mb-2">
+                <v-icon size="15" class="mr-1">
+                  mdi-paperclip
+                </v-icon>
+                Comprovante atual
+              </div>
+              <v-chip
+                color="primary"
+                variant="tonal"
+                label
+                prepend-icon="mdi-file-document-outline"
+                :href="comprovantePreview"
+                target="_blank"
+              >
+                Ver comprovante
+              </v-chip>
+            </v-col>
+
+            <v-col cols="12">
+              <v-file-input
+                :label="!isNew && editedItem.recibo_pagamento ? 'Substituir comprovante (opcional)' : 'Comprovante de Pagamento (opcional)'"
+                accept="image/*,application/pdf"
+                prepend-icon=""
+                prepend-inner-icon="mdi-paperclip"
+                variant="outlined"
+                hint="Imagem ou PDF do comprovante"
+                persistent-hint
+                clearable
+                @update:model-value="(files: File | File[] | null) => {
+                  const file = Array.isArray(files) ? (files[0] ?? null) : files
+                  comprovanteFile = file
+                }"
               />
             </v-col>
           </v-row>

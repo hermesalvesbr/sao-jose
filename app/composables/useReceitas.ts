@@ -15,6 +15,7 @@ export const TIPO_RECEITA_LABELS: Record<string, string> = {
   subsidio: 'Subsídio / Repasse',
   reembolso: 'Reembolso',
   intencoes: 'Intenções',
+  anuncio: 'Anúncio / Patrocínio',
   outro: 'Outro',
 }
 

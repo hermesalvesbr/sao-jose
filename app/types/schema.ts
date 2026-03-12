@@ -44,6 +44,9 @@ export interface AdsNovenario {
   meio_pagamento: string;
   /** Descrição da permuta realizada (obrigatório quando status_pagamento = permuta) */
   permuta_descricao: string;
+  recibo_pagamento: string | DirectusFile;
+  valor_permuta: number;
+  valor_pago_especie: number;
 }
 
 export interface Agenda {
@@ -170,6 +173,8 @@ export interface PdvCategory {
   name: string;
   icon: string;
   points_id: string | PdvProductionPoint;
+  /** Ponto de produção desta categoria. Null = quermesse geral. */
+  production_point_id: string;
 }
 
 export interface PdvExpense {
@@ -231,6 +236,10 @@ export interface PdvProductionPoint {
   date_updated: 'datetime';
   name: string;
   active: boolean;
+  /** Emoji exibido na aba do PDV */
+  emoji: string;
+  /** Define como este ponto de produção aparece no app PDV */
+  role: string;
 }
 
 export interface PdvProduct {
@@ -249,6 +258,8 @@ export interface PdvProduct {
   imagem: string | DirectusFile;
   category_id: string | PdvCategory;
   production_point_id: string | PdvProductionPoint;
+  /** Emoji exibido no catálogo do PDV */
+  emoji: string;
 }
 
 export interface PdvSaleItem {
@@ -327,13 +338,9 @@ export interface Receita {
   observacao: string;
   /** Paroquiano responsável pelo recebimento */
   responsavel_id: string | Catolico;
-  documentos: number[] | ReceitasFile[]
-  pagamentos?: ReceitaPagamento[] | null
-}
-
-export interface ReceitaPagamento {
-  meio: string
-  valor: number
+  documentos: number[] | ReceitasFile[];
+  /** Array de meios de pagamento: [{meio: string, valor: number}] */
+  pagamentos: Record<string, unknown>;
 }
 
 export interface ReceitasComprovante {
@@ -448,7 +455,7 @@ export interface ApiCollections {
   pdv_sales: PdvSale[];
   pdv_schedules: PdvSchedule[];
   receitas: Receita[];
-  receitas_comprovantes: ReceitasComprovante[]
+  receitas_comprovantes: ReceitasComprovante[];
   receitas_files: ReceitasFile[];
   directus_users: DirectusUser[];
   directus_files: DirectusFile[];

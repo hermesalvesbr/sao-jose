@@ -25,6 +25,7 @@ const CATEGORIA_LABELS: Record<string, string> = {
   manutencao: 'Manutenção',
   impostos: 'Impostos / Taxas Retidas',
   repasse: 'Repasse Interno',
+  permuta_anuncio: 'Permuta de Anúncio',
   outro: 'Outro',
 }
 const categoriaOpcoes = Object.entries(CATEGORIA_LABELS).map(([value, title]) => ({ value, title }))

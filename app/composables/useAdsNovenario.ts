@@ -11,7 +11,7 @@ export function useAdsNovenario() {
     try {
       const client = await getAuthClient()
       const result = await client.request(readItems('ads_novenario', {
-        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort', 'status_pagamento', 'meio_pagamento', 'data_pagamento', 'permuta_descricao'],
+        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort', 'status_pagamento', 'meio_pagamento', 'data_pagamento', 'permuta_descricao', 'valor_permuta', 'valor_pago_especie', 'recibo_pagamento'],
         sort: ['sort'],
         limit: -1,
       }))
@@ -31,7 +31,7 @@ export function useAdsNovenario() {
     try {
       const client = await getAuthClient()
       const result = await client.request(readItem('ads_novenario', id, {
-        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort', 'status_pagamento', 'meio_pagamento', 'data_pagamento', 'permuta_descricao'],
+        fields: ['id', 'status', 'anunciante', 'midia', 'tipo_midia', 'duracao', 'valor_pago', 'sort', 'status_pagamento', 'meio_pagamento', 'data_pagamento', 'permuta_descricao', 'valor_permuta', 'valor_pago_especie', 'recibo_pagamento'],
       }))
       return result as unknown as AdsNovenario
     }

@@ -50,6 +50,7 @@ const TIPO_META: Record<string, { icon: string, color: string }> = {
   subsidio: { icon: 'mdi-bank-transfer-in', color: 'secondary' },
   reembolso: { icon: 'mdi-cash-refund', color: 'primary' },
   intencoes: { icon: 'mdi-candelabra', color: 'purple' },
+  anuncio: { icon: 'mdi-bullhorn-outline', color: 'teal' },
   outro: { icon: 'mdi-dots-horizontal-circle-outline', color: 'default' },
 }
 

@@ -3,7 +3,7 @@ import type { AdsNovenario } from '~/types/schema'
 
 definePageMeta({ layout: 'admin' })
 
-const { anuncios, loading, fetchAnuncios, removerAnuncio } = useAdsNovenario()
+const { anuncios, loading, fetchAnuncios, removerAnuncio, getAssetUrl } = useAdsNovenario()
 const { user } = useAuth()
 
 const deleteDialog = ref(false)
@@ -16,7 +16,9 @@ const filterPagamento = useState<string | null>('anuncios-pagamento', () => null
 
 const STATUS_PAGAMENTO_LABELS: Record<string, string> = {
   pago: 'Pago',
-  permuta: 'Permuta',
+  permuta: 'Permuta Total',
+  permuta_parcial: 'Permuta Parcial',
+  permuta_anuncio: 'Permuta Anúncio',
   pendente: 'Pendente',
 }
 const pagamentoOpcoes = Object.entries(STATUS_PAGAMENTO_LABELS).map(([value, title]) => ({ value, title }))
@@ -233,18 +235,41 @@ function printList() {
         </template>
 
         <template #[`item.valor_pago`]="{ item }">
-          <span class="font-weight-bold text-body-2">{{ formatCurrency(Number(item.valor_pago)) }}</span>
+          <div>
+            <span class="font-weight-bold text-body-2">{{ formatCurrency(Number(item.valor_pago)) }}</span>
+            <div v-if="(item.status_pagamento === 'permuta' || item.status_pagamento === 'permuta_parcial' || item.status_pagamento === 'permuta_anuncio') && Number(item.valor_permuta)" class="text-caption text-info">
+              <v-icon size="10" class="mr-1" icon="mdi-swap-horizontal" />
+              Permuta: {{ formatCurrency(Number(item.valor_permuta)) }}
+            </div>
+            <div v-if="item.status_pagamento === 'permuta_parcial' && Number(item.valor_pago_especie)" class="text-caption text-success">
+              <v-icon size="10" class="mr-1" icon="mdi-cash" />
+              Espécie: {{ formatCurrency(Number(item.valor_pago_especie)) }}
+            </div>
+          </div>
         </template>
 
         <template #[`item.status_pagamento`]="{ item }">
-          <v-chip
-            :color="item.status_pagamento === 'pago' ? 'success' : item.status_pagamento === 'permuta' ? 'info' : 'warning'"
-            size="small"
-            variant="tonal"
-          >
-            <v-icon start size="12" :icon="item.status_pagamento === 'pago' ? 'mdi-check-circle' : item.status_pagamento === 'permuta' ? 'mdi-swap-horizontal' : 'mdi-clock-outline'" />
-            {{ item.status_pagamento === 'pago' ? 'Pago' : item.status_pagamento === 'permuta' ? 'Permuta' : 'Pendente' }}
-          </v-chip>
+          <div class="d-flex align-center ga-2 justify-center">
+            <v-chip
+              :color="item.status_pagamento === 'pago' ? 'success' : (item.status_pagamento === 'permuta' || item.status_pagamento === 'permuta_parcial' || item.status_pagamento === 'permuta_anuncio') ? 'info' : 'warning'"
+              size="small"
+              variant="tonal"
+            >
+              <v-icon start size="12" :icon="item.status_pagamento === 'pago' ? 'mdi-check-circle' : (item.status_pagamento === 'permuta' || item.status_pagamento === 'permuta_parcial' || item.status_pagamento === 'permuta_anuncio') ? 'mdi-swap-horizontal' : 'mdi-clock-outline'" />
+              {{ STATUS_PAGAMENTO_LABELS[item.status_pagamento] ?? item.status_pagamento }}
+            </v-chip>
+
+            <v-btn
+              v-if="item.recibo_pagamento"
+              icon="mdi-paperclip"
+              variant="text"
+              size="x-small"
+              color="medium-emphasis"
+              :href="getAssetUrl(typeof item.recibo_pagamento === 'object' ? item.recibo_pagamento?.id : item.recibo_pagamento) ?? undefined"
+              target="_blank"
+              title="Ver comprovante anexado"
+            />
+          </div>
         </template>
 
         <template #[`item.meio_pagamento`]="{ item }">

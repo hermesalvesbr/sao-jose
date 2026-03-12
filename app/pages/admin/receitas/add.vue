@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ReceitaPagamento } from '~/types/schema'
+import type { ReceitaPagamento } from '~/types/custom'
 import { readItems } from '@directus/sdk'
 import { brToIsoDate, formatCurrency, isoToBrDate, toLocalISO } from '~/composables/usePdvReport'
 import { MEIO_PAGAMENTO_LABELS, TIPO_RECEITA_LABELS } from '~/composables/useReceitas'
