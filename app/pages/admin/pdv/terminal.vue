@@ -16,6 +16,18 @@ import { useDisplay } from 'vuetify'
 
 definePageMeta({ layout: false })
 
+useHead({
+  titleTemplate: '%s | Administracao | Capela Sao Jose',
+})
+
+useSeoMeta({
+  title: 'Terminal PDV',
+  description: 'Terminal de vendas do PDV da Capela Sao Jose.',
+  ogTitle: 'Terminal PDV | Administracao | Capela Sao Jose',
+  ogDescription: 'Terminal de vendas do PDV da Capela Sao Jose.',
+  robots: 'noindex,nofollow',
+})
+
 const router = useRouter()
 const { mobile } = useDisplay()
 const {

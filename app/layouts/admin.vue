@@ -5,6 +5,12 @@
  */
 import { useDisplay } from 'vuetify'
 
+const TRAILING_SLASH_RE = /\/+$/
+const ADMIN_ANUNCIO_ID_RE = /^\/admin\/anuncio\/[^/]+$/
+const ADMIN_OFERTORIO_ID_RE = /^\/admin\/ofertorio\/[^/]+$/
+const ADMIN_RECEITAS_ID_RE = /^\/admin\/receitas\/[^/]+$/
+const ADMIN_PDV_DESPESAS_ID_RE = /^\/admin\/pdv\/despesas\/[^/]+$/
+
 const route = useRoute()
 const { getUserAvatarUrl, fetchCurrentUser, user, logout } = useAuth()
 const avatarUrl = computed(() => getUserAvatarUrl() ?? '')
@@ -47,24 +53,81 @@ const pdvItems = [
   { title: 'Pontos', icon: 'mdi-store-outline', to: '/admin/pdv/pontos' },
 ]
 
-// Page title from route (reserved for future use in app-bar)
-const _pageTitle = computed(() => {
-  const titles: Record<string, string> = {
-    '/admin/resumo': 'Resumo',
-    '/admin': 'Resumo',
-    '/admin/ofertorio': 'Ofertório',
-    '/admin/ofertorio/add': 'Nova Oferta',
-    '/admin/dizimos': 'Dízimos',
-    '/admin/pdv': 'Dashboard PDV',
-    '/admin/pdv/terminal': 'Terminal PDV',
-    '/admin/pdv/categorias': 'Categorias',
-    '/admin/pdv/produtos': 'Produtos',
-    '/admin/pdv/pontos': 'Pontos de Produção',
-    '/admin/pdv/vendas': 'Vendas',
-    '/admin/pdv/relatorio': 'Relatório Financeiro Diário',
-    '/admin/pdv/despesas': 'Despesas',
+const normalizedAdminPath = computed(() => {
+  const normalized = route.path.replace(TRAILING_SLASH_RE, '')
+  return normalized || '/'
+})
+
+const staticAdminTitles: Record<string, string> = {
+  '/admin': 'Painel Administrativo',
+  '/admin/resumo': 'Resumo Administrativo',
+  '/admin/relatorio-consolidado': 'Relatorio Consolidado',
+  '/admin/festa-padroeiro': 'Festa do Padroeiro',
+
+  '/admin/anuncio': 'Anuncios',
+  '/admin/catolicos': 'Catolicos',
+
+  '/admin/ofertorio': 'Ofertorio',
+  '/admin/ofertorio/add': 'Nova Entrada de Ofertorio',
+
+  '/admin/receitas': 'Receitas',
+  '/admin/receitas/add': 'Nova Receita',
+
+  '/admin/dizimos': 'Dizimos',
+  '/admin/dizimos/lista': 'Lista de Dizimistas',
+  '/admin/dizimos/novo-dizimista': 'Novo Dizimista',
+  '/admin/dizimos/pagamentos': 'Pagamentos de Dizimos',
+  '/admin/dizimos/registrar-pagamento': 'Registrar Pagamento de Dizimo',
+  '/admin/dizimos/relatorios': 'Relatorios de Dizimos',
+
+  '/admin/pdv': 'Dashboard do PDV',
+  '/admin/pdv/categorias': 'Categorias do PDV',
+  '/admin/pdv/produtos': 'Produtos do PDV',
+  '/admin/pdv/pontos': 'Pontos de Venda',
+  '/admin/pdv/vendas': 'Vendas do PDV',
+  '/admin/pdv/escala': 'Escala de Operadores',
+  '/admin/pdv/relatorio': 'Relatorio Diario do PDV',
+  '/admin/pdv/relatorio-itens': 'Relatorio de Vendas por Item',
+  '/admin/pdv/sangria': 'Sangria de Caixa',
+  '/admin/pdv/despesas': 'Despesas do PDV',
+  '/admin/pdv/despesas/nova': 'Nova Despesa do PDV',
+}
+
+const pageTitle = computed(() => {
+  const path = normalizedAdminPath.value
+  if (staticAdminTitles[path]) {
+    return staticAdminTitles[path]
   }
-  return titles[route.path] || 'Painel'
+
+  if (ADMIN_ANUNCIO_ID_RE.test(path)) {
+    return 'Editar Anuncio'
+  }
+
+  if (ADMIN_OFERTORIO_ID_RE.test(path)) {
+    return 'Editar Entrada de Ofertorio'
+  }
+
+  if (ADMIN_RECEITAS_ID_RE.test(path)) {
+    return 'Editar Receita'
+  }
+
+  if (ADMIN_PDV_DESPESAS_ID_RE.test(path)) {
+    return 'Editar Despesa do PDV'
+  }
+
+  return 'Painel Administrativo'
+})
+
+useHead({
+  titleTemplate: '%s | Administracao | Capela Sao Jose',
+})
+
+useSeoMeta({
+  title: () => pageTitle.value,
+  description: () => `Painel administrativo da Capela Sao Jose: ${pageTitle.value}.`,
+  ogTitle: () => `${pageTitle.value} | Administracao | Capela Sao Jose`,
+  ogDescription: () => `Painel administrativo da Capela Sao Jose: ${pageTitle.value}.`,
+  robots: 'noindex,nofollow',
 })
 
 // Breadcrumb — páginas podem sobrescrever o título do último segmento
