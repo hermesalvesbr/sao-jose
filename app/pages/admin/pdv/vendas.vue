@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useDisplay } from 'vuetify'
 
 definePageMeta({ layout: 'admin' })
@@ -24,17 +24,6 @@ const detailLoading = ref(false)
 
 // ─── Adjust transfers state ──────────────────────────────────────────────────
 const adjustDialog = ref(false)
-const adjustLoading = ref(false)
-const adjustOperatorId = ref<string | null>(null)
-const adjustSales = ref<any[]>([])
-const adjustSelectedRows = ref<string[]>([])
-const adjustTargetPaymentMethod = ref('pix')
-
-const adjustSelectedSalesTotal = computed(() => {
-  return adjustSales.value
-    .filter(s => adjustSelectedRows.value.includes(s.id))
-    .reduce((sum, s) => sum + Number(s.total_amount || 0), 0)
-})
 
 // ─── Operator transfer state ──────────────────────────────────────────────────
 const operators = ref<any[]>([])
@@ -103,79 +92,16 @@ async function loadData() {
   }
 }
 
-// ─── Adjust methods ──────────────────────────────────────────────────────────
-
-async function fetchAdjustSales() {
-  if (!adjustOperatorId.value)
-    return
-  adjustLoading.value = true
-  try {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    // Filtra vendas de hoje, do operador selecionado, que sejam concluídas (dinheiro removido do filtro para ser geral)
-    const res = await fetchSales({
-      fields: ['id', 'total_amount', 'created_at', 'date_created', 'payment_method'],
-      filter: {
-        operator_id: { _eq: adjustOperatorId.value },
-        sale_status: { _eq: 'completed' },
-        date_created: { _gte: today.toISOString() },
-      },
-      limit: -1,
-      sort: ['-date_created'],
-    })
-    adjustSales.value = res || []
-    adjustSelectedRows.value = []
-  }
-  catch (err) {
-    console.error(err)
-  }
-  finally {
-    adjustLoading.value = false
-  }
-}
-
 function openAdjustDialog() {
-  adjustOperatorId.value = null
-  adjustSales.value = []
-  adjustSelectedRows.value = []
   adjustDialog.value = true
 }
 
-async function confirmAdjustBatch() {
-  if (adjustSelectedRows.value.length === 0)
-    return
-  adjustLoading.value = true
-  try {
-    for (const saleId of adjustSelectedRows.value) {
-      await updateSale(saleId, { payment_method: adjustTargetPaymentMethod.value })
-    }
-    const methodLabel = getPaymentLabel(adjustTargetPaymentMethod.value)
-    snackbarMsg.value = `${adjustSelectedRows.value.length} venda(s) alterada(s) para ${methodLabel}!`
-    snackbarColor.value = 'success'
-    snackbar.value = true
-    await loadData()
-    // Refresh modal list
-    if (adjustOperatorId.value) {
-      await fetchAdjustSales()
-    }
-    adjustSelectedRows.value = []
-  }
-  catch (err) {
-    console.error(err)
-    snackbarMsg.value = 'Erro ao atualizar vendas'
-    snackbarColor.value = 'error'
-    snackbar.value = true
-  }
-  finally {
-    adjustLoading.value = false
-  }
+async function handleAdjustCompleted(payload: { count: number, methodLabel: string }) {
+  snackbarMsg.value = `${payload.count} venda(s) alterada(s) para ${payload.methodLabel}!`
+  snackbarColor.value = 'success'
+  snackbar.value = true
+  await loadData()
 }
-
-watch(adjustOperatorId, () => {
-  if (adjustOperatorId.value)
-    fetchAdjustSales()
-})
 
 onMounted(() => {
   loadData()
@@ -1062,211 +988,12 @@ async function openSaleDetail(sale: any) {
       </v-card>
     </v-dialog>
 
-    <!-- Adjust Dinheiro -> PIX Dialog -->
-    <v-dialog v-model="adjustDialog" max-width="600px" :fullscreen="mobile" scrollable>
-      <v-card :rounded="mobile ? '0' : 'xl'" class="d-flex flex-column" :style="{ maxHeight: mobile ? '100dvh' : '90vh', minHeight: mobile ? '100dvh' : '400px' }">
-        <!-- Premium Header Section -->
-        <div class="pa-4 pb-10 position-relative text-white overflow-hidden shadow-sm" style="background: linear-gradient(135deg, #475569, #1e293b);">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="d-flex align-center">
-              <v-avatar color="white" variant="tonal" class="me-3" size="40">
-                <v-icon icon="mdi-swap-horizontal" color="white" />
-              </v-avatar>
-              <div>
-                <div class="text-h6 font-weight-bold leading-tight">
-                  Ajuste de Pagamentos
-                </div>
-                <div class="text-caption" style="opacity: 0.8;">
-                  Correção em lote das vendas de hoje
-                </div>
-              </div>
-            </div>
-            <v-btn
-              icon="mdi-close"
-              variant="text"
-              color="white"
-              density="comfortable"
-              class="position-absolute"
-              style="top: 12px; right: 12px; z-index: 10;"
-              @click="adjustDialog = false"
-            />
-          </div>
-
-          <!-- Decorative element -->
-          <v-icon icon="mdi-swap-horizontal" class="position-absolute" style="right: -20px; bottom: -30px; font-size: 150px; opacity: 0.05; transform: rotate(-15deg);" />
-        </div>
-
-        <!-- Overlapping Operator Selection -->
-        <div class="px-4" style="margin-top: -30px; position: relative; z-index: 1;">
-          <v-card rounded="lg" elevation="4" class="pa-4 bg-white border">
-            <v-autocomplete
-              v-model="adjustOperatorId"
-              :items="operators"
-              item-title="name"
-              item-value="id"
-              label="Operador Responsável"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-              clearable
-              rounded="lg"
-              placeholder="Selecione o operador das vendas"
-            />
-          </v-card>
-        </div>
-
-        <v-card-text class="overflow-y-auto pa-4 pt-6">
-          <div class="d-flex align-center mb-4 pa-3 bg-secondary-lighten-5 rounded-lg border border-secondary-lighten-4">
-            <v-icon icon="mdi-information-outline" color="secondary" class="me-3" />
-            <div class="text-caption text-secondary-darken-1">
-              Liste as transações do operador e selecione as que deseja ajustar.
-            </div>
-          </div>
-
-          <v-divider class="mb-4" />
-
-          <div v-if="adjustOperatorId && !adjustLoading && adjustSales.length > 0">
-            <div class="text-overline text-medium-emphasis mb-2 d-flex justify-space-between align-center">
-              Vendas Registradas (Hoje)
-              <v-btn
-                variant="text"
-                size="small"
-                color="primary"
-                class="text-none"
-                @click="adjustSelectedRows = adjustSelectedRows.length === adjustSales.length ? [] : adjustSales.map(s => s.id)"
-              >
-                {{ adjustSelectedRows.length === adjustSales.length ? 'Desmarcar todos' : 'Marcar todos' }}
-              </v-btn>
-            </div>
-
-            <v-list density="comfortable" class="border rounded-xl bg-grey-lighten-4 pa-0 overflow-hidden">
-              <v-list-item
-                v-for="(sale, index) in adjustSales"
-                :key="sale.id"
-                :class="{ 'border-b': index < adjustSales.length - 1 }"
-                class="px-2"
-              >
-                <template #prepend>
-                  <v-checkbox-btn
-                    v-model="adjustSelectedRows"
-                    :value="sale.id"
-                    color="primary"
-                  />
-                </template>
-                <div class="d-flex align-center py-2 w-100">
-                  <div class="flex-grow-1">
-                    <div class="text-body-2 font-weight-bold">
-                      Venda #{{ sale.id.substring(0, 8) }}
-                    </div>
-                    <div class="text-caption text-medium-emphasis d-flex align-center ga-2">
-                      <span>
-                        <v-icon icon="mdi-clock-outline" size="12" class="me-1" />
-                        {{ formatDate(sale.created_at || sale.date_created).split(',')[1] }}
-                      </span>
-                      <v-divider vertical length="10" />
-                      <span class="d-flex align-center">
-                        <v-icon :icon="getPaymentIcon(sale.payment_method)" size="12" class="me-1" />
-                        {{ getPaymentLabel(sale.payment_method) }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="text-end ms-3">
-                    <div class="text-body-1 font-weight-black text-secondary">
-                      {{ formatCurrency(sale.total_amount) }}
-                    </div>
-                  </div>
-                </div>
-              </v-list-item>
-            </v-list>
-          </div>
-          <div v-else-if="adjustLoading" class="text-center pa-10 w-100">
-            <v-progress-circular indeterminate color="primary" size="48" width="5" class="mb-4" />
-            <div class="text-body-2 text-medium-emphasis font-weight-medium">
-              Buscando transações...
-            </div>
-          </div>
-
-          <div v-else-if="adjustOperatorId" class="text-center pa-12 border rounded-xl bg-grey-lighten-4 stripe-bg w-100">
-            <v-icon icon="mdi-check-circle-outline" size="48" color="success" class="mb-4" />
-            <div class="text-h6 font-weight-bold mb-1">
-              Tudo certo!
-            </div>
-            <div class="text-body-2 text-medium-emphasis">
-              Nenhuma venda encontrada hoje para este operador.
-            </div>
-          </div>
-
-          <div v-else class="text-center pa-12 border rounded-xl border-dashed w-100">
-            <v-icon icon="mdi-account-search-outline" size="48" color="grey-lighten-1" class="mb-4" />
-            <div class="text-body-2 text-medium-emphasis">
-              Selecione um operador para iniciar o ajuste.
-            </div>
-          </div>
-        </v-card-text>
-
-        <!-- Improved Batch Control -->
-        <v-card-actions class="pa-4 border-t d-block bg-white shadow-top">
-          <div v-if="adjustSelectedRows.length > 0" class="mb-4">
-            <div class="text-caption font-weight-bold text-medium-emphasis text-uppercase mb-2 ms-1" style="letter-spacing: 0.5px;">
-              Alterar lote para:
-            </div>
-            <v-row dense>
-              <v-col v-for="pm in paymentMethods" :key="pm.value" cols="3">
-                <v-card
-                  variant="tonal"
-                  :color="adjustTargetPaymentMethod === pm.value ? pm.color : 'grey-lighten-1'"
-                  class="pa-2 text-center cursor-pointer transition-swing"
-                  :class="{ 'border-primary border-2': adjustTargetPaymentMethod === pm.value }"
-                  @click="adjustTargetPaymentMethod = pm.value"
-                >
-                  <v-icon :icon="pm.icon" size="20" class="mb-1" />
-                  <div class="text-caption font-weight-bold" style="font-size: 0.65rem !important;">
-                    {{ pm.title }}
-                  </div>
-                </v-card>
-              </v-col>
-            </v-row>
-          </div>
-
-          <div class="d-flex align-center justify-space-between pt-2">
-            <div v-if="adjustSelectedRows.length > 0">
-              <div class="text-caption text-medium-emphasis leading-none">
-                TOTAL SELECIONADO ({{ adjustSelectedRows.length }})
-              </div>
-              <div class="text-h6 font-weight-black text-primary leading-tight">
-                {{ formatCurrency(adjustSelectedSalesTotal) }}
-              </div>
-            </div>
-            <div v-else class="text-caption text-medium-emphasis">
-              Selecione itens para ajustar
-            </div>
-
-            <div class="d-flex ga-2">
-              <v-btn
-                variant="text"
-                color="grey-darken-1"
-                class="text-none font-weight-medium"
-                @click="adjustDialog = false"
-              >
-                Cancelar
-              </v-btn>
-              <v-btn
-                color="primary"
-                variant="flat"
-                class="text-none font-weight-bold px-6"
-                size="large"
-                rounded="lg"
-                :loading="adjustLoading"
-                :disabled="adjustSelectedRows.length === 0"
-                @click="confirmAdjustBatch"
-              >
-                Confirmar Ajuste
-              </v-btn>
-            </div>
-          </div>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <PdvAdjustPaymentsDialog
+      v-model="adjustDialog"
+      :operators="operators"
+      :payment-methods="paymentMethods"
+      @adjusted="handleAdjustCompleted"
+    />
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="bottom end">
       {{ snackbarMsg }}
