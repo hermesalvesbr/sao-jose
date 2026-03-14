@@ -16,6 +16,7 @@ const { mobile } = useDisplay()
 const painelItems = [
   { title: 'Resumo', icon: 'mdi-view-dashboard-outline', to: '/admin/resumo' },
   { title: 'Consolidado', icon: 'mdi-finance', to: '/admin/relatorio-consolidado' },
+  { title: 'Festa de Padroeiro', icon: 'mdi-party-popper', to: '/admin/festa-padroeiro' },
 ]
 
 const financeiroItems = [
@@ -81,6 +82,7 @@ const breadcrumbs = computed(() => {
     'anuncios': 'Anúncios',
     'anuncio': 'Anúncio',
     'relatorio-consolidado': 'Consolidado',
+    'festa-padroeiro': 'Festa de Padroeiro',
     'pdv': 'PDV',
     'categorias': 'Categorias',
     'produtos': 'Produtos',
