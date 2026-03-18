@@ -47,6 +47,9 @@ const pctCuria = ref(10)
 const pagador = ref('')
 const recebedor = ref('')
 
+// Toggle para alternar entre receita bruta e líquida
+const mostrarReceitaBruta = ref(false)
+
 // ─── State ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
 const reportGenerated = ref(false)
@@ -153,15 +156,18 @@ onMounted(() => {
   loadReport()
 })
 
-// ─── PDV Aggregation (Quermesse vs Lojinha) — Receita Líquida ─────────────
+// ─── PDV Aggregation (Quermesse vs Lojinha) ────────────────────────────────
 /**
- * Calcula a receita líquida do PDV usando o total_amount de cada venda.
- * O total_amount já reflete descontos comerciais, sendo o valor efetivamente recebido.
+ * Calcula a receita do PDV separando por ponto de produção.
+ * - Receita líquida: usa total_amount da venda (já com descontos aplicados)
+ * - Receita bruta: usa total_price dos itens (sem descontos)
  * Rateia o valor líquido da venda entre os itens para separar Quermesse vs Lojinha.
  */
 const pdvAggregated = computed(() => {
   let lojinha = 0
   let quermesse = 0
+  let lojinhaBruto = 0
+  let quermesseBruto = 0
 
   const bySale = new Map<string, any[]>()
   for (const item of pdvSaleItems.value) {
@@ -186,16 +192,23 @@ const pdvAggregated = computed(() => {
 
     for (const item of items) {
       const ppId = typeof item.product_id === 'object' ? item.product_id?.production_point_id : null
+      // Valor bruto do item (sem rateio de desconto)
+      const itemGrossAmount = Number(item.total_price || 0)
       // Aplica o fator de rateio para obter a parcela líquida do item
-      const itemNetAmount = Number(item.total_price || 0) * netRatio
-      if (ppId === LOJINHA_POINT_ID)
+      const itemNetAmount = itemGrossAmount * netRatio
+
+      if (ppId === LOJINHA_POINT_ID) {
         lojinha += itemNetAmount
-      else
+        lojinhaBruto += itemGrossAmount
+      }
+      else {
         quermesse += itemNetAmount
+        quermesseBruto += itemGrossAmount
+      }
     }
   }
 
-  return { lojinha, quermesse }
+  return { lojinha, quermesse, lojinhaBruto, quermesseBruto }
 })
 
 // ─── Revenue Lines ─────────────────────────────────────────────────────────
@@ -247,11 +260,15 @@ const revenueLines = computed(() => {
     })
   }
 
-  if (pdvAggregated.value.lojinha > 0)
-    lines.push({ label: 'LOJINHA', value: pdvAggregated.value.lojinha })
+  // Usa receita bruta ou líquida conforme toggle
+  const lojinhaValue = mostrarReceitaBruta.value ? pdvAggregated.value.lojinhaBruto : pdvAggregated.value.lojinha
+  const quermesseValue = mostrarReceitaBruta.value ? pdvAggregated.value.quermesseBruto : pdvAggregated.value.quermesse
 
-  if (pdvAggregated.value.quermesse > 0)
-    lines.push({ label: 'QUERMESSE', value: pdvAggregated.value.quermesse })
+  if (lojinhaValue > 0)
+    lines.push({ label: 'LOJINHA', value: lojinhaValue })
+
+  if (quermesseValue > 0)
+    lines.push({ label: 'QUERMESSE', value: quermesseValue })
 
   return lines
 })
@@ -374,6 +391,19 @@ function printPage(): void {
 
         <v-row class="mt-2">
           <v-col cols="12" sm="4">
+            <v-switch
+              v-model="mostrarReceitaBruta"
+              label="Exibir receita bruta (sem descontos)"
+              color="primary"
+              density="compact"
+              hide-details
+              class="no-print"
+            />
+          </v-col>
+        </v-row>
+
+        <v-row class="mt-2">
+          <v-col cols="12" sm="4">
             <v-text-field
               v-model="comunidade"
               label="Comunidade"
@@ -452,15 +482,20 @@ function printPage(): void {
       <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
           <v-icon icon="mdi-cash-multiple" color="success" class="me-2" />
-          <span class="text-subtitle-1 font-weight-bold">Receitas Líquidas</span>
+          <span class="text-subtitle-1 font-weight-bold">
+            {{ mostrarReceitaBruta ? 'Receitas Brutas' : 'Receitas Líquidas' }}
+          </span>
         </v-card-title>
-        <PrintReportSectionTitle title="Receitas Líquidas" />
+        <PrintReportSectionTitle :title="mostrarReceitaBruta ? 'Receitas Brutas' : 'Receitas Líquidas'" />
 
         <div class="pa-4">
-          <!-- Nota explicativa sobre receita líquida -->
+          <!-- Nota explicativa -->
           <p class="text-caption text-medium-emphasis mb-3">
             <v-icon icon="mdi-information-outline" size="small" class="me-1" />
-            Valores do PDV (Quermesse e Lojinha) já incluem descontos comerciais aplicados nas vendas.
+            {{ mostrarReceitaBruta
+              ? 'Valores do PDV (Quermesse e Lojinha) mostram o total das vendas antes dos descontos comerciais.'
+              : 'Valores do PDV (Quermesse e Lojinha) já incluem descontos comerciais aplicados nas vendas.'
+            }}
           </p>
           <table class="report-table">
             <thead>
