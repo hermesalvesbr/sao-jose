@@ -12,6 +12,9 @@
  *   • Despesas operacionais + sangrias
  * Intenções de missa exibidas em separado.
  *
+ * NOTA: As vendas do PDV utilizam receita líquida (total_amount com descontos aplicados),
+ * refletindo o valor efetivamente recebido após deduções comerciais.
+ *
  * DRY: reutiliza usePdv, usePdvReportPeriod, useAuth, useDirectusClient.
  */
 import { readItems } from '@directus/sdk'
@@ -74,6 +77,7 @@ async function loadReport(): Promise<void> {
           'sale_id.sale_status',
           'sale_id.date_created',
           'sale_id.total_amount',
+          'sale_id.discount_amount',
         ],
         filter: {
           _and: [
@@ -149,7 +153,12 @@ onMounted(() => {
   loadReport()
 })
 
-// ─── PDV Aggregation (Quermesse vs Lojinha) ────────────────────────────────
+// ─── PDV Aggregation (Quermesse vs Lojinha) — Receita Líquida ─────────────
+/**
+ * Calcula a receita líquida do PDV usando o total_amount de cada venda.
+ * O total_amount já reflete descontos comerciais, sendo o valor efetivamente recebido.
+ * Rateia o valor líquido da venda entre os itens para separar Quermesse vs Lojinha.
+ */
 const pdvAggregated = computed(() => {
   let lojinha = 0
   let quermesse = 0
@@ -168,17 +177,21 @@ const pdvAggregated = computed(() => {
     const sale = typeof items[0].sale_id === 'object' ? items[0].sale_id : null
     if (sale?.sale_status !== 'completed')
       continue
-    const saleTotalAmount = Number(sale?.total_amount || 0)
-    const itemsSum = items.reduce((s: number, i: any) => s + Number(i.total_price || 0), 0)
-    const ratio = itemsSum > 0 ? saleTotalAmount / itemsSum : 1
+    // Receita líquida da venda (já com descontos aplicados)
+    const saleNetAmount = Number(sale?.total_amount || 0)
+    // Soma dos preços unitários dos itens (base para rateio)
+    const itemsGrossSum = items.reduce((s: number, i: any) => s + Number(i.total_price || 0), 0)
+    // Fator de rateio: converte valor bruto dos itens em valor líquido da venda
+    const netRatio = itemsGrossSum > 0 ? saleNetAmount / itemsGrossSum : 1
 
     for (const item of items) {
       const ppId = typeof item.product_id === 'object' ? item.product_id?.production_point_id : null
-      const amt = Number(item.total_price || 0) * ratio
+      // Aplica o fator de rateio para obter a parcela líquida do item
+      const itemNetAmount = Number(item.total_price || 0) * netRatio
       if (ppId === LOJINHA_POINT_ID)
-        lojinha += amt
+        lojinha += itemNetAmount
       else
-        quermesse += amt
+        quermesse += itemNetAmount
     }
   }
 
@@ -439,11 +452,16 @@ function printPage(): void {
       <v-card rounded="xl" :elevation="0" class="border mb-5 report-card">
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
           <v-icon icon="mdi-cash-multiple" color="success" class="me-2" />
-          <span class="text-subtitle-1 font-weight-bold">Receitas</span>
+          <span class="text-subtitle-1 font-weight-bold">Receitas Líquidas</span>
         </v-card-title>
-        <PrintReportSectionTitle title="Receitas" />
+        <PrintReportSectionTitle title="Receitas Líquidas" />
 
         <div class="pa-4">
+          <!-- Nota explicativa sobre receita líquida -->
+          <p class="text-caption text-medium-emphasis mb-3">
+            <v-icon icon="mdi-information-outline" size="small" class="me-1" />
+            Valores do PDV (Quermesse e Lojinha) já incluem descontos comerciais aplicados nas vendas.
+          </p>
           <table class="report-table">
             <thead>
               <tr>

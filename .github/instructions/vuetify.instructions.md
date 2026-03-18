@@ -6,6 +6,23 @@ applyTo: "app/**/*.vue"
 
 # Vuetify 4 — Regras e Padrões Visuais
 
+## 🔌 MCP Directus — Verificar Dados Antes de Criar UI
+
+Antes de criar componentes que exibem dados do Directus:
+
+```bash
+# Consultar schema das collections
+mcporter list directus-cms-capela-sao-jose --schema
+```
+
+Isso garante que seus componentes usem os nomes de campos corretos e tipos adequados.
+
+## Referências
+
+- `.github/INTELLIGENCE.md` — Guia completo de padrões de geração de código
+- `app/plugins/vuetify.ts` — Configuração do tema e defaults
+- `.github/instructions/vue-components.instructions.md` — Padrões de componentes Vue
+
 ## Fundamentos
 
 - Use Vuetify components e grid system; nunca layout ad-hoc com CSS customizado.

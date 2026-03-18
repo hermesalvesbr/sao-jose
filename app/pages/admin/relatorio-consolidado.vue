@@ -79,7 +79,7 @@ async function loadReport() {
       }),
       // Itens de venda com produto (para separar Lojinha x Quermesse)
       fetchSaleItems({
-        fields: ['id', 'total_price', 'product_id.production_point_id', 'sale_id.id', 'sale_id.payment_method', 'sale_id.sale_status', 'sale_id.date_created', 'sale_id.total_amount'],
+        fields: ['id', 'total_price', 'product_id.production_point_id', 'sale_id.id', 'sale_id.payment_method', 'sale_id.sale_status', 'sale_id.date_created', 'sale_id.total_amount', 'sale_id.discount_amount'],
         filter: {
           _and: [
             { sale_id: { sale_status: { _eq: 'completed' } } },
@@ -186,8 +186,8 @@ onMounted(loadReport)
 
 /**
  * Agrega vendas PDV separando Lojinha de Quermesse.
- * Distribui desconto proporcionalmente: se uma venda tem desconto,
- * o valor de cada item é ajustado pela razão (total_amount / soma_itens).
+ * Usa o total_amount (receita líquida com descontos aplicados) de cada venda.
+ * Rateia o valor líquido proporcionalmente entre os itens para separar por ponto de produção.
  */
 function aggregateByProductionPoint() {
   const lojinha = { dinheiro: 0, pix: 0, cartao: 0, total: 0 }
@@ -209,22 +209,26 @@ function aggregateByProductionPoint() {
     // Ignorar vendas canceladas (defesa contra filtro relacional do Directus)
     if (sale?.sale_status !== 'completed')
       continue
-    const saleTotalAmount = Number(sale?.total_amount || 0)
+    // Receita líquida da venda (já com descontos aplicados)
+    const saleNetAmount = Number(sale?.total_amount || 0)
     const method: string = (sale?.payment_method ?? 'dinheiro')
-    const itemsSum = items.reduce((s: number, i: any) => s + Number(i.total_price || 0), 0)
-    const ratio = itemsSum > 0 ? saleTotalAmount / itemsSum : 1
+    // Soma dos preços brutos dos itens (base para rateio)
+    const itemsGrossSum = items.reduce((s: number, i: any) => s + Number(i.total_price || 0), 0)
+    // Fator de rateio: converte valor bruto dos itens em valor líquido da venda
+    const netRatio = itemsGrossSum > 0 ? saleNetAmount / itemsGrossSum : 1
 
     for (const item of items) {
       const ppId = typeof item.product_id === 'object' ? item.product_id?.production_point_id : null
-      const amt = Number(item.total_price || 0) * ratio
+      // Aplica o fator de rateio para obter a parcela líquida do item
+      const itemNetAmount = Number(item.total_price || 0) * netRatio
       const target = ppId === LOJINHA_POINT_ID ? lojinha : quermesse
       if (method === 'dinheiro')
-        target.dinheiro += amt
+        target.dinheiro += itemNetAmount
       else if (method === 'pix')
-        target.pix += amt
+        target.pix += itemNetAmount
       else
-        target.cartao += amt
-      target.total += amt
+        target.cartao += itemNetAmount
+      target.total += itemNetAmount
     }
   }
 
