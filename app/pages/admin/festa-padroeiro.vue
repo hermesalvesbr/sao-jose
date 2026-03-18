@@ -47,8 +47,10 @@ const pctCuria = ref(10)
 const pagador = ref('')
 const recebedor = ref('')
 
-// Toggle para alternar entre receita bruta e líquida
-const mostrarReceitaBruta = ref(false)
+// Toggle para alternar entre cálculo dos percentuais sobre receita bruta ou líquida
+// false = percentuais calculados após deduzir despesas (líquido)
+// true = percentuais calculados sobre receita bruta (antes das despesas)
+const calcularPercentualReceitaBruta = ref(false)
 
 // ─── State ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
@@ -260,9 +262,9 @@ const revenueLines = computed(() => {
     })
   }
 
-  // Usa receita bruta ou líquida conforme toggle
-  const lojinhaValue = mostrarReceitaBruta.value ? pdvAggregated.value.lojinhaBruto : pdvAggregated.value.lojinha
-  const quermesseValue = mostrarReceitaBruta.value ? pdvAggregated.value.quermesseBruto : pdvAggregated.value.quermesse
+  // Usa receita bruta ou líquida conforme toggle (para PDV)
+  const lojinhaValue = calcularPercentualReceitaBruta.value ? pdvAggregated.value.lojinhaBruto : pdvAggregated.value.lojinha
+  const quermesseValue = calcularPercentualReceitaBruta.value ? pdvAggregated.value.quermesseBruto : pdvAggregated.value.quermesse
 
   if (lojinhaValue > 0)
     lines.push({ label: 'LOJINHA', value: lojinhaValue })
@@ -278,9 +280,6 @@ const soma = computed(() =>
   revenueLines.value.reduce((s, l) => s + l.value, 0),
 )
 
-const deducaoMatriz = computed(() => soma.value * pctMatriz.value / 100)
-const deducaoCuria = computed(() => soma.value * pctCuria.value / 100)
-
 const totalDespesas = computed(() =>
   pdvExpenses.value.reduce((s, e) => s + Number(e.valor || 0), 0),
 )
@@ -290,6 +289,18 @@ const totalSangrias = computed(() =>
 const totalSaidas = computed(() =>
   totalDespesas.value + totalSangrias.value,
 )
+
+// Base de cálculo para os percentuais:
+// - Se calcularPercentualReceitaBruta = false: base = receitas - despesas (líquido)
+// - Se calcularPercentualReceitaBruta = true: base = receitas (bruto)
+const baseCalculoPercentuais = computed(() =>
+  calcularPercentualReceitaBruta.value
+    ? soma.value
+    : Math.max(0, soma.value - totalSaidas.value),
+)
+
+const deducaoMatriz = computed(() => baseCalculoPercentuais.value * pctMatriz.value / 100)
+const deducaoCuria = computed(() => baseCalculoPercentuais.value * pctCuria.value / 100)
 
 const totalDeducoes = computed(() =>
   deducaoMatriz.value + deducaoCuria.value + totalSaidas.value,
@@ -390,15 +401,22 @@ function printPage(): void {
         </v-row>
 
         <v-row class="mt-2">
-          <v-col cols="12" sm="4">
+          <v-col cols="12" sm="5">
             <v-switch
-              v-model="mostrarReceitaBruta"
-              label="Exibir receita bruta (sem descontos)"
+              v-model="calcularPercentualReceitaBruta"
+              label="Calcular % (Matriz/Cúria) sobre receita bruta (antes das despesas)"
               color="primary"
               density="compact"
               hide-details
               class="no-print"
             />
+            <p class="text-caption text-medium-emphasis mt-1">
+              <v-icon icon="mdi-information-outline" size="x-small" class="me-1" />
+              {{ calcularPercentualReceitaBruta
+                ? 'Percentuais calculados sobre o total das receitas (R$ 45.008,00)'
+                : 'Percentuais calculados após deduzir despesas (receita líquida)'
+              }}
+            </p>
           </v-col>
         </v-row>
 
@@ -483,18 +501,18 @@ function printPage(): void {
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
           <v-icon icon="mdi-cash-multiple" color="success" class="me-2" />
           <span class="text-subtitle-1 font-weight-bold">
-            {{ mostrarReceitaBruta ? 'Receitas Brutas' : 'Receitas Líquidas' }}
+            {{ calcularPercentualReceitaBruta.value ? 'Receitas Brutas (PDV)' : 'Receitas Líquidas (PDV)' }}
           </span>
         </v-card-title>
-        <PrintReportSectionTitle :title="mostrarReceitaBruta ? 'Receitas Brutas' : 'Receitas Líquidas'" />
+        <PrintReportSectionTitle :title="calcularPercentualReceitaBruta ? 'Receitas Brutas (PDV)' : 'Receitas Líquidas (PDV)'" />
 
         <div class="pa-4">
           <!-- Nota explicativa -->
           <p class="text-caption text-medium-emphasis mb-3">
             <v-icon icon="mdi-information-outline" size="small" class="me-1" />
-            {{ mostrarReceitaBruta
-              ? 'Valores do PDV (Quermesse e Lojinha) mostram o total das vendas antes dos descontos comerciais.'
-              : 'Valores do PDV (Quermesse e Lojinha) já incluem descontos comerciais aplicados nas vendas.'
+            {{ calcularPercentualReceitaBruta
+              ? 'Valores do PDV (Quermesse e Lojinha) mostram o total das vendas antes dos descontos comerciais. Percentuais da Matriz/Cúria calculados sobre receita bruta.'
+              : 'Valores do PDV (Quermesse e Lojinha) já incluem descontos comerciais. Percentuais da Matriz/Cúria calculados após deduzir despesas.'
             }}
           </p>
           <table class="report-table">
