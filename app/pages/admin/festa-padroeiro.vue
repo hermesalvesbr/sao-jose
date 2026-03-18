@@ -501,7 +501,7 @@ function printPage(): void {
         <v-card-title class="d-flex align-center pa-4 pb-2 no-print">
           <v-icon icon="mdi-cash-multiple" color="success" class="me-2" />
           <span class="text-subtitle-1 font-weight-bold">
-            {{ calcularPercentualReceitaBruta.value ? 'Receitas Brutas (PDV)' : 'Receitas Líquidas (PDV)' }}
+            {{ calcularPercentualReceitaBruta ? 'Receitas Brutas (PDV)' : 'Receitas Líquidas (PDV)' }}
           </span>
         </v-card-title>
         <PrintReportSectionTitle :title="calcularPercentualReceitaBruta ? 'Receitas Brutas (PDV)' : 'Receitas Líquidas (PDV)'" />
