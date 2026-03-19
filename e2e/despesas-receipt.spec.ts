@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 /**
  * Test suite for Despesas receipt functionality
@@ -115,7 +115,8 @@ test.describe('Despesas Receipt', () => {
     const container = page.locator('.v-container')
     await expect(container).toHaveClass(/print-receipt-active/)
 
-    // Verify PrintReportLayout is hidden (it has d-print-block class)
+    // Verify PrintReportLayout is hidden when receipt is active
+    // eslint-disable-next-line unused-imports/no-unused-vars
     const printReportLayout = page.locator('.d-print-block')
     // In screen mode, it should be hidden when receipt is active
     // The CSS should hide .print-receipt-active .d-print-block
