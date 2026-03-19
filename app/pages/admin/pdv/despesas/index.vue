@@ -244,7 +244,8 @@ function printReceipt(item: any) {
 
 function confirmPrintReceipt() {
   showReceiptDialog.value = false
-  nextTick(() => {
+  // Aguardar a animação de fechamento da dialog terminar antes de imprimir
+  setTimeout(() => {
     window.print()
     // Limpar o recibo após a impressão (ou cancelamento) para restaurar a página
     const handler = () => {
@@ -252,7 +253,7 @@ function confirmPrintReceipt() {
       window.removeEventListener('afterprint', handler)
     }
     window.addEventListener('afterprint', handler)
-  })
+  }, 300)
 }
 
 const periodLabel = computed(() => {
