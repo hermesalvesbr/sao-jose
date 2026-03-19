@@ -51,6 +51,7 @@ const search = useState<string>('pdv-despesas-search', () => '')
 const dateFrom = useState<string>('pdv-despesas-from', () => '')
 const dateTo = useState<string>('pdv-despesas-to', () => '')
 const filterCategoria = useState<string | null>('pdv-despesas-categoria', () => null)
+const filterPago = useState<'todos' | 'pago' | 'pendente'>('pdv-despesas-pago', () => 'todos')
 const activeQuickFilter = useState<'hoje' | 'mes' | 'novena' | null>('pdv-despesas-quick-filter', () => null)
 
 function applyToday() {
@@ -109,6 +110,10 @@ const filteredItems = computed(() => {
     result = result.filter(i => i.data_despesa <= dateTo.value)
   if (filterCategoria.value)
     result = result.filter(i => i.categoria === filterCategoria.value)
+  if (filterPago.value === 'pago')
+    result = result.filter(i => i.paid === true)
+  else if (filterPago.value === 'pendente')
+    result = result.filter(i => i.paid === false)
   return result
 })
 
@@ -212,6 +217,7 @@ function clearFilters() {
   dateFrom.value = ''
   dateTo.value = ''
   filterCategoria.value = null
+  filterPago.value = 'todos'
   activeQuickFilter.value = null
 }
 
@@ -336,6 +342,44 @@ function getResponsavelName(item: any): string {
               hide-details
               clearable
             />
+          </v-col>
+          <v-col cols="12" sm="3">
+            <div class="text-caption text-medium-emphasis mb-1">
+              Status
+            </div>
+            <v-btn-toggle
+              v-model="filterPago"
+              density="compact"
+              color="primary"
+              mandatory
+              class="d-flex flex-wrap"
+            >
+              <v-btn
+                value="todos"
+                size="small"
+                variant="tonal"
+              >
+                Todos
+              </v-btn>
+              <v-btn
+                value="pago"
+                size="small"
+                variant="tonal"
+                color="success"
+              >
+                <v-icon start size="small" icon="mdi-check-circle" />
+                Pago
+              </v-btn>
+              <v-btn
+                value="pendente"
+                size="small"
+                variant="tonal"
+                color="error"
+              >
+                <v-icon start size="small" icon="mdi-clock-outline" />
+                Pendente
+              </v-btn>
+            </v-btn-toggle>
           </v-col>
           <v-col cols="12" sm="12" class="d-flex flex-wrap ga-2">
             <v-btn
