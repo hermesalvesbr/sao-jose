@@ -52,6 +52,7 @@ const dateFrom = useState<string>('pdv-despesas-from', () => '')
 const dateTo = useState<string>('pdv-despesas-to', () => '')
 const filterCategoria = useState<string | null>('pdv-despesas-categoria', () => null)
 const filterPago = useState<'todos' | 'pago' | 'pendente'>('pdv-despesas-pago', () => 'todos')
+const filterAnexos = useState<boolean>('pdv-despesas-anexos', () => false)
 const activeQuickFilter = useState<'hoje' | 'mes' | 'novena' | null>('pdv-despesas-quick-filter', () => null)
 
 function applyToday() {
@@ -124,11 +125,13 @@ const filteredItems = computed(() => {
     result = result.filter(i => i.paid === true)
   else if (filterPago.value === 'pendente')
     result = result.filter(i => i.paid === false)
+  if (filterAnexos.value)
+    result = result.filter(i => getComprovantes(i).length > 0)
   return result
 })
 
 const hasActiveFilters = computed(() =>
-  !!(search.value || dateFrom.value || dateTo.value || filterCategoria.value || filterPago.value !== 'todos'),
+  !!(search.value || dateFrom.value || dateTo.value || filterCategoria.value || filterPago.value !== 'todos' || filterAnexos.value),
 )
 
 const activeFilterCount = computed(() => {
@@ -140,6 +143,8 @@ const activeFilterCount = computed(() => {
   if (filterCategoria.value)
     count++
   if (filterPago.value !== 'todos')
+    count++
+  if (filterAnexos.value)
     count++
   return count
 })
@@ -256,6 +261,7 @@ function clearFilters() {
   dateTo.value = ''
   filterCategoria.value = null
   filterPago.value = 'todos'
+  filterAnexos.value = false
   activeQuickFilter.value = null
 }
 
@@ -487,7 +493,17 @@ function getResponsavelName(item: any): string {
               </v-btn>
             </v-btn-toggle>
           </v-col>
-          <v-col cols="auto" md="2" class="d-flex align-center">
+          <v-col cols="auto" class="d-flex align-center">
+            <v-checkbox
+              v-model="filterAnexos"
+              label="Com anexos"
+              density="compact"
+              hide-details
+              color="primary"
+              prepend-icon="mdi-paperclip"
+            />
+          </v-col>
+          <v-col cols="auto" class="d-flex align-center">
             <v-btn
               v-if="hasActiveFilters"
               size="small"
