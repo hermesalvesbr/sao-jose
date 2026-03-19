@@ -99,10 +99,20 @@ const filteredItems = computed(() => {
   let result = items.value.filter(i => i.status !== 'archived')
   if (search.value) {
     const term = search.value.toLowerCase()
-    result = result.filter(i =>
-      i.descricao?.toLowerCase().includes(term)
-      || i.observacao?.toLowerCase().includes(term),
-    )
+    result = result.filter((i) => {
+      const categoriaLabel = CATEGORIA_LABELS[i.categoria]?.toLowerCase() ?? ''
+      const pagamentoLabel = PAYMENT_METHOD_LABELS[i.payment_method]?.toLowerCase() ?? ''
+      const responsavel = getResponsavelName(i).toLowerCase()
+      const valor = formatCurrency(i.valor).toLowerCase()
+      const data = formatDate(i.data_despesa)?.toLowerCase() ?? ''
+      return i.descricao?.toLowerCase().includes(term)
+        || i.observacao?.toLowerCase().includes(term)
+        || categoriaLabel.includes(term)
+        || pagamentoLabel.includes(term)
+        || responsavel.includes(term)
+        || valor.includes(term)
+        || data.includes(term)
+    })
   }
   if (dateFrom.value)
     result = result.filter(i => i.data_despesa >= dateFrom.value)
@@ -115,6 +125,23 @@ const filteredItems = computed(() => {
   else if (filterPago.value === 'pendente')
     result = result.filter(i => i.paid === false)
   return result
+})
+
+const hasActiveFilters = computed(() =>
+  !!(search.value || dateFrom.value || dateTo.value || filterCategoria.value || filterPago.value !== 'todos'),
+)
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (search.value)
+    count++
+  if (dateFrom.value || dateTo.value)
+    count++
+  if (filterCategoria.value)
+    count++
+  if (filterPago.value !== 'todos')
+    count++
+  return count
 })
 
 const receiptItem = ref<any>(null)
@@ -310,16 +337,11 @@ function getResponsavelName(item: any): string {
   <v-container fluid class="pa-2 pa-md-6" :class="{ 'print-receipt-active': receiptItem !== null }">
     <!-- Header -->
     <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
-      <div>
-        <div class="d-flex align-center mb-2">
-          <v-btn variant="text" icon="mdi-arrow-left" class="me-2" to="/admin/pdv" />
-          <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
-            Despesas
-          </h1>
-        </div>
-        <p class="text-body-2 text-medium-emphasis mt-1 mb-0 ms-11">
-          Total: {{ formatCurrency(totalFiltered) }} em {{ filteredItems.length }} {{ filteredItems.length === 1 ? 'despesa' : 'despesas' }}
-        </p>
+      <div class="d-flex align-center">
+        <v-btn variant="text" icon="mdi-arrow-left" class="me-2" to="/admin/pdv" />
+        <h1 class="text-h5 text-md-h4 font-weight-bold text-secondary-darken-1">
+          Despesas
+        </h1>
       </div>
       <div class="d-flex ga-3 mt-3 mt-sm-0 d-print-none">
         <v-btn variant="tonal" color="info" size="large" prepend-icon="mdi-printer" @click="printList">
@@ -333,36 +355,86 @@ function getResponsavelName(item: any): string {
 
     <!-- Filters -->
     <v-card rounded="xl" :elevation="0" class="border mb-5 d-print-none">
-      <v-card-text class="py-3">
-        <v-row align="center">
-          <v-col cols="12" sm="4">
-            <v-text-field
-              v-model="search"
-              prepend-inner-icon="mdi-magnify"
-              label="Buscar descrição..."
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="6" sm="2">
+      <!-- Busca principal -->
+      <v-card-text class="pb-0 pt-4 px-4">
+        <v-text-field
+          v-model="search"
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Buscar por descrição, categoria, responsável, valor..."
+          variant="solo-filled"
+          density="comfortable"
+          hide-details
+          clearable
+          flat
+          rounded="lg"
+          class="filter-search"
+        />
+      </v-card-text>
+
+      <!-- Atalhos de período -->
+      <v-card-text class="pb-0 pt-3 px-4">
+        <div class="text-caption text-medium-emphasis mb-2 font-weight-medium">
+          <v-icon size="14" class="me-1">
+            mdi-lightning-bolt
+          </v-icon>
+          Período rápido
+        </div>
+        <div class="d-flex flex-wrap ga-2">
+          <v-chip
+            :variant="activeQuickFilter === 'hoje' ? 'elevated' : 'tonal'"
+            :color="activeQuickFilter === 'hoje' ? 'primary' : 'secondary'"
+            size="small"
+            label
+            prepend-icon="mdi-calendar-today"
+            @click="applyToday"
+          >
+            Hoje
+          </v-chip>
+          <v-chip
+            :variant="activeQuickFilter === 'mes' ? 'elevated' : 'tonal'"
+            :color="activeQuickFilter === 'mes' ? 'primary' : 'secondary'"
+            size="small"
+            label
+            prepend-icon="mdi-calendar-month"
+            @click="applyThisMonth"
+          >
+            Este mês
+          </v-chip>
+          <v-chip
+            :variant="activeQuickFilter === 'novena' ? 'elevated' : 'tonal'"
+            :color="activeQuickFilter === 'novena' ? 'warning' : 'secondary'"
+            size="small"
+            label
+            prepend-icon="mdi-candelabra"
+            @click="applyNovena"
+          >
+            Novena
+          </v-chip>
+        </div>
+      </v-card-text>
+
+      <!-- Filtros detalhados -->
+      <v-card-text class="pt-3 px-4">
+        <v-row align="center" dense>
+          <v-col cols="6" sm="3" md="2">
             <MaskedDateField
               v-model="dateFromField"
               label="De"
               prepend-inner-icon="mdi-calendar-start"
               hide-details
+              density="compact"
             />
           </v-col>
-          <v-col cols="6" sm="2">
+          <v-col cols="6" sm="3" md="2">
             <MaskedDateField
               v-model="dateToField"
               label="Até"
               prepend-inner-icon="mdi-calendar-end"
               hide-details
+              density="compact"
             />
           </v-col>
-          <v-col cols="12" sm="3">
+          <v-col cols="12" sm="3" md="3">
             <v-select
               v-model="filterCategoria"
               :items="categoriaOpcoes"
@@ -373,23 +445,23 @@ function getResponsavelName(item: any): string {
               density="compact"
               hide-details
               clearable
+              prepend-inner-icon="mdi-tag-outline"
             />
           </v-col>
-          <v-col cols="12" sm="3">
-            <div class="text-caption text-medium-emphasis mb-1">
-              Status
-            </div>
+          <v-col cols="12" sm="3" md="3">
             <v-btn-toggle
               v-model="filterPago"
               density="compact"
               color="primary"
               mandatory
-              class="d-flex flex-wrap"
+              class="d-flex w-100"
+              rounded="lg"
             >
               <v-btn
                 value="todos"
                 size="small"
                 variant="tonal"
+                class="flex-grow-1"
               >
                 Todos
               </v-btn>
@@ -398,6 +470,7 @@ function getResponsavelName(item: any): string {
                 size="small"
                 variant="tonal"
                 color="success"
+                class="flex-grow-1"
               >
                 <v-icon start size="small" icon="mdi-check-circle" />
                 Pago
@@ -407,51 +480,39 @@ function getResponsavelName(item: any): string {
                 size="small"
                 variant="tonal"
                 color="error"
+                class="flex-grow-1"
               >
                 <v-icon start size="small" icon="mdi-clock-outline" />
                 Pendente
               </v-btn>
             </v-btn-toggle>
           </v-col>
-          <v-col cols="12" sm="12" class="d-flex flex-wrap ga-2">
+          <v-col cols="auto" md="2" class="d-flex align-center">
             <v-btn
+              v-if="hasActiveFilters"
               size="small"
-              :variant="activeQuickFilter === 'hoje' ? 'elevated' : 'tonal'"
-              color="secondary"
-              @click="applyToday"
+              variant="text"
+              color="error"
+              prepend-icon="mdi-filter-remove"
+              @click="clearFilters"
             >
-              Hoje
-            </v-btn>
-            <v-btn
-              size="small"
-              :variant="activeQuickFilter === 'mes' ? 'elevated' : 'tonal'"
-              color="secondary"
-              @click="applyThisMonth"
-            >
-              Este mês
-            </v-btn>
-            <v-btn
-              size="small"
-              :variant="activeQuickFilter === 'novena' ? 'elevated' : 'tonal'"
-              color="warning"
-              @click="applyNovena"
-            >
-              Novena
-            </v-btn>
-            <v-btn size="small" variant="text" color="secondary" @click="clearFilters">
-              Limpar
+              Limpar ({{ activeFilterCount }})
             </v-btn>
           </v-col>
         </v-row>
       </v-card-text>
-    </v-card>
 
-    <!-- Summary -->
-    <div class="d-flex justify-end mb-4 no-print">
-      <v-chip color="error" variant="tonal" prepend-icon="mdi-cash-minus" size="large">
-        Total: {{ formatCurrency(totalFiltered) }}
-      </v-chip>
-    </div>
+      <!-- Resumo -->
+      <v-divider />
+      <v-card-text class="py-2 px-4 d-flex align-center justify-space-between bg-surface-light">
+        <span class="text-body-2 text-medium-emphasis">
+          {{ filteredItems.length }} {{ filteredItems.length === 1 ? 'despesa' : 'despesas' }} encontrada{{ filteredItems.length === 1 ? '' : 's' }}
+        </span>
+        <v-chip color="error" variant="tonal" size="small" prepend-icon="mdi-cash-minus" label>
+          Total: {{ formatCurrency(totalFiltered) }}
+        </v-chip>
+      </v-card-text>
+    </v-card>
 
     <!-- Loading -->
     <div v-if="loading" class="d-flex justify-center align-center pa-12 no-print">
@@ -883,6 +944,14 @@ function getResponsavelName(item: any): string {
 }
 
 /* print-receipt-active: visibilidade controlada apenas em @media print */
+
+.filter-search :deep(.v-field) {
+  background: rgb(var(--v-theme-surface-variant), 0.4);
+}
+
+.bg-surface-light {
+  background: rgb(var(--v-theme-surface-variant), 0.15);
+}
 
 @media print {
   /* Hide ALL screen content including PrintReportLayout */
