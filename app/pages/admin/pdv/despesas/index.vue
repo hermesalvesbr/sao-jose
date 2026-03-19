@@ -118,6 +118,8 @@ const filteredItems = computed(() => {
 })
 
 const receiptItem = ref<any>(null)
+const receiptReceiverName = ref('')
+const showReceiptDialog = ref(false)
 
 const totalFiltered = computed(() =>
   filteredItems.value.reduce((sum, i) => sum + Number(i.valor || 0), 0),
@@ -180,7 +182,16 @@ async function loadData() {
   }
 }
 
-onMounted(loadData)
+const currentUserName = ref('')
+
+onMounted(async () => {
+  await loadData()
+  // Buscar usuário conectado para o recibo
+  const auth = useAuth()
+  const user = auth.user.value ?? await auth.fetchCurrentUser()
+  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+  currentUserName.value = fullName || user?.email?.split('@')[0] || 'Usuário'
+})
 
 function confirmarArquivar(item: any) {
   itemToArchive.value = item
@@ -227,7 +238,21 @@ function printList() {
 
 function printReceipt(item: any) {
   receiptItem.value = item
-  nextTick(() => window.print())
+  receiptReceiverName.value = ''
+  showReceiptDialog.value = true
+}
+
+function confirmPrintReceipt() {
+  showReceiptDialog.value = false
+  nextTick(() => {
+    window.print()
+    // Limpar o recibo após a impressão (ou cancelamento) para restaurar a página
+    const handler = () => {
+      receiptItem.value = null
+      window.removeEventListener('afterprint', handler)
+    }
+    window.addEventListener('afterprint', handler)
+  })
 }
 
 const periodLabel = computed(() => {
@@ -692,6 +717,56 @@ function getResponsavelName(item: any): string {
       {{ snackbarMsg }}
     </v-snackbar>
 
+    <!-- Dialog: Nome do Recebedor -->
+    <v-dialog v-model="showReceiptDialog" max-width="480" persistent>
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center pa-4">
+          <v-icon color="primary" class="me-2">
+            mdi-receipt-text-outline
+          </v-icon>
+          <span class="text-h6">Gerar Recibo</span>
+        </v-card-title>
+        <v-card-text class="pa-4">
+          <p class="text-body-2 text-medium-emphasis mb-4">
+            Informe o nome da pessoa que está recebendo o pagamento.
+          </p>
+          <v-text-field
+            v-model="receiptReceiverName"
+            label="Nome do Recebedor *"
+            prepend-inner-icon="mdi-account-check-outline"
+            placeholder="Digite o nome completo"
+            autofocus
+            hide-details="auto"
+            :rules="[v => !!v || 'Nome do recebedor é obrigatório']"
+            @keyup.enter="receiptReceiverName && confirmPrintReceipt()"
+          />
+          <div class="mt-4 pa-3 bg-grey-lighten-4 rounded-lg">
+            <div class="text-caption text-medium-emphasis mb-1">
+              Registrado por
+            </div>
+            <div class="text-body-2 font-weight-medium">
+              <v-icon icon="mdi-account-circle" size="small" class="me-1" />
+              {{ currentUserName }}
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions class="pa-3 justify-end ga-2">
+          <v-btn variant="text" @click="showReceiptDialog = false">
+            Cancelar
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            prepend-icon="mdi-printer"
+            :disabled="!receiptReceiverName.trim()"
+            @click="confirmPrintReceipt"
+          >
+            Imprimir Recibo
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- ─── Recibo (print only) ───────────────────────────────────────── -->
     <div v-if="receiptItem" class="print-receipt">
       <div class="receipt-header">
@@ -741,12 +816,28 @@ function getResponsavelName(item: any): string {
               {{ receiptItem.observacao }}
             </td>
           </tr>
+          <tr class="receipt-highlight-row">
+            <td class="receipt-label">
+              Recebedor:
+            </td>
+            <td class="receipt-value receipt-highlight-value">
+              {{ receiptReceiverName }}
+            </td>
+          </tr>
           <tr>
             <td class="receipt-label">
-              Responsável pelo Recebimento:
+              Registrado por:
             </td>
             <td class="receipt-value">
-              {{ getResponsavelName(receiptItem) }}
+              {{ currentUserName }}
+            </td>
+          </tr>
+          <tr>
+            <td class="receipt-label">
+              Data/Hora do Registro:
+            </td>
+            <td class="receipt-value">
+              {{ new Date().toLocaleString('pt-BR') }}
             </td>
           </tr>
         </tbody>
@@ -761,11 +852,13 @@ function getResponsavelName(item: any): string {
       <div class="receipt-signatures">
         <div class="receipt-sig-block">
           <div class="receipt-sig-line" />
-          <p>Responsável pelo Recebimento</p>
+          <p>Assinatura do Recebedor</p>
+          <p class="receipt-sig-name">{{ receiptReceiverName }}</p>
         </div>
         <div class="receipt-sig-block">
           <div class="receipt-sig-line" />
           <p>Tesouraria - Capela São José</p>
+          <p class="receipt-sig-name">{{ currentUserName }}</p>
         </div>
       </div>
 
@@ -880,6 +973,20 @@ function getResponsavelName(item: any): string {
     color: #1a1a1a;
   }
 
+  .receipt-highlight-row {
+    background-color: #f5f5f5;
+  }
+
+  .receipt-highlight-row .receipt-label,
+  .receipt-highlight-row .receipt-value {
+    font-weight: 700;
+    color: #3e2723;
+  }
+
+  .receipt-highlight-value {
+    font-size: 14px;
+  }
+
   .receipt-declaration {
     margin-top: 24px;
     margin-bottom: 32px;
@@ -914,6 +1021,13 @@ function getResponsavelName(item: any): string {
     font-size: 12px;
     color: #666;
     margin: 0;
+  }
+
+  .receipt-sig-name {
+    font-weight: 600;
+    color: #333 !important;
+    margin-top: 4px !important;
+    font-size: 11px !important;
   }
 
   .receipt-copy-note {
