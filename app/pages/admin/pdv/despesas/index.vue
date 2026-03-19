@@ -275,7 +275,7 @@ function getResponsavelName(item: any): string {
 </script>
 
 <template>
-  <v-container fluid class="pa-2 pa-md-6">
+  <v-container fluid class="pa-2 pa-md-6" :class="{ 'print-receipt-active': receiptItem !== null }">
     <!-- Header -->
     <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 no-print">
       <div>
@@ -782,23 +782,34 @@ function getResponsavelName(item: any): string {
   display: none;
 }
 
+/* Quando recibo estiver ativo, esconder todo o resto na tela também */
+.print-receipt-active .no-print,
+.print-receipt-active > :not(.print-receipt) {
+  display: none !important;
+}
+
 @media print {
-  /* Hide all screen content */
+  /* Hide ALL screen content including PrintReportLayout */
   .no-print,
   .v-navigation-drawer,
   .v-app-bar,
   header,
-  nav {
+  nav,
+  .d-print-block {
     display: none !important;
   }
 
-  /* Show receipt */
+  /* Show receipt ONLY */
   .print-receipt {
     display: block !important;
     font-family: Arial, sans-serif;
     padding: 30px;
     max-width: 210mm;
     margin: 0 auto;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
   }
 
   .receipt-header {
