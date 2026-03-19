@@ -28,7 +28,18 @@ const form = ref({
   categoria: null as string | null,
   responsavel_id: null as string | null,
   observacao: '',
+  paid: false,
+  payment_method: null as string | null,
 })
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'dinheiro', title: 'Dinheiro' },
+  { value: 'pix', title: 'PIX' },
+  { value: 'cartao_credito', title: 'Cartão de Crédito' },
+  { value: 'cartao_debito', title: 'Cartão de Débito' },
+  { value: 'transferencia', title: 'Transferência Bancária' },
+  { value: 'outro', title: 'Outro' },
+]
 
 const responsavelForm = ref({
   nome: '',
@@ -203,6 +214,8 @@ async function saveForm() {
       categoria: form.value.categoria,
       responsavel_id: form.value.responsavel_id || null,
       observacao: form.value.observacao || null,
+      paid: form.value.paid,
+      payment_method: form.value.payment_method,
       status: 'published',
     }
 
@@ -336,6 +349,26 @@ onMounted(async () => {
                 rows="3"
                 auto-grow
                 prepend-inner-icon="mdi-note-outline"
+              />
+            </v-col>
+
+            <v-col cols="12" sm="6">
+              <v-switch
+                v-model="form.paid"
+                label="Pago?"
+                color="success"
+                inset
+              />
+            </v-col>
+
+            <v-col v-if="form.paid" cols="12" sm="6">
+              <v-select
+                v-model="form.payment_method"
+                :items="PAYMENT_METHOD_OPTIONS"
+                item-title="title"
+                item-value="value"
+                label="Forma de Pagamento *"
+                prepend-inner-icon="mdi-cash-multiple"
               />
             </v-col>
 

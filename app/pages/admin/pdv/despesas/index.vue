@@ -28,6 +28,15 @@ const CATEGORIA_LABELS: Record<string, string> = {
   permuta_anuncio: 'Permuta de Anúncio',
   outro: 'Outro',
 }
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  pix: 'PIX',
+  cartao_credito: 'Cartão de Crédito',
+  cartao_debito: 'Cartão de Débito',
+  transferencia: 'Transferência Bancária',
+  outro: 'Outro',
+}
 const categoriaOpcoes = Object.entries(CATEGORIA_LABELS).map(([value, title]) => ({ value, title }))
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -103,6 +112,8 @@ const filteredItems = computed(() => {
   return result
 })
 
+const receiptItem = ref<any>(null)
+
 const totalFiltered = computed(() =>
   filteredItems.value.reduce((sum, i) => sum + Number(i.valor || 0), 0),
 )
@@ -121,6 +132,8 @@ async function loadData() {
         'categoria',
         'observacao',
         'date_created',
+        'paid',
+        'payment_method',
         'operator_id.id',
         'operator_id.name',
         'responsavel_id.id',
@@ -204,6 +217,11 @@ function clearFilters() {
 
 function printList() {
   window.print()
+}
+
+function printReceipt(item: any) {
+  receiptItem.value = item
+  nextTick(() => window.print())
 }
 
 const periodLabel = computed(() => {
@@ -419,6 +437,32 @@ function getResponsavelName(item: any): string {
 
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis">
+                Status
+              </div>
+              <v-chip
+                :color="item.paid ? 'success' : 'error'"
+                size="small"
+                variant="tonal"
+                label
+                class="mt-1"
+                :prepend-icon="item.paid ? 'mdi-check-circle' : 'mdi-clock-outline'"
+              >
+                {{ item.paid ? 'Pago' : 'Pendente' }}
+              </v-chip>
+            </v-col>
+
+            <v-col v-if="item.paid && item.payment_method" cols="12" sm="6">
+              <div class="text-caption text-medium-emphasis">
+                Forma de Pagamento
+              </div>
+              <v-chip size="small" variant="tonal" color="primary" label class="mt-1">
+                <v-icon start size="14" icon="mdi-cash-multiple" />
+                {{ PAYMENT_METHOD_LABELS[item.payment_method] ?? item.payment_method }}
+              </v-chip>
+            </v-col>
+
+            <v-col cols="12" sm="6">
+              <div class="text-caption text-medium-emphasis">
                 Responsável
               </div>
               <v-chip size="small" variant="tonal" color="secondary" label class="mt-1">
@@ -461,6 +505,16 @@ function getResponsavelName(item: any): string {
           <v-divider class="my-3" />
 
           <div class="d-flex justify-end ga-2">
+            <v-btn
+              v-if="item.paid"
+              variant="text"
+              color="secondary"
+              size="small"
+              prepend-icon="mdi-printer-outline"
+              @click.stop="printReceipt(item)"
+            >
+              Recibo
+            </v-btn>
             <v-btn
               variant="tonal"
               color="primary"
@@ -514,6 +568,12 @@ function getResponsavelName(item: any): string {
                   Descrição
                 </th>
                 <th class="text-start">
+                  Status
+                </th>
+                <th class="text-start">
+                  Pagamento
+                </th>
+                <th class="text-start">
                   Responsável
                 </th>
                 <th class="text-end">
@@ -526,6 +586,12 @@ function getResponsavelName(item: any): string {
                 <td>{{ formatDate(item.data_despesa) }}</td>
                 <td>{{ CATEGORIA_LABELS[item.categoria] ?? item.categoria }}</td>
                 <td>{{ item.descricao }}</td>
+                <td>
+                  <span :class="item.paid ? 'text-success' : 'text-error'">
+                    {{ item.paid ? 'Pago' : 'Pendente' }}
+                  </span>
+                </td>
+                <td>{{ item.paid && item.payment_method ? (PAYMENT_METHOD_LABELS[item.payment_method] ?? item.payment_method) : '—' }}</td>
                 <td>{{ getResponsavelName(item) }}</td>
                 <td class="text-end font-weight-bold">
                   {{ formatCurrency(item.valor) }}
@@ -581,5 +647,194 @@ function getResponsavelName(item: any): string {
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="bottom end">
       {{ snackbarMsg }}
     </v-snackbar>
+
+    <!-- ─── Recibo (print only) ───────────────────────────────────────── -->
+    <div v-if="receiptItem" class="print-receipt">
+      <div class="receipt-header">
+        <strong>Paróquia — Novenário de São José</strong>
+      </div>
+      <h2 class="receipt-title">
+        RECIBO DE DESPESA
+      </h2>
+      <table class="receipt-table">
+        <tbody>
+          <tr>
+            <td class="receipt-label">
+              Data da Despesa:
+            </td>
+            <td class="receipt-value">
+              {{ formatDate(receiptItem.data_despesa) }}
+            </td>
+          </tr>
+          <tr>
+            <td class="receipt-label">
+              Descrição:
+            </td>
+            <td class="receipt-value">
+              {{ receiptItem.descricao }}
+            </td>
+          </tr>
+          <tr v-if="receiptItem.categoria">
+            <td class="receipt-label">
+              Categoria:
+            </td>
+            <td class="receipt-value">
+              {{ CATEGORIA_LABELS[receiptItem.categoria] ?? receiptItem.categoria }}
+            </td>
+          </tr>
+          <tr v-if="receiptItem.paid && receiptItem.payment_method">
+            <td class="receipt-label">
+              Forma de Pagamento:
+            </td>
+            <td class="receipt-value">
+              {{ PAYMENT_METHOD_LABELS[receiptItem.payment_method] ?? receiptItem.payment_method }}
+            </td>
+          </tr>
+          <tr v-if="receiptItem.observacao">
+            <td class="receipt-label">
+              Observação:
+            </td>
+            <td class="receipt-value">
+              {{ receiptItem.observacao }}
+            </td>
+          </tr>
+          <tr>
+            <td class="receipt-label">
+              Responsável:
+            </td>
+            <td class="receipt-value">
+              {{ getResponsavelName(receiptItem) }}
+            </td>
+          </tr>
+          <tr class="receipt-total-row">
+            <td class="receipt-label font-weight-black">
+              Valor Pago R$:
+            </td>
+            <td class="receipt-value font-weight-black">
+              {{ formatCurrency(receiptItem.valor) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="receipt-signatures">
+        <div class="receipt-sig-block">
+          <div class="receipt-sig-line" />
+          <p>Responsável pela Despesa</p>
+        </div>
+        <div class="receipt-sig-block">
+          <div class="receipt-sig-line" />
+          <p>Equipe Tesouraria</p>
+        </div>
+      </div>
+      <p class="receipt-copy-note">
+        Via única — arquivar na pasta financeira da novena
+      </p>
+    </div>
   </v-container>
 </template>
+
+<style scoped>
+/* Screen: hide print-only receipt */
+.print-receipt {
+  display: none;
+}
+
+@media print {
+  /* Hide all screen content */
+  .no-print,
+  .v-navigation-drawer,
+  .v-app-bar,
+  header,
+  nav {
+    display: none !important;
+  }
+
+  /* Show receipt */
+  .print-receipt {
+    display: block !important;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+
+  .receipt-header {
+    text-align: center;
+    margin-bottom: 16px;
+    color: #5d4037;
+  }
+
+  .receipt-title {
+    text-align: center;
+    font-size: 16px;
+    margin: 8px 0 20px;
+    color: #3e2723;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 24px;
+  }
+
+  .receipt-table td {
+    padding: 8px 0;
+    vertical-align: top;
+  }
+
+  .receipt-label {
+    font-weight: 600;
+    color: #6d6d6d;
+    width: 160px;
+  }
+
+  .receipt-value {
+    color: #1a1a1a;
+  }
+
+  .receipt-total-row td {
+    padding-top: 16px;
+    font-size: 18px;
+    border-top: 2px solid #b9ac9d;
+  }
+
+  .receipt-signatures {
+    display: flex;
+    justify-content: space-around;
+    gap: 32px;
+    margin-top: 40px;
+    margin-bottom: 24px;
+  }
+
+  .receipt-sig-block {
+    flex: 1;
+    text-align: center;
+  }
+
+  .receipt-sig-line {
+    border-bottom: 1px solid #333;
+    height: 40px;
+    margin-bottom: 8px;
+  }
+
+  .receipt-sig-block p {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+  }
+
+  .receipt-copy-note {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+}
+</style>
