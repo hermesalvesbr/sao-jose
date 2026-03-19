@@ -248,11 +248,17 @@ function confirmPrintReceipt() {
   setTimeout(() => {
     window.print()
     // Limpar o recibo após a impressão (ou cancelamento) para restaurar a página
-    const handler = () => {
+    let cleared = false
+    const cleanup = () => {
+      if (cleared)
+        return
+      cleared = true
       receiptItem.value = null
-      window.removeEventListener('afterprint', handler)
+      window.removeEventListener('afterprint', cleanup)
     }
-    window.addEventListener('afterprint', handler)
+    window.addEventListener('afterprint', cleanup)
+    // Fallback: limpar após 1s caso afterprint não dispare
+    setTimeout(cleanup, 1000)
   }, 300)
 }
 
@@ -876,11 +882,7 @@ function getResponsavelName(item: any): string {
   display: none;
 }
 
-/* Quando recibo estiver ativo, esconder todo o resto na tela também */
-.print-receipt-active .no-print,
-.print-receipt-active > :not(.print-receipt) {
-  display: none !important;
-}
+/* print-receipt-active: visibilidade controlada apenas em @media print */
 
 @media print {
   /* Hide ALL screen content including PrintReportLayout */
