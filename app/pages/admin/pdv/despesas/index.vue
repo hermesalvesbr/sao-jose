@@ -794,9 +794,32 @@ function getResponsavelName(item: any): string {
   .v-navigation-drawer,
   .v-app-bar,
   header,
-  nav,
-  .d-print-block {
+  nav {
     display: none !important;
+  }
+
+  /* When receipt is active, hide EVERYTHING else including PrintReportLayout */
+  .print-receipt-active .d-print-block,
+  .print-receipt-active > :not(.print-receipt) {
+    display: none !important;
+  }
+
+  /* Show receipt and all its contents */
+  .print-receipt,
+  .print-receipt * {
+    display: block !important;
+  }
+
+  /* Fix for table cells and inline elements */
+  .print-receipt table,
+  .print-receipt tbody,
+  .print-receipt tr,
+  .print-receipt td,
+  .print-receipt th,
+  .print-receipt strong,
+  .print-receipt span,
+  .print-receipt p {
+    display: revert !important;
   }
 
   /* Show receipt ONLY */
@@ -901,7 +924,7 @@ function getResponsavelName(item: any): string {
   }
 
   @page {
-    size: A5 landscape;
+    size: A4 portrait;
     margin: 15mm;
   }
 }
